@@ -83,24 +83,35 @@ async function run() {
 }
 
 // --- NUEVAS FUNCIONES DE LOS BOTONES (Comandos) ---
-
-// Botón 1: Limpieza FDA
+// Botón 1: Limpieza FDA (MEJORADO)
 async function limpiarFormato(event) {
-  await Word.run(async (context) => {
-    // Obtenemos la selección actual
-    const selection = context.document.getSelection();
-    
-    // Aplicamos Estilo FDA: Arial, 11, Negro, Justificado
-    selection.font.name = "Arial";
-    selection.font.size = 11;
-    selection.font.color = "black";
-    selection.paragraphFormat.alignment = "Justified"; // Justificado
+  try {
+    await Word.run(async (context) => {
+      // 1. Obtenemos lo que el usuario seleccionó
+      const selection = context.document.getSelection();
+      
+      // 2. Cargamos propiedades (opcional, buena práctica)
+      context.load(selection, 'font');
 
-    await context.sync();
-  });
+      // 3. Aplicamos Estilo FDA
+      // Usamos "#000000" (Hex) en vez de "black" para evitar problemas de idioma
+      selection.font.name = "Arial";
+      selection.font.size = 11;
+      selection.font.color = "#000000"; 
+      
+      // Alineación Justificada
+      selection.paragraphFormat.alignment = "Justified"; 
+
+      // 4. Sincronizamos con Word
+      await context.sync();
+    });
+  } catch (error) {
+    // Si falla, esto lo verás en la consola del inspector
+    console.error("Error al dar formato:", error);
+  }
   
-  // Avisamos a Word que terminamos (Obligatorio para botones de acción)
-  event.completed();
+  // Avisamos a Word que terminamos
+  if (event) event.completed();
 }
 
 // Botón 2: Insertar Fecha
