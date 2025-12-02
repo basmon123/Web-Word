@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Editor FDA</title>
+    <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js" type="text/javascript"></script>
+    <link href="taskpane.css" rel="stylesheet" type="text/css" />
+</head>
+<body class="ms-font-m ms-welcome ms-Fabric">
+    <div class="padding">
+        <h2>Generador FDA</h2>
+        <p class="ms-font-s subtitulo">Rellena los datos para actualizar el informe.</p>
+
+        <div class="grupo-input">
+            <label class="ms-Label">Cliente</label>
+            <input type="text" id="inCliente" class="caja-input" placeholder="Ej: Codelco">
+
+            <label class="ms-Label">División</label>
+            <input type="text" id="inDivision" class="caja-input" placeholder="Ej: Gabriela Mistral">
+
+            <label class="ms-Label">Nombre del Proyecto</label>
+            <input type="text" id="inProyecto" class="caja-input" placeholder="Ej: Estudio Diagnóstico...">
+            
+            <label class="ms-Label">N° Contrato</label>
+            <input type="text" id="inContrato" class="caja-input" placeholder="Ej: 4600025605">
+            
+            <label class="ms-Label">Código API</label>
+            <input type="text" id="inAPI" class="caja-input" placeholder="Ej: G25D203">
+        </div>
+
+        <div class="grupo-input">
+            <label class="ms-Label">Servicios / Tipo Doc</label>
+            <input type="text" id="inServicios" class="caja-input" placeholder="Ej: Estudio / Informe">
+
+            <label class="ms-Label">Nombre del Documento</label>
+            <input type="text" id="inNombreDoc" class="caja-input" placeholder="Ej: Informe Técnico Final">
+
+            <div class="fila-flex">
+                <div class="col-70">
+                    <label class="ms-Label">Código Documento</label>
+                    <input type="text" id="inCodigo" class="caja-input" placeholder="Ej: 4600-INF-001">
+                </div>
+                <div class="col-30">
+                    <label class="ms-Label">Revisión</label>
+                    <input type="text" id="inRevision" class="caja-input" placeholder="B">
+                </div>
+            </div>
+        </div>
+
+        <br>
+        
+        <button id="btnGenerar" class="boton">
+            <span class="ms-Button-label">Generar Documento</span>
+        </button>
+        
+        <p id="mensajeEstado" class="mensaje-estado"></p>
+    </div>
+    
+    <script type="text/javascript" src="taskpane.js"></script>
+</body>
+</html>

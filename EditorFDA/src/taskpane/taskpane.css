@@ -1,0 +1,92 @@
+/* Estilos Generales */
+body { 
+    font-family: 'Segoe UI', sans-serif; 
+    padding: 10px; 
+    background-color: #f3f2f1; 
+}
+
+h2 { 
+    color: #0078d4; 
+    border-bottom: 2px solid #0078d4; 
+    padding-bottom: 5px; 
+    margin-top: 0; 
+}
+
+/* Clases Utilitarias (Reemplazo de estilos inline) */
+.subtitulo {
+    color: #666;
+    margin-top: 0;
+}
+
+.mensaje-estado {
+    color: gray; 
+    font-size: 12px; 
+    margin-top: 10px;
+    min-height: 20px; /* Para que no salte si está vacío */
+}
+
+/* Grupos y Inputs */
+.grupo-input { 
+    background: white; 
+    padding: 10px; 
+    margin-bottom: 10px; 
+    border: 1px solid #e1dfdd; 
+    border-radius: 2px;
+}
+
+.caja-input { 
+    width: 100%; 
+    padding: 6px; 
+    margin-bottom: 8px; 
+    border: 1px solid #605e5c; 
+    box-sizing: border-box; 
+    border-radius: 2px;
+}
+
+.caja-input:focus {
+    border-color: #0078d4;
+    outline: none;
+}
+
+.ms-Label { 
+    font-weight: 600; 
+    font-size: 12px; 
+    color: #323130; 
+    display: block; 
+    margin-bottom: 2px;
+}
+
+/* Sistema de Grid Flexible (Para poner cosas lado a lado) */
+.fila-flex {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.col-70 {
+    width: 70%;
+}
+
+.col-30 {
+    width: 30%;
+}
+
+/* Botón */
+.boton { 
+    background-color: #0078d4; 
+    color: white; 
+    padding: 10px; 
+    width: 100%; 
+    border: none; 
+    cursor: pointer; 
+    font-weight: bold; 
+    transition: background-color 0.2s;
+}
+
+.boton:hover { 
+    background-color: #106ebe; 
+}
+
+.boton:active {
+    background-color: #005a9e;
+}
