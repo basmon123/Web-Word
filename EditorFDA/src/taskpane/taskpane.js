@@ -14,7 +14,7 @@ Office.onReady((info) => {
 });
 
 // 2. La Lógica Principal
-export async function run() {
+async function run() {
   try {
     // A. Capturar datos (Usamos 'value' con seguridad)
     const getVal = (id) => document.getElementById(id) ? document.getElementById(id).value : "";
@@ -81,3 +81,45 @@ export async function run() {
     if (msgLabel) msgLabel.textContent = "Error: " + error.message;
   }
 }
+
+// --- NUEVAS FUNCIONES DE LOS BOTONES (Comandos) ---
+
+// Botón 1: Limpieza FDA
+async function limpiarFormato(event) {
+  await Word.run(async (context) => {
+    // Obtenemos la selección actual
+    const selection = context.document.getSelection();
+    
+    // Aplicamos Estilo FDA: Arial, 11, Negro, Justificado
+    selection.font.name = "Arial";
+    selection.font.size = 11;
+    selection.font.color = "black";
+    selection.paragraphFormat.alignment = "Justified"; // Justificado
+
+    await context.sync();
+  });
+  
+  // Avisamos a Word que terminamos (Obligatorio para botones de acción)
+  event.completed();
+}
+
+// Botón 2: Insertar Fecha
+async function insertarFecha(event) {
+  await Word.run(async (context) => {
+    const selection = context.document.getSelection();
+    
+    // Fecha de hoy en formato local (ej: 02/12/2025)
+    const fechaHoy = new Date().toLocaleDateString();
+    
+    selection.insertText(fechaHoy, "Replace");
+    
+    await context.sync();
+  });
+  
+  event.completed();
+}
+
+// --- REGISTRO DE FUNCIONES (Vital para que el XML las encuentre) ---
+// Esto conecta el nombre del XML <FunctionName> con la función de JS
+Office.actions.associate("limpiarFormato", limpiarFormato);
+Office.actions.associate("insertarFecha", insertarFecha);
