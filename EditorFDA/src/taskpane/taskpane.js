@@ -3,59 +3,60 @@
 Office.onReady((info) => {
   if (info.host === Office.HostType.Word) {
     const btn = document.getElementById("btnGenerar");
-    if (btn) {
-      btn.onclick = run;
-    }
+    if (btn) btn.onclick = run;
   }
 });
 
-// --- FUNCIÓN DEL PANEL ---
+// --- 1. FUNCIÓN DEL PANEL (GENERADOR) ---
 async function run() {
   try {
     const getVal = (id) => document.getElementById(id) ? document.getElementById(id).value : "";
-    
-    // Captura de datos
-    const vCliente   = getVal("inCliente");
-    const vDivision  = getVal("inDivision");
-    const vProyecto  = getVal("inProyecto");
-    const vContrato  = getVal("inContrato");
-    const vAPI       = getVal("inAPI");
-    const vServicios = getVal("inServicios");
-    const vNombreDoc = getVal("inNombreDoc");
-    const vCodigo    = getVal("inCodigo");
-    const vRevision  = getVal("inRevision");
-
     const msgLabel = document.getElementById("mensajeEstado");
+    
+    // Captura rápida
+    const datos = {
+        "ccCliente": getVal("inCliente"),
+        "ccDivisión": getVal("inDivision"),
+        "ccServicios": getVal("inServicios"),
+        "ccContrato": getVal("inContrato"),
+        "ccAPI": getVal("inAPI"),
+        "ccProyecto": getVal("inProyecto"),
+        "ccNombreDoc": getVal("inNombreDoc"),
+        "ccCodigo": getVal("inCodigo"),
+        "ccRevision": getVal("inRevision")
+    };
+
     if (msgLabel) msgLabel.textContent = "Procesando...";
 
     await Word.run(async (context) => {
-      const mapaDeTags = [
-        { tag: "ccCliente",       valor: vCliente },
-        { tag: "ccDivisión",      valor: vDivision },
-        { tag: "ccServicios",     valor: vServicios },
-        { tag: "ccContrato",      valor: vContrato },
-        { tag: "ccAPI",           valor: vAPI },
-        { tag: "ccProyecto",      valor: vProyecto },
-        { tag: "ccNombreDoc",     valor: vNombreDoc },
-        { tag: "ccCliente_encabezado",   valor: vCliente },
-        { tag: "ccD_encabezado",         valor: vDivision },
-        { tag: "ccNProyecto_Encabezado", valor: vProyecto },
-        { tag: "ccCodigo",               valor: vCodigo },
-        { tag: "ccRevision",             valor: vRevision }
+      let contadores = 0;
+      
+      // Lógica unificada para cuerpo y encabezados
+      const tagsMapa = [
+          { t: "ccCliente", v: datos.ccCliente }, { t: "ccCliente_encabezado", v: datos.ccCliente },
+          { t: "ccDivisión", v: datos.ccDivisión }, { t: "ccD_encabezado", v: datos.ccDivisión },
+          { t: "ccServicios", v: datos.ccServicios },
+          { t: "ccContrato", v: datos.ccContrato },
+          { t: "ccAPI", v: datos.ccAPI },
+          { t: "ccProyecto", v: datos.ccProyecto }, { t: "ccNProyecto_Encabezado", v: datos.ccProyecto },
+          { t: "ccNombreDoc", v: datos.ccNombreDoc }, { t: "ccNombre doc", v: datos.ccNombreDoc }, // Por si acaso
+          { t: "ccCodigo", v: datos.ccCodigo },
+          { t: "ccRevision", v: datos.ccRevision }
       ];
 
-      let contadores = 0;
-      for (let item of mapaDeTags) {
-        let ccs = context.document.contentControls.getByTag(item.tag);
+      for (let item of tagsMapa) {
+        if(!item.v) continue; // Si está vacío, saltar
+        let ccs = context.document.contentControls.getByTag(item.t);
         ccs.load("items");
         await context.sync();
         if (ccs.items.length > 0) {
            for (let cc of ccs.items) {
-             cc.insertText(item.valor, "Replace");
+             cc.insertText(item.v, "Replace");
              contadores++;
            }
         }
       }
+      
       await context.sync();
       if (msgLabel) msgLabel.textContent = "¡Listo! " + contadores + " campos actualizados.";
     });
@@ -64,28 +65,28 @@ async function run() {
   }
 }
 
-// --- BOTONES DE ACCIÓN ---
+// --- 2. HERRAMIENTAS DE FORMATO ---
 
 async function limpiarFormato(event) {
   try {
     await Word.run(async (context) => {
       const selection = context.document.getSelection();
+      
+      // Paso 1: Fuente
       context.load(selection, "font");
       await context.sync();
-
-      selection.font.set({
-        name: "Arial",
-        size: 11,
-        color: "#000000",
-        bold: false,
-        italic: false
-      });
+      selection.font.set({ name: "Arial", size: 11, color: "#000000", bold: false, italic: false });
       await context.sync();
       
-      // Intentamos justificar sin romper nada
+      // Paso 2: Párrafo (Intento seguro)
       context.load(selection, "paragraphFormat");
       await context.sync();
-      try { selection.paragraphFormat.alignment = "Justified"; await context.sync(); } catch (e) {}
+      try { 
+          selection.paragraphFormat.alignment = "Justified"; 
+          await context.sync(); 
+      } catch (e) { 
+          console.warn("No se pudo justificar (posible tabla o restricción)."); 
+      }
     });
   } catch (error) { console.error(error); } 
   finally { if (event) event.completed(); }
@@ -101,57 +102,44 @@ async function insertarFecha(event) {
   if (event) event.completed();
 }
 
-// --- NUEVOS BOTONES DE ESTILOS (ESPAÑOL) ---
+// --- 3. ESTILOS FDA (1.0, 1.1, 1.1.1) ---
+
 async function estiloTitulo1(event) {
-  await probarEstilo("Título 1", "Heading 1");
+  await aplicarEstiloProfesional("Título 1", "Heading 1");
   if (event) event.completed();
 }
 
 async function estiloTitulo2(event) {
-  await probarEstilo("Título 2", "Heading 2");
+  await aplicarEstiloProfesional("Título 2", "Heading 2");
   if (event) event.completed();
 }
 
 async function estiloTitulo3(event) {
-  await probarEstilo("Título 3", "Heading 3");
+  await aplicarEstiloProfesional("Título 3", "Heading 3");
   if (event) event.completed();
 }
 
-// Función que escribe en el documento lo que está pasando
-async function probarEstilo(nombreEsp, nombreIng) {
+// Función auxiliar inteligente (Prueba Español -> Falla -> Prueba Inglés)
+async function aplicarEstiloProfesional(nombreEsp, nombreIng) {
   await Word.run(async (context) => {
-    const selection = context.document.getSelection();
-    
-    // 1. AVISO DE INICIO
-    selection.insertText(" [INTENTO 1: " + nombreEsp + "] ", "End");
-    await context.sync();
-
     try {
-      // Intento 1: Nombre en Español
-      selection.style = nombreEsp;
+      const selection = context.document.getSelection();
+      selection.style = nombreEsp; // Intento Español
       await context.sync();
-      selection.insertText(" [¡EXITO ESPAÑOL!] ", "End");
-    } catch (error1) {
-      
-      // 2. SI FALLA, PROBAMOS INGLÉS
-      selection.insertText(" [FALLÓ (" + error1.message + ") -> INTENTO 2: " + nombreIng + "] ", "End");
-      await context.sync();
-      
+    } catch (error) {
+      // Si falla, intentamos Inglés silenciosamente
       try {
+        const selection = context.document.getSelection();
         selection.style = nombreIng;
         await context.sync();
-        selection.insertText(" [¡EXITO INGLÉS!] ", "End");
-      } catch (error2) {
-        // 3. SI FALLA TODO
-        selection.insertText(" [ERROR TOTAL: " + error2.message + "] ", "End");
-        selection.font.color = "red";
-        await context.sync();
+      } catch (e2) {
+        console.warn("No se encontró el estilo ni en ESP ni ING.");
       }
     }
   });
 }
 
-// --- REGISTRO ---
+// --- 4. REGISTRO DE FUNCIONES ---
 Office.actions.associate("limpiarFormato", limpiarFormato);
 Office.actions.associate("insertarFecha", insertarFecha);
 Office.actions.associate("estiloTitulo1", estiloTitulo1);
