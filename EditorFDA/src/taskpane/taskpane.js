@@ -82,40 +82,24 @@ async function run() {
   }
 }
 
-// Botón 1: Limpieza FDA (Modo Diagnóstico)
+// Botón 1: Limpieza FDA (Versión PRUEBA DE VIDA)
 async function limpiarFormato(event) {
   await Word.run(async (context) => {
-    try {
-      // 1. Obtener selección
-      const selection = context.document.getSelection();
-      
-      // 2. Cargar propiedades (VITAL: A veces falla si no cargamos primero)
-      context.load(selection, ['font', 'paragraphFormat']);
-      await context.sync(); // Sincronizamos para leer
+    // 1. Obtener la selección
+    const selection = context.document.getSelection();
+    
+    // 2. Cargar la propiedad font (Vital)
+    context.load(selection, "font");
+    await context.sync();
 
-      // 3. Aplicar cambios uno por uno
-      selection.font.name = "Arial";
-      selection.font.size = 11;
-      
-      // Intentamos color seguro
-      selection.font.color = "black"; 
-      
-      // Intentamos alineación (Esta suele ser la conflictiva)
-      // Nota: "Justified" debe estar escrito exactamente así en inglés
-      selection.paragraphFormat.alignment = "Justified"; 
+    // 3. SOLO cambiar a Negrita (para probar)
+    selection.font.bold = true;
 
-      await context.sync(); // Guardamos cambios
-      
-    } catch (error) {
-      // TRUCO: Si falla, escribimos el error en el documento para verlo
-      const docBody = context.document.body;
-      const parrafoError = docBody.insertParagraph("ERROR FDA: " + error.message, "Start");
-      parrafoError.font.color = "red";
-      parrafoError.font.bold = true;
-      await context.sync();
-    }
+    // 4. Guardar
+    await context.sync();
   });
   
+  // Avisar que terminó
   if (event) event.completed();
 }
 
