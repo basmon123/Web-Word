@@ -82,35 +82,40 @@ async function run() {
   }
 }
 
-// --- NUEVAS FUNCIONES DE LOS BOTONES (Comandos) ---
-// Botón 1: Limpieza FDA (MEJORADO)
+// Botón 1: Limpieza FDA (Modo Diagnóstico)
 async function limpiarFormato(event) {
-  try {
-    await Word.run(async (context) => {
-      // 1. Obtenemos lo que el usuario seleccionó
+  await Word.run(async (context) => {
+    try {
+      // 1. Obtener selección
       const selection = context.document.getSelection();
       
-      // 2. Cargamos propiedades (opcional, buena práctica)
-      context.load(selection, 'font');
+      // 2. Cargar propiedades (VITAL: A veces falla si no cargamos primero)
+      context.load(selection, ['font', 'paragraphFormat']);
+      await context.sync(); // Sincronizamos para leer
 
-      // 3. Aplicamos Estilo FDA
-      // Usamos "#000000" (Hex) en vez de "black" para evitar problemas de idioma
+      // 3. Aplicar cambios uno por uno
       selection.font.name = "Arial";
       selection.font.size = 11;
-      selection.font.color = "#000000"; 
       
-      // Alineación Justificada
+      // Intentamos color seguro
+      selection.font.color = "black"; 
+      
+      // Intentamos alineación (Esta suele ser la conflictiva)
+      // Nota: "Justified" debe estar escrito exactamente así en inglés
       selection.paragraphFormat.alignment = "Justified"; 
 
-      // 4. Sincronizamos con Word
+      await context.sync(); // Guardamos cambios
+      
+    } catch (error) {
+      // TRUCO: Si falla, escribimos el error en el documento para verlo
+      const docBody = context.document.body;
+      const parrafoError = docBody.insertParagraph("ERROR FDA: " + error.message, "Start");
+      parrafoError.font.color = "red";
+      parrafoError.font.bold = true;
       await context.sync();
-    });
-  } catch (error) {
-    // Si falla, esto lo verás en la consola del inspector
-    console.error("Error al dar formato:", error);
-  }
+    }
+  });
   
-  // Avisamos a Word que terminamos
   if (event) event.completed();
 }
 
