@@ -13,6 +13,8 @@ Office.onReady((info) => {
 async function run() {
   try {
     const getVal = (id) => document.getElementById(id) ? document.getElementById(id).value : "";
+    
+    // Captura de datos
     const vCliente   = getVal("inCliente");
     const vDivision  = getVal("inDivision");
     const vProyecto  = getVal("inProyecto");
@@ -79,13 +81,11 @@ async function limpiarFormato(event) {
         italic: false
       });
       await context.sync();
-
+      
+      // Intentamos justificar sin romper nada
       context.load(selection, "paragraphFormat");
       await context.sync();
-      try {
-        selection.paragraphFormat.alignment = "Justified";
-        await context.sync();
-      } catch (e) { console.warn("Alineación omitida"); }
+      try { selection.paragraphFormat.alignment = "Justified"; await context.sync(); } catch (e) {}
     });
   } catch (error) { console.error(error); } 
   finally { if (event) event.completed(); }
@@ -101,36 +101,50 @@ async function insertarFecha(event) {
   if (event) event.completed();
 }
 
-// --- NUEVOS BOTONES DE ESTILOS ---
-// Estos aplican los estilos internos de Word "Heading 1", "Heading 2", etc.
-// En Word en español, esto corresponde a "Título 1", "Título 2"...
+// --- NUEVOS BOTONES DE ESTILOS (ESPAÑOL) ---
 
 async function estiloTitulo1(event) {
-  await aplicarEstilo("Heading 1");
+  // En Word en Español, el estilo se llama "Título 1"
+  await aplicarEstiloSeguro("Título 1"); 
   if (event) event.completed();
 }
 
 async function estiloTitulo2(event) {
-  await aplicarEstilo("Heading 2");
+  await aplicarEstiloSeguro("Título 2");
   if (event) event.completed();
 }
 
 async function estiloTitulo3(event) {
-  await aplicarEstilo("Heading 3");
+  await aplicarEstiloSeguro("Título 3");
   if (event) event.completed();
 }
 
-// Función auxiliar para no repetir código
-async function aplicarEstilo(nombreEstilo) {
+// Función auxiliar blindada
+async function aplicarEstiloSeguro(nombreEstilo) {
   await Word.run(async (context) => {
-    const selection = context.document.getSelection();
-    // Aplicamos el estilo al párrafo seleccionado
-    selection.style = nombreEstilo; 
-    await context.sync();
+    try {
+      const selection = context.document.getSelection();
+      
+      // Aplicamos estilo por nombre local
+      selection.style = nombreEstilo;
+      
+      await context.sync();
+    } catch (error) {
+      // Si falla (ej: Word en Inglés), intentamos el nombre en inglés
+      // Esto es un "Plan B" automático
+      try {
+        const selection = context.document.getSelection();
+        const nombreIngles = nombreEstilo.replace("Título", "Heading");
+        selection.style = nombreIngles;
+        await context.sync();
+      } catch (e2) {
+         console.warn("No se encontró el estilo: " + nombreEstilo);
+      }
+    }
   });
 }
 
-// --- REGISTRO DE TODAS LAS FUNCIONES ---
+// --- REGISTRO ---
 Office.actions.associate("limpiarFormato", limpiarFormato);
 Office.actions.associate("insertarFecha", insertarFecha);
 Office.actions.associate("estiloTitulo1", estiloTitulo1);
