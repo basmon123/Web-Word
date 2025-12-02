@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
-  <Id>55c91350-1234-4567-890a-bcdef1234567</Id>
-  <Version>1.0.0.6</Version>
+  <Id>cc22dd33-4444-5555-6666-777788889999</Id>
+  <Version>1.0.1.0</Version>
   <ProviderName>FDA Ingenieria</ProviderName>
   <DefaultLocale>es-ES</DefaultLocale>
   <DisplayName DefaultValue="EditorFDA"/>
-  <Description DefaultValue="Suite de herramientas FDA."/>
+  <Description DefaultValue="Herramientas FDA."/>
   
   <IconUrl DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-64.png"/>
@@ -40,8 +40,8 @@
             <CustomTab id="TabFDA">
               <Label resid="TabFDA.Label"/> 
               
-              <Group id="GrupoFDA">
-                <Label resid="GrupoFDA.Label"/>
+              <Group id="GrupoPrincipal">
+                <Label resid="GrupoPrincipal.Label"/>
                 <Icon>
                   <bt:Image size="16" resid="Icon.16x16"/>
                   <bt:Image size="32" resid="Icon.32x32"/>
@@ -65,14 +65,13 @@
                 </Control>
               </Group>
 
-              <Group id="GrupoAcciones">
-                <Label resid="GrupoAcciones.Label"/>
+              <Group id="GrupoUtilidades">
+                <Label resid="GrupoUtilidades.Label"/>
                 <Icon>
                   <bt:Image size="16" resid="Icon.16x16"/>
                   <bt:Image size="32" resid="Icon.32x32"/>
                   <bt:Image size="80" resid="Icon.80x80"/>
                 </Icon>
-
                 <Control xsi:type="Button" id="BtnLimpiar">
                   <Label resid="BtnLimpiar.Label"/>
                   <Supertip>
@@ -103,7 +102,63 @@
                     <FunctionName>insertarFecha</FunctionName>
                   </Action>
                 </Control>
+              </Group>
 
+              <Group id="GrupoEstilos">
+                <Label resid="GrupoEstilos.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.16x16"/>
+                  <bt:Image size="32" resid="Icon.32x32"/>
+                  <bt:Image size="80" resid="Icon.80x80"/>
+                </Icon>
+                
+                <Control xsi:type="Button" id="BtnEstilo1">
+                  <Label resid="BtnEstilo1.Label"/>
+                  <Supertip>
+                    <Title resid="BtnEstilo1.Label"/>
+                    <Description resid="BtnEstilo1.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16x16"/>
+                    <bt:Image size="32" resid="Icon.32x32"/>
+                    <bt:Image size="80" resid="Icon.80x80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>estiloTitulo1</FunctionName>
+                  </Action>
+                </Control>
+
+                <Control xsi:type="Button" id="BtnEstilo2">
+                  <Label resid="BtnEstilo2.Label"/>
+                  <Supertip>
+                    <Title resid="BtnEstilo2.Label"/>
+                    <Description resid="BtnEstilo2.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16x16"/>
+                    <bt:Image size="32" resid="Icon.32x32"/>
+                    <bt:Image size="80" resid="Icon.80x80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>estiloTitulo2</FunctionName>
+                  </Action>
+                </Control>
+
+                <Control xsi:type="Button" id="BtnEstilo3">
+                  <Label resid="BtnEstilo3.Label"/>
+                  <Supertip>
+                    <Title resid="BtnEstilo3.Label"/>
+                    <Description resid="BtnEstilo3.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16x16"/>
+                    <bt:Image size="32" resid="Icon.32x32"/>
+                    <bt:Image size="80" resid="Icon.80x80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>estiloTitulo3</FunctionName>
+                  </Action>
+                </Control>
               </Group>
 
             </CustomTab>
@@ -127,19 +182,28 @@
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="¡Bienvenido al Editor FDA!"/>
         <bt:String id="TabFDA.Label" DefaultValue="FDA Herramientas"/>
-        <bt:String id="GrupoFDA.Label" DefaultValue="Gestión Documental"/>
-        <bt:String id="GrupoAcciones.Label" DefaultValue="Acciones Rápidas"/>
+        <bt:String id="GrupoPrincipal.Label" DefaultValue="Principal"/>
+        <bt:String id="GrupoUtilidades.Label" DefaultValue="Acciones Rápidas"/>
+        <bt:String id="GrupoEstilos.Label" DefaultValue="Estilos FDA"/>
         
         <bt:String id="TaskpaneButton.Label" DefaultValue="Generador Documentos"/>
-        <bt:String id="BtnLimpiar.Label" DefaultValue="Formato FDA"/>
+        <bt:String id="BtnLimpiar.Label" DefaultValue="Estandarizar Formato"/>
         <bt:String id="BtnFecha.Label" DefaultValue="Insertar Fecha"/>
+        
+        <bt:String id="BtnEstilo1.Label" DefaultValue="Título 1.0"/>
+        <bt:String id="BtnEstilo2.Label" DefaultValue="Subtítulo 1.1"/>
+        <bt:String id="BtnEstilo3.Label" DefaultValue="Subtítulo 1.1.1"/>
       </bt:ShortStrings>
       
       <bt:LongStrings>
         <bt:String id="GetStarted.Description" DefaultValue="Complemento FDA cargado."/>
         <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Abre el panel para generar documentos."/>
-        <bt:String id="BtnLimpiar.Tooltip" DefaultValue="Convierte el texto seleccionado a Arial 11, Justificado."/>
-        <bt:String id="BtnFecha.Tooltip" DefaultValue="Inserta la fecha actual en el cursor."/>
+        <bt:String id="BtnLimpiar.Tooltip" DefaultValue="Convierte el texto a Arial 11 Justificado."/>
+        <bt:String id="BtnFecha.Tooltip" DefaultValue="Inserta la fecha de hoy."/>
+        
+        <bt:String id="BtnEstilo1.Tooltip" DefaultValue="Aplica estilo Título 1 (1.0)."/>
+        <bt:String id="BtnEstilo2.Tooltip" DefaultValue="Aplica estilo Título 2 (1.1)."/>
+        <bt:String id="BtnEstilo3.Tooltip" DefaultValue="Aplica estilo Título 3 (1.1.1)."/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

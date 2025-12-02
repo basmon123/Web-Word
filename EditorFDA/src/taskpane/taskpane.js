@@ -9,12 +9,10 @@ Office.onReady((info) => {
   }
 });
 
-// --- FUNCIÓN DEL PANEL (Generador) ---
+// --- FUNCIÓN DEL PANEL ---
 async function run() {
   try {
     const getVal = (id) => document.getElementById(id) ? document.getElementById(id).value : "";
-    
-    // Captura de datos
     const vCliente   = getVal("inCliente");
     const vDivision  = getVal("inDivision");
     const vProyecto  = getVal("inProyecto");
@@ -36,7 +34,7 @@ async function run() {
         { tag: "ccContrato",      valor: vContrato },
         { tag: "ccAPI",           valor: vAPI },
         { tag: "ccProyecto",      valor: vProyecto },
-        { tag: "ccNombreDoc",     valor: vNombreDoc }, // Ojo: Verifica si tu tag es ccNombreDoc o ccNombre doc en Word
+        { tag: "ccNombreDoc",     valor: vNombreDoc },
         { tag: "ccCliente_encabezado",   valor: vCliente },
         { tag: "ccD_encabezado",         valor: vDivision },
         { tag: "ccNProyecto_Encabezado", valor: vProyecto },
@@ -49,7 +47,6 @@ async function run() {
         let ccs = context.document.contentControls.getByTag(item.tag);
         ccs.load("items");
         await context.sync();
-
         if (ccs.items.length > 0) {
            for (let cc of ccs.items) {
              cc.insertText(item.valor, "Replace");
@@ -57,7 +54,6 @@ async function run() {
            }
         }
       }
-
       await context.sync();
       if (msgLabel) msgLabel.textContent = "¡Listo! " + contadores + " campos actualizados.";
     });
@@ -66,15 +62,12 @@ async function run() {
   }
 }
 
-// --- NUEVAS FUNCIONES DE LOS BOTONES (Comandos) ---
+// --- BOTONES DE ACCIÓN ---
 
-// Botón 1: Limpieza FDA (Versión FINAL: Fuente + Justificado Seguro)
 async function limpiarFormato(event) {
   try {
     await Word.run(async (context) => {
       const selection = context.document.getSelection();
-
-      // FASE 1: FUENTE (Lo que ya funciona)
       context.load(selection, "font");
       await context.sync();
 
@@ -85,33 +78,19 @@ async function limpiarFormato(event) {
         bold: false,
         italic: false
       });
-      
-      await context.sync(); // Guardamos fuente
-
-      // FASE 2: ALINEACIÓN (Blindada)
-      // Cargamos específicamente el formato de párrafo ahora
-      context.load(selection, "paragraphFormat");
       await context.sync();
 
+      context.load(selection, "paragraphFormat");
+      await context.sync();
       try {
-        // Intentamos justificar
         selection.paragraphFormat.alignment = "Justified";
-        await context.sync(); // Guardamos alineación
-      } catch (alignError) {
-        // Si falla la alineación (ej: dentro de una tabla compleja), 
-        // solo lo ignoramos y seguimos, pero la fuente ya quedó arreglada.
-        console.warn("No se pudo justificar, pero la fuente se cambió.");
-      }
+        await context.sync();
+      } catch (e) { console.warn("Alineación omitida"); }
     });
-  } catch (error) {
-    console.error("Error General FDA:", error);
-  } finally {
-    // VITAL: Esto apaga el mensaje de "Trabajando..."
-    if (event) event.completed();
-  }
+  } catch (error) { console.error(error); } 
+  finally { if (event) event.completed(); }
 }
 
-// Botón 2: Insertar Fecha
 async function insertarFecha(event) {
   await Word.run(async (context) => {
     const selection = context.document.getSelection();
@@ -119,10 +98,41 @@ async function insertarFecha(event) {
     selection.insertText(fechaHoy, "Replace");
     await context.sync();
   });
-  
   if (event) event.completed();
 }
 
-// --- REGISTRO ---
+// --- NUEVOS BOTONES DE ESTILOS ---
+// Estos aplican los estilos internos de Word "Heading 1", "Heading 2", etc.
+// En Word en español, esto corresponde a "Título 1", "Título 2"...
+
+async function estiloTitulo1(event) {
+  await aplicarEstilo("Heading 1");
+  if (event) event.completed();
+}
+
+async function estiloTitulo2(event) {
+  await aplicarEstilo("Heading 2");
+  if (event) event.completed();
+}
+
+async function estiloTitulo3(event) {
+  await aplicarEstilo("Heading 3");
+  if (event) event.completed();
+}
+
+// Función auxiliar para no repetir código
+async function aplicarEstilo(nombreEstilo) {
+  await Word.run(async (context) => {
+    const selection = context.document.getSelection();
+    // Aplicamos el estilo al párrafo seleccionado
+    selection.style = nombreEstilo; 
+    await context.sync();
+  });
+}
+
+// --- REGISTRO DE TODAS LAS FUNCIONES ---
 Office.actions.associate("limpiarFormato", limpiarFormato);
 Office.actions.associate("insertarFecha", insertarFecha);
+Office.actions.associate("estiloTitulo1", estiloTitulo1);
+Office.actions.associate("estiloTitulo2", estiloTitulo2);
+Office.actions.associate("estiloTitulo3", estiloTitulo3);
