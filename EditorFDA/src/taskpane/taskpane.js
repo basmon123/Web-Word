@@ -82,20 +82,29 @@ async function run() {
   }
 }
 
-// Botón 1: Limpieza FDA (Versión PRUEBA DE VIDA)
+// Botón 1: Limpieza FDA (Versión Completa)
 async function limpiarFormato(event) {
   await Word.run(async (context) => {
-    // 1. Obtener la selección
+    // 1. Obtener selección
     const selection = context.document.getSelection();
     
-    // 2. Cargar la propiedad font (Vital)
-    context.load(selection, "font");
+    // 2. CARGAR PROPIEDADES (El secreto para que no falle)
+    // Le decimos a Word: "Prepara la fuente y el párrafo porque los voy a tocar"
+    context.load(selection, ["font", "paragraphFormat"]);
+    
+    // Sincronizamos para traer esa info
     await context.sync();
 
-    // 3. SOLO cambiar a Negrita (para probar)
-    selection.font.bold = true;
+    // 3. APLICAR EL ESTÁNDAR FDA
+    selection.font.name = "Arial";
+    selection.font.size = 11;
+    selection.font.color = "#000000"; // Negro puro (Hexadecimal es más seguro)
+    selection.font.bold = false;      // Quitamos negrita (por si acaso traía)
+    
+    // Alineación
+    selection.paragraphFormat.alignment = "Justified";
 
-    // 4. Guardar
+    // 4. Guardar cambios
     await context.sync();
   });
   
