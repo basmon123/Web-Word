@@ -68,19 +68,16 @@ async function run() {
 
 // --- NUEVAS FUNCIONES DE LOS BOTONES (Comandos) ---
 
-// Botón 1: Limpieza FDA (Versión BLINDADA - Solo Fuente)
+// Botón 1: Limpieza FDA (Versión FINAL: Fuente + Justificado Seguro)
 async function limpiarFormato(event) {
   try {
     await Word.run(async (context) => {
-      // 1. Obtener selección
       const selection = context.document.getSelection();
 
-      // 2. Cargar propiedades (VITAL)
+      // FASE 1: FUENTE (Lo que ya funciona)
       context.load(selection, "font");
       await context.sync();
 
-      // 3. Aplicar cambios SEGUROS
-      // Usamos el método 'set' que es más robusto para aplicar todo junto
       selection.font.set({
         name: "Arial",
         size: 11,
@@ -88,16 +85,28 @@ async function limpiarFormato(event) {
         bold: false,
         italic: false
       });
+      
+      await context.sync(); // Guardamos fuente
 
-      // 4. Guardar cambios
+      // FASE 2: ALINEACIÓN (Blindada)
+      // Cargamos específicamente el formato de párrafo ahora
+      context.load(selection, "paragraphFormat");
       await context.sync();
+
+      try {
+        // Intentamos justificar
+        selection.paragraphFormat.alignment = "Justified";
+        await context.sync(); // Guardamos alineación
+      } catch (alignError) {
+        // Si falla la alineación (ej: dentro de una tabla compleja), 
+        // solo lo ignoramos y seguimos, pero la fuente ya quedó arreglada.
+        console.warn("No se pudo justificar, pero la fuente se cambió.");
+      }
     });
   } catch (error) {
-    console.error("Error FDA:", error);
+    console.error("Error General FDA:", error);
   } finally {
-    // 5. ESTO ES LO IMPORTANTE:
-    // Avisamos a Word que terminamos SIEMPRE, haya error o no.
-    // Esto quita el mensaje de "Trabajando..."
+    // VITAL: Esto apaga el mensaje de "Trabajando..."
     if (event) event.completed();
   }
 }
