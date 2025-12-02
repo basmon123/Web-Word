@@ -88,7 +88,6 @@
                     <FunctionName>limpiarFormato</FunctionName>
                   </Action>
                 </Control>
-
                 <Control xsi:type="Button" id="BtnFecha">
                   <Label resid="BtnFecha.Label"/>
                   <Supertip>

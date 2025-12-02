@@ -68,41 +68,38 @@ async function run() {
 
 // --- NUEVAS FUNCIONES DE LOS BOTONES (Comandos) ---
 
-// Botón 1: Limpieza FDA (VERSIÓN SECUENCIAL SEGURA)
+// Botón 1: Limpieza FDA (Versión BLINDADA - Solo Fuente)
 async function limpiarFormato(event) {
   try {
     await Word.run(async (context) => {
       // 1. Obtener selección
       const selection = context.document.getSelection();
 
-      // --- FASE 1: ARREGLAR FUENTE ---
-      // Cargamos solo la fuente primero
+      // 2. Cargar propiedades (VITAL)
       context.load(selection, "font");
       await context.sync();
 
-      selection.font.name = "Arial";
-      selection.font.size = 11;
-      selection.font.color = "black";
-      selection.font.bold = false; // Quitamos negrita por si acaso
+      // 3. Aplicar cambios SEGUROS
+      // Usamos el método 'set' que es más robusto para aplicar todo junto
+      selection.font.set({
+        name: "Arial",
+        size: 11,
+        color: "#000000",
+        bold: false,
+        italic: false
+      });
 
-      // Guardamos cambios de fuente
-      await context.sync();
-
-      // --- FASE 2: ARREGLAR PÁRRAFO ---
-      // Ahora cargamos el párrafo
-      context.load(selection, "paragraphFormat");
-      await context.sync();
-
-      selection.paragraphFormat.alignment = "Justified";
-
-      // Guardamos cambios de párrafo
+      // 4. Guardar cambios
       await context.sync();
     });
   } catch (error) {
-    console.error("Error al formatear:", error);
+    console.error("Error FDA:", error);
+  } finally {
+    // 5. ESTO ES LO IMPORTANTE:
+    // Avisamos a Word que terminamos SIEMPRE, haya error o no.
+    // Esto quita el mensaje de "Trabajando..."
+    if (event) event.completed();
   }
-  
-  if (event) event.completed();
 }
 
 // Botón 2: Insertar Fecha
