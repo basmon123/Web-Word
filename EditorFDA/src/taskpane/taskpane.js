@@ -1,24 +1,20 @@
 /* global document, Office, Word */
 
-// 1. Configuración Inicial
 Office.onReady((info) => {
   if (info.host === Office.HostType.Word) {
-    // Solo intentamos asignar el clic si el botón realmente existe en el HTML
     const btn = document.getElementById("btnGenerar");
     if (btn) {
       btn.onclick = run;
-    } else {
-      console.error("No encontré el botón 'btnGenerar' en el HTML.");
     }
   }
 });
 
-// 2. La Lógica Principal
+// --- FUNCIÓN DEL PANEL (Generador) ---
 async function run() {
   try {
-    // A. Capturar datos (Usamos 'value' con seguridad)
     const getVal = (id) => document.getElementById(id) ? document.getElementById(id).value : "";
     
+    // Captura de datos
     const vCliente   = getVal("inCliente");
     const vDivision  = getVal("inDivision");
     const vProyecto  = getVal("inProyecto");
@@ -29,13 +25,10 @@ async function run() {
     const vCodigo    = getVal("inCodigo");
     const vRevision  = getVal("inRevision");
 
-    // Mensaje de estado
     const msgLabel = document.getElementById("mensajeEstado");
     if (msgLabel) msgLabel.textContent = "Procesando...";
 
     await Word.run(async (context) => {
-      
-      // B. Mapa de Tags vs Valores
       const mapaDeTags = [
         { tag: "ccCliente",       valor: vCliente },
         { tag: "ccDivisión",      valor: vDivision },
@@ -43,8 +36,7 @@ async function run() {
         { tag: "ccContrato",      valor: vContrato },
         { tag: "ccAPI",           valor: vAPI },
         { tag: "ccProyecto",      valor: vProyecto },
-        { tag: "ccNombreDoc",    valor: vNombreDoc },
-        // Encabezados
+        { tag: "ccNombreDoc",     valor: vNombreDoc }, // Ojo: Verifica si tu tag es ccNombreDoc o ccNombre doc en Word
         { tag: "ccCliente_encabezado",   valor: vCliente },
         { tag: "ccD_encabezado",         valor: vDivision },
         { tag: "ccNProyecto_Encabezado", valor: vProyecto },
@@ -52,63 +44,64 @@ async function run() {
         { tag: "ccRevision",             valor: vRevision }
       ];
 
-      // C. Buscar y Reemplazar
       let contadores = 0;
-      
       for (let item of mapaDeTags) {
-        // Buscamos los controles por su etiqueta
         let ccs = context.document.contentControls.getByTag(item.tag);
         ccs.load("items");
-        await context.sync(); // Sincronización parcial para leer
+        await context.sync();
 
         if (ccs.items.length > 0) {
            for (let cc of ccs.items) {
-             // Escribimos el dato
              cc.insertText(item.valor, "Replace");
              contadores++;
            }
         }
       }
 
-      await context.sync(); // Guardado final
-      
+      await context.sync();
       if (msgLabel) msgLabel.textContent = "¡Listo! " + contadores + " campos actualizados.";
-      
     });
   } catch (error) {
     console.error(error);
-    const msgLabel = document.getElementById("mensajeEstado");
-    if (msgLabel) msgLabel.textContent = "Error: " + error.message;
   }
 }
 
-// Botón 1: Limpieza FDA (Versión Completa)
+// --- NUEVAS FUNCIONES DE LOS BOTONES (Comandos) ---
+
+// Botón 1: Limpieza FDA (VERSIÓN SECUENCIAL SEGURA)
 async function limpiarFormato(event) {
-  await Word.run(async (context) => {
-    // 1. Obtener selección
-    const selection = context.document.getSelection();
-    
-    // 2. CARGAR PROPIEDADES (El secreto para que no falle)
-    // Le decimos a Word: "Prepara la fuente y el párrafo porque los voy a tocar"
-    context.load(selection, ["font", "paragraphFormat"]);
-    
-    // Sincronizamos para traer esa info
-    await context.sync();
+  try {
+    await Word.run(async (context) => {
+      // 1. Obtener selección
+      const selection = context.document.getSelection();
 
-    // 3. APLICAR EL ESTÁNDAR FDA
-    selection.font.name = "Arial";
-    selection.font.size = 11;
-    selection.font.color = "#000000"; // Negro puro (Hexadecimal es más seguro)
-    selection.font.bold = false;      // Quitamos negrita (por si acaso traía)
-    
-    // Alineación
-    selection.paragraphFormat.alignment = "Justified";
+      // --- FASE 1: ARREGLAR FUENTE ---
+      // Cargamos solo la fuente primero
+      context.load(selection, "font");
+      await context.sync();
 
-    // 4. Guardar cambios
-    await context.sync();
-  });
+      selection.font.name = "Arial";
+      selection.font.size = 11;
+      selection.font.color = "black";
+      selection.font.bold = false; // Quitamos negrita por si acaso
+
+      // Guardamos cambios de fuente
+      await context.sync();
+
+      // --- FASE 2: ARREGLAR PÁRRAFO ---
+      // Ahora cargamos el párrafo
+      context.load(selection, "paragraphFormat");
+      await context.sync();
+
+      selection.paragraphFormat.alignment = "Justified";
+
+      // Guardamos cambios de párrafo
+      await context.sync();
+    });
+  } catch (error) {
+    console.error("Error al formatear:", error);
+  }
   
-  // Avisar que terminó
   if (event) event.completed();
 }
 
@@ -116,19 +109,14 @@ async function limpiarFormato(event) {
 async function insertarFecha(event) {
   await Word.run(async (context) => {
     const selection = context.document.getSelection();
-    
-    // Fecha de hoy en formato local (ej: 02/12/2025)
     const fechaHoy = new Date().toLocaleDateString();
-    
     selection.insertText(fechaHoy, "Replace");
-    
     await context.sync();
   });
   
-  event.completed();
+  if (event) event.completed();
 }
 
-// --- REGISTRO DE FUNCIONES (Vital para que el XML las encuentre) ---
-// Esto conecta el nombre del XML <FunctionName> con la función de JS
+// --- REGISTRO ---
 Office.actions.associate("limpiarFormato", limpiarFormato);
 Office.actions.associate("insertarFecha", insertarFecha);
