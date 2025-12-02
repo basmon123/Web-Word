@@ -102,43 +102,50 @@ async function insertarFecha(event) {
 }
 
 // --- NUEVOS BOTONES DE ESTILOS (ESPAÑOL) ---
-
 async function estiloTitulo1(event) {
-  // En Word en Español, el estilo se llama "Título 1"
-  await aplicarEstiloSeguro("Título 1"); 
+  await probarEstilo("Título 1", "Heading 1");
   if (event) event.completed();
 }
 
 async function estiloTitulo2(event) {
-  await aplicarEstiloSeguro("Título 2");
+  await probarEstilo("Título 2", "Heading 2");
   if (event) event.completed();
 }
 
 async function estiloTitulo3(event) {
-  await aplicarEstiloSeguro("Título 3");
+  await probarEstilo("Título 3", "Heading 3");
   if (event) event.completed();
 }
 
-// Función auxiliar blindada
-async function aplicarEstiloSeguro(nombreEstilo) {
+// Función que escribe en el documento lo que está pasando
+async function probarEstilo(nombreEsp, nombreIng) {
   await Word.run(async (context) => {
+    const selection = context.document.getSelection();
+    
+    // 1. AVISO DE INICIO
+    selection.insertText(" [INTENTO 1: " + nombreEsp + "] ", "End");
+    await context.sync();
+
     try {
-      const selection = context.document.getSelection();
-      
-      // Aplicamos estilo por nombre local
-      selection.style = nombreEstilo;
-      
+      // Intento 1: Nombre en Español
+      selection.style = nombreEsp;
       await context.sync();
-    } catch (error) {
-      // Si falla (ej: Word en Inglés), intentamos el nombre en inglés
-      // Esto es un "Plan B" automático
+      selection.insertText(" [¡EXITO ESPAÑOL!] ", "End");
+    } catch (error1) {
+      
+      // 2. SI FALLA, PROBAMOS INGLÉS
+      selection.insertText(" [FALLÓ (" + error1.message + ") -> INTENTO 2: " + nombreIng + "] ", "End");
+      await context.sync();
+      
       try {
-        const selection = context.document.getSelection();
-        const nombreIngles = nombreEstilo.replace("Título", "Heading");
-        selection.style = nombreIngles;
+        selection.style = nombreIng;
         await context.sync();
-      } catch (e2) {
-         console.warn("No se encontró el estilo: " + nombreEstilo);
+        selection.insertText(" [¡EXITO INGLÉS!] ", "End");
+      } catch (error2) {
+        // 3. SI FALLA TODO
+        selection.insertText(" [ERROR TOTAL: " + error2.message + "] ", "End");
+        selection.font.color = "red";
+        await context.sync();
       }
     }
   });
