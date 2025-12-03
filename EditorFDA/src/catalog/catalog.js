@@ -19,40 +19,63 @@ Office.onReady(async () => {
     if(btnSearch) btnSearch.onclick = buscar;
 });
 
+JavaScript
+
 async function cargarDatosIniciales() {
+    // URL de tu archivo en GitHub
+    const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/data/proyectos.json";
+
     try {
-        console.log("Intentando cargar datos desde:", urlFuenteDatos);
+        console.log("Intentando cargar datos desde:", url);
         
-        const response = await fetch(urlFuenteDatos);
-        
+        // Agregamos "?t=" + tiempo para "engañar" al navegador y que no use la caché vieja
+        const response = await fetch(url + "?t=" + new Date().getTime());
+
         if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
+            throw new Error("Error HTTP " + response.status);
         }
-        
-        // GITHUB DEVUELVE EL ARRAY DIRECTO (No usamos .value)
-        baseDatosCompleta = await response.json(); 
 
-        console.log("Datos cargados:", baseDatosCompleta);
+        const data = await response.json();
+        console.log("Datos recibidos:", data);
 
-        // Llenar lista de clientes
-        const clientesUnicos = [...new Set(baseDatosCompleta.map(item => item.cliente))];
-        const ddlClientes = document.getElementById("ddlClientes");
-        
-        // Limpiamos y llenamos
-        ddlClientes.innerHTML = '<option value="">-- Seleccione Cliente --</option>';
-        
-        clientesUnicos.forEach(cliente => {
-            let opt = document.createElement("option");
-            opt.value = cliente;
-            opt.textContent = cliente;
-            ddlClientes.appendChild(opt);
+        // --- INICIO DE LA CORRECCIÓN ---
+        // Aquí decidimos qué variable usar dependiendo de la estructura
+        let listaParaUsar = [];
+
+        if (data.body && Array.isArray(data.body)) {
+            // Caso 1: Viene desde Power Automate envuelto en "body"
+            listaParaUsar = data.body;
+        } else if (Array.isArray(data)) {
+            // Caso 2: Viene como array directo (formato antiguo o manual)
+            listaParaUsar = data;
+        } else {
+            console.error("Formato JSON no reconocido:", data);
+            listaParaUsar = []; // Evitamos que explote el código
+        }
+        // --- FIN DE LA CORRECCIÓN ---
+
+        // Ahora usamos 'listaParaUsar' que garantizamos que es un Array
+        const proyectosFormateados = listaParaUsar.map(item => {
+            return {
+                // El operador || permite leer el dato aunque cambie mayúsculas/minúsculas
+                id: item.id || item.Title || item.ID, 
+                nombre: item.nombre || item.NombreProyecto, 
+                cliente: item.cliente || item.Cliente,
+                division: item.division || item.Division,
+                contrato: item.contrato || item.Contrato
+            };
         });
+
+        console.log("Proyectos listos:", proyectosFormateados);
+
+        // AQUÍ CONECTAS CON TU UI (Dropdowns, Tablas, etc.)
+        // Si tienes una función para llenar el HTML, llámala aquí pasándole 'proyectosFormateados'
+        // Ejemplo: actualizarDropdown(proyectosFormateados);
+
+        return proyectosFormateados;
 
     } catch (error) {
         console.error("Error crítico cargando datos:", error);
-        // Mostramos el error en el dropdown para saber qué pasa
-        const ddl = document.getElementById("ddlClientes");
-        if(ddl) ddl.innerHTML = '<option>Error de Conexión</option>';
     }
 }
 
