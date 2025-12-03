@@ -14,7 +14,7 @@ Office.onReady(async () => {
 async function cargarDatosIniciales() {
     try {
         // 1. TU URL DE POWER AUTOMATE (Pégala aquí entre comillas)
-        const urlPowerAutomate = "https://defaultef8b3c00d87343e58b66d56c25f2bd.fe.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/f07247265e884ff68b279824dc92d503/triggers/manual/paths/invoke?api-version=1"; 
+        const urlPowerAutomate = "https://defaultef8b3c00d87343e58b66d56c25f2bd.fe.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/f07247265e884ff68b279824dc92d503/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=7geWrM9wwNwbTp9WQ1HapFrlmWBA57-sxK2ousBUeYo"
 
         const response = await fetch(urlPowerAutomate);
         
