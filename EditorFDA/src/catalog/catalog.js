@@ -7,115 +7,86 @@ let proyectoActual = null;
 const urlFuenteDatos = "https://basmon123.github.io/Web-Word/EditorFDA/src/data/proyectos.json";
 
 Office.onReady(async () => {
-    // 1. Cargamos datos
     await cargarDatosIniciales();
     
-    // 2. Eventos de los selectores
-    // Verificamos que existan los elementos antes de asignar eventos para evitar errores si el HTML cambia
+    // Eventos de los selectores
     const ddlClientes = document.getElementById("ddlClientes");
     const ddlProyectos = document.getElementById("ddlProyectos");
-    const btnSearch = document.getElementById("btnSearch");
 
     if(ddlClientes) ddlClientes.onchange = filtrarProyectos;
     if(ddlProyectos) ddlProyectos.onchange = seleccionarProyecto;
-    if(btnSearch) btnSearch.onclick = buscar;
 });
 
 async function cargarDatosIniciales() {
     try {
-        console.log("Intentando cargar datos desde:", urlFuenteDatos);
-        
-        // "Engañar" a la caché
+        // Cache-busting
         const response = await fetch(urlFuenteDatos + "?t=" + new Date().getTime());
-
-        if (!response.ok) {
-            throw new Error("Error HTTP " + response.status);
-        }
-
         const data = await response.json();
-        console.log("Datos recibidos:", data);
 
-        // --- LÓGICA DE DETECCIÓN DE ESTRUCTURA ---
-        let listaParaUsar = [];
-
+        // Detección de estructura (Power Automate vs Array directo)
+        let lista = [];
         if (data.body && Array.isArray(data.body)) {
-            listaParaUsar = data.body; // Caso Power Automate
+            lista = data.body;
         } else if (Array.isArray(data)) {
-            listaParaUsar = data; // Caso Array directo
-        } else {
-            console.error("Formato JSON no reconocido:", data);
-            return;
+            lista = data;
         }
 
-        // --- MAPEO DE DATOS ---
-        const proyectosFormateados = listaParaUsar.map(item => {
-            return {
-                id: item.id || item.Title || item.ID, 
-                nombre: item.nombre || item.NombreProyecto, 
-                cliente: item.cliente || item.Cliente,
-                division: item.division || item.Division,
-                contrato: item.contrato || item.Contrato
-            };
+        // Mapeo de datos
+        baseDatosCompleta = lista.map(item => ({
+            id: item.id || item.Title || item.ID,
+            nombre: item.nombre || item.NombreProyecto,
+            cliente: item.cliente || item.Cliente,
+            division: item.division || item.Division,
+            contrato: item.contrato || item.Contrato,
+            api: item.api || item.API,
+            carpeta_plantilla: item.carpeta_plantilla || "General"
+        }));
+
+        // Llenar Dropdown Clientes
+        const ddlClientes = document.getElementById("ddlClientes");
+        ddlClientes.innerHTML = '<option value="">-- Seleccione Cliente --</option>';
+        
+        // Clientes únicos y ordenados
+        const clientesUnicos = [...new Set(baseDatosCompleta.map(p => p.cliente))].sort();
+        
+        clientesUnicos.forEach(c => {
+            if(c) {
+                let opt = document.createElement("option");
+                opt.value = c;
+                opt.textContent = c;
+                ddlClientes.appendChild(opt);
+            }
         });
 
-        console.log("Proyectos procesados:", proyectosFormateados);
-
-        // --- CORRECCIÓN CRÍTICA 1: Actualizar la variable global ---
-        baseDatosCompleta = proyectosFormateados;
-
-        // --- CORRECCIÓN CRÍTICA 2: Llenar el primer Dropdown (Clientes) ---
-        llenarDropdownClientes();
-
     } catch (error) {
-        console.error("Error crítico cargando datos:", error);
+        console.error("Error cargando datos:", error);
+        document.getElementById("ddlClientes").innerHTML = '<option>Error de conexión</option>';
     }
 }
 
-// Nueva función para poblar el select de Clientes (ddlClientes)
-function llenarDropdownClientes() {
-    const ddlClientes = document.getElementById("ddlClientes");
-    if (!ddlClientes) return;
-
-    ddlClientes.innerHTML = '<option value="">-- Seleccione Cliente --</option>';
-
-    // Obtener clientes únicos usando un Set
-    const clientesUnicos = [...new Set(baseDatosCompleta.map(p => p.cliente))].sort();
-
-    clientesUnicos.forEach(cliente => {
-        if (cliente) { // Evitar nulos
-            let opt = document.createElement("option");
-            opt.value = cliente;
-            opt.textContent = cliente;
-            ddlClientes.appendChild(opt);
-        }
-    });
-}
-
 function filtrarProyectos() {
-    const clienteSeleccionado = document.getElementById("ddlClientes").value;
+    const clienteSel = document.getElementById("ddlClientes").value;
     const ddlProyectos = document.getElementById("ddlProyectos");
     
-    // Resetear el segundo dropdown
-    ddlProyectos.innerHTML = '<option value="">-- Seleccione Proyecto --</option>';
-    
-    // Ocultar paneles de info
-    const secPlantillas = document.getElementById("seccionPlantillas");
-    const infoProy = document.getElementById("infoProyecto");
-    if(secPlantillas) secPlantillas.classList.add("oculto");
-    if(infoProy) infoProy.classList.add("oculto");
+    // Resetear segunda lista y ocultar todo
+    ddlProyectos.innerHTML = '<option value="">-- Seleccione N° --</option>';
+    ocultarDetalles();
 
-    if (!clienteSeleccionado) {
+    if (!clienteSel) {
         ddlProyectos.disabled = true;
         return;
     }
 
-    // Filtramos usando la variable global que AHORA SÍ tiene datos
-    const proyectosFiltrados = baseDatosCompleta.filter(p => p.cliente === clienteSeleccionado);
+    // Filtrar proyectos del cliente
+    const filtrados = baseDatosCompleta.filter(p => p.cliente === clienteSel);
 
-    proyectosFiltrados.forEach(p => {
+    filtrados.forEach(p => {
         let opt = document.createElement("option");
-        opt.value = p.id;
-        opt.textContent = `${p.nombre} (${p.contrato || 'S/C'})`; // Agregué contrato para mejor visualización
+        // AQUÍ ESTÁ LO QUE PEDISTE:
+        // Text: ID del Proyecto (Ej: 7560)
+        // Value: ID del Proyecto
+        opt.text = p.id; 
+        opt.value = p.id; 
         ddlProyectos.appendChild(opt);
     });
 
@@ -125,68 +96,47 @@ function filtrarProyectos() {
 function seleccionarProyecto() {
     const idProyecto = document.getElementById("ddlProyectos").value;
     
-    const secPlantillas = document.getElementById("seccionPlantillas");
-    const infoProy = document.getElementById("infoProyecto");
-
     if (!idProyecto) {
-        if(secPlantillas) secPlantillas.classList.add("oculto");
+        ocultarDetalles();
         return;
     }
 
+    // Buscar proyecto seleccionado
     proyectoActual = baseDatosCompleta.find(p => p.id === idProyecto);
 
     if (proyectoActual) {
-        // Llenar etiquetas visuales (asegúrate que estos IDs existan en tu HTML)
-        const lblNombre = document.getElementById("lblNombre");
-        if (lblNombre) lblNombre.textContent = proyectoActual.nombre;
-        
-        // Mostramos las secciones
-        if(infoProy) infoProy.classList.remove("oculto");
-        if(secPlantillas) secPlantillas.classList.remove("oculto");
+        // Llenar la ficha de detalles
+        setText("lblNombre", proyectoActual.nombre);
+        setText("lblCliente", proyectoActual.cliente);
+        setText("lblDivision", proyectoActual.division);
+        setText("lblContrato", proyectoActual.contrato);
+        setText("lblAPI", proyectoActual.api);
+
+        // Mostrar secciones
+        document.getElementById("infoProyecto").classList.remove("oculto");
+        document.getElementById("seccionPlantillas").classList.remove("oculto");
     }
 }
 
-// BÚSQUEDA MANUAL
-function buscar() {
-    const inputSearch = document.getElementById("inputSearch");
-    if (!inputSearch) return;
-
-    const val = inputSearch.value.trim(); // Trim para quitar espacios accidentales
-    const found = baseDatosCompleta.find(p => p.id === val);
-    
-    if(found) {
-        // Simulamos la selección en cascada
-        const ddlClientes = document.getElementById("ddlClientes");
-        const ddlProyectos = document.getElementById("ddlProyectos");
-
-        if (ddlClientes) {
-            ddlClientes.value = found.cliente;
-            filtrarProyectos(); // Esto llena el ddlProyectos
-        }
-        
-        if (ddlProyectos) {
-            ddlProyectos.value = found.id;
-            seleccionarProyecto(); // Esto muestra la info
-        }
-    } else {
-        // Usar Office.context.ui.displayDialogAsync o un simple alert si no hay otra opción
-        console.log("Proyecto no encontrado"); 
-        // alert("Proyecto no encontrado"); // Descomentar si quieres alerta visual
-    }
+function ocultarDetalles() {
+    document.getElementById("infoProyecto").classList.add("oculto");
+    document.getElementById("seccionPlantillas").classList.add("oculto");
+    proyectoActual = null;
 }
 
-// Función global para ser llamada desde el HTML si es necesario
+function setText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text || "---";
+}
+
+// Función que envía la orden a Word
 window.seleccionarPlantilla = function(tipo) {
     if(!proyectoActual) return;
+    
     const mensaje = {
         accion: "CREAR_DOCUMENTO",
         plantilla: tipo,
         datos: proyectoActual
     };
-    // Enviamos mensaje al padre (Taskpane) o procesamos directamente
-    console.log("Enviando a Word:", mensaje);
-    // Office.context.ui.messageParent(JSON.stringify(mensaje)); // Solo si usas dialogos
-    
-    // Si estás en el Taskpane directo, aquí llamarías a tu función de Word.run
-    // insertarDatosEnDocumento(proyectoActual); 
+    Office.context.ui.messageParent(JSON.stringify(mensaje));
 }
