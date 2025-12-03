@@ -12,7 +12,9 @@ let proyectoActual = null;
 
 const urlFuenteDatos = "https://basmon123.github.io/Web-Word/EditorFDA/src/data/proyectos.json";
 
-
+// ANTES: .../templates/" + datosProyecto.id + "/"...
+// AHORA: Usamos .carpeta_plantilla (Ej: CODELCO)
+const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + datosProyecto.carpeta_plantilla + "/" + nombreArchivo;
 
 Office.onReady(async () => {
 
@@ -265,9 +267,6 @@ function setText(id, text) {
 window.seleccionarPlantilla = function(tipo) {
 
     if(!proyectoActual) return;
-
-   
-
     const mensaje = {
 
         accion: "CREAR_DOCUMENTO",
