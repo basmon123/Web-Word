@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Catálogo FDA</title>
+    <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js" type="text/javascript"></script>
+    <link href="catalog.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+    <div class="container">
+        <h2>Nuevo Documento Técnico</h2>
+        
+        <div class="seccion-busqueda">
+            <label class="label-bold">1. Seleccione Proyecto:</label>
+            <div class="buscador-box">
+                <input type="text" id="inputSearch" placeholder="Ingrese ID (Ej: 7560)...">
+                <button id="btnSearch">Buscar</button>
+            </div>
+            
+            <div id="infoProyecto" class="info-box oculto">
+                <strong>Proyecto Detectado:</strong><br>
+                <span id="lblNombre" class="txt-resaltado">...</span><br>
+                <span id="lblCliente" class="txt-secundario">...</span>
+            </div>
+        </div>
+
+        <div id="seccionPlantillas" class="seccion-plantillas oculto">
+            <label class="label-bold">2. Seleccione Plantilla:</label>
+            <div class="grid-iconos">
+                <div class="icono-item" onclick="seleccionarPlantilla('Minuta')">
+                    <div class="img-doc">📝</div>
+                    <span>Minuta</span>
+                </div>
+                <div class="icono-item" onclick="seleccionarPlantilla('Informe')">
+                    <div class="img-doc">📊</div>
+                    <span>Informe</span>
+                </div>
+                <div class="icono-item" onclick="seleccionarPlantilla('Carta')">
+                    <div class="img-doc">✉️</div>
+                    <span>Carta</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="catalog.js"></script>
+</body>
+</html>

@@ -102,6 +102,21 @@
                     <FunctionName>insertarFecha</FunctionName>
                   </Action>
                 </Control>
+                <Control xsi:type="Button" id="BtnCatalogo">
+  <Label resid="BtnCatalogo.Label"/>
+  <Supertip>
+    <Title resid="BtnCatalogo.Label"/>
+    <Description resid="BtnCatalogo.Tooltip"/>
+  </Supertip>
+  <Icon>
+    <bt:Image size="16" resid="Icon.16x16"/>
+    <bt:Image size="32" resid="Icon.32x32"/>
+    <bt:Image size="80" resid="Icon.80x80"/>
+  </Icon>
+  <Action xsi:type="ExecuteFunction">
+    <FunctionName>abrirCatalogo</FunctionName>
+  </Action>
+</Control>
               </Group>
 
               <Group id="GrupoEstilos">
@@ -193,6 +208,9 @@
         <bt:String id="BtnEstilo1.Label" DefaultValue="Título 1.0"/>
         <bt:String id="BtnEstilo2.Label" DefaultValue="Subtítulo 1.1"/>
         <bt:String id="BtnEstilo3.Label" DefaultValue="Subtítulo 1.1.1"/>
+
+        <bt:String id="BtnCatalogo.Label" DefaultValue="Nuevo Documento"/>
+        <bt:String id="BtnCatalogo.Tooltip" DefaultValue="Abre el catálogo de plantillas."/>  
       </bt:ShortStrings>
       
       <bt:LongStrings>

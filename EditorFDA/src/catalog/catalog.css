@@ -1,0 +1,24 @@
+body { font-family: 'Segoe UI', sans-serif; background-color: #f3f2f1; padding: 20px; margin: 0; }
+h2 { color: #0078d4; margin-top: 0; border-bottom: 2px solid #0078d4; padding-bottom: 10px; }
+
+.container { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+/* Clases de utilidad (Reemplazan a los styles inline) */
+.oculto { display: none; }
+.label-bold { font-weight: bold; display: block; margin-bottom: 5px; margin-top: 15px; }
+.txt-resaltado { color: #0078d4; font-weight: bold; }
+.txt-secundario { font-size: 12px; color: #666; }
+
+.buscador-box { display: flex; gap: 5px; }
+input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 3px; }
+button { background: #0078d4; color: white; border: none; padding: 8px 15px; cursor: pointer; }
+button:hover { background: #106ebe; }
+
+.info-box { background: #eeffee; border: 1px solid #ccffcc; padding: 10px; margin-top: 10px; border-radius: 3px; }
+
+.grid-iconos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 10px; }
+.icono-item { 
+    border: 1px solid #ccc; border-radius: 5px; padding: 15px; text-align: center; cursor: pointer; transition: 0.2s; 
+}
+.icono-item:hover { border-color: #0078d4; background: #eff6fc; transform: translateY(-3px); }
+.img-doc { font-size: 30px; margin-bottom: 5px; }
