@@ -52,8 +52,8 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   if (!nombreArchivo) return;
 
   // URL del archivo en la nube (GitHub)
-  // Ajusta esta ruta: sube desde 'commands' a raiz y entra a 'templates'
-  const urlPlantilla = "../../templates/" + nombreArchivo;
+  // CORRECCIÓN: Solo subimos un nivel (..)
+const urlPlantilla = "../templates/" + nombreArchivo;
 
   try {
       // A. DESCARGAR EL ARCHIVO WORD
