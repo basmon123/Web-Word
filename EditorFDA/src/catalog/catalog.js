@@ -1,15 +1,16 @@
-/* global Office */
+/* global Office, Word */
 
 let baseDatosCompleta = [];
 let proyectoActual = null;
 
-// URL FIJA DE GITHUB
+// RUTAS
 const urlFuenteDatos = "https://basmon123.github.io/Web-Word/EditorFDA/src/data/proyectos.json";
+// Asumo esta ruta basado en tu JSON. Ajustala si tus plantillas están en otra carpeta.
+const urlBasePlantillas = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/"; 
 
 Office.onReady(async () => {
     await cargarDatosIniciales();
     
-    // Eventos de los selectores
     const ddlClientes = document.getElementById("ddlClientes");
     const ddlProyectos = document.getElementById("ddlProyectos");
 
@@ -17,126 +18,63 @@ Office.onReady(async () => {
     if(ddlProyectos) ddlProyectos.onchange = seleccionarProyecto;
 });
 
-async function cargarDatosIniciales() {
-    try {
-        // Cache-busting
-        const response = await fetch(urlFuenteDatos + "?t=" + new Date().getTime());
-        const data = await response.json();
+// ... (MANTÉN TUS FUNCIONES cargarDatosIniciales, filtrarProyectos, seleccionarProyecto, ocultarDetalles, setText IGUAL QUE ANTES) ...
 
-        // Detección de estructura (Power Automate vs Array directo)
-        let lista = [];
-        if (data.body && Array.isArray(data.body)) {
-            lista = data.body;
-        } else if (Array.isArray(data)) {
-            lista = data;
+// --- NUEVA LÓGICA PARA ABRIR LA PLANTILLA ---
+
+window.seleccionarPlantilla = async function(nombreArchivo) {
+    // nombreArchivo debe ser el nombre real, ej: "InformeAvance.docx"
+    // Si tus botones envían "informe", necesitas mapearlo al nombre del archivo aquí.
+    
+    if(!proyectoActual) {
+        console.log("No hay proyecto seleccionado");
+        return;
+    }
+
+    try {
+        // 1. Definir qué archivo vamos a buscar
+        // Si tu botón HTML dice onclick="seleccionarPlantilla('Informe.docx')", usa 'nombreArchivo' directo.
+        // Si dice onclick="seleccionarPlantilla('informe')", usa un switch para elegir el archivo:
+        let archivoReal = nombreArchivo;
+        if (!nombreArchivo.includes(".docx")) {
+             archivoReal = nombreArchivo + ".docx"; // Pequeña ayuda por si olvidas la extensión
         }
 
-        // Mapeo de datos
-        baseDatosCompleta = lista.map(item => ({
-            id: item.id || item.Title || item.ID,
-            nombre: item.nombre || item.NombreProyecto,
-            cliente: item.cliente || item.Cliente,
-            division: item.division || item.Division,
-            contrato: item.contrato || item.Contrato,
-            api: item.api || item.API,
-            carpeta_plantilla: item.carpeta_plantilla || "General"
-        }));
+        const urlCompleta = urlBasePlantillas + archivoReal;
+        console.log("Descargando plantilla de:", urlCompleta);
 
-        // Llenar Dropdown Clientes
-        const ddlClientes = document.getElementById("ddlClientes");
-        ddlClientes.innerHTML = '<option value="">-- Seleccione Cliente --</option>';
+        // 2. Descargar el archivo desde GitHub/Servidor
+        const response = await fetch(urlCompleta);
+        if (!response.ok) throw new Error("No se pudo descargar la plantilla desde: " + urlCompleta);
         
-        // Clientes únicos y ordenados
-        const clientesUnicos = [...new Set(baseDatosCompleta.map(p => p.cliente))].sort();
+        const blob = await response.blob();
+
+        // 3. Convertir a Base64 para que Word lo entienda
+        const base64 = await getBase64(blob);
         
-        clientesUnicos.forEach(c => {
-            if(c) {
-                let opt = document.createElement("option");
-                opt.value = c;
-                opt.textContent = c;
-                ddlClientes.appendChild(opt);
-            }
+        // El base64 viene con el encabezado "data:application/...", hay que quitarlo para Word
+        const base64Limpio = base64.split(',')[1];
+
+        // 4. Ordenar a Word que cree un nuevo documento con ese Base64
+        await Word.run(async (context) => {
+            const newDoc = context.application.createDocument(base64Limpio);
+            newDoc.open(); // Esto abre la plantilla en una ventana nueva de Word
+            await context.sync();
         });
 
     } catch (error) {
-        console.error("Error cargando datos:", error);
-        document.getElementById("ddlClientes").innerHTML = '<option>Error de conexión</option>';
+        console.error("Error abriendo plantilla:", error);
+        // Opcional: Mostrar error en pantalla
+        setText("lblNombre", "Error: " + error.message); 
     }
 }
 
-function filtrarProyectos() {
-    const clienteSel = document.getElementById("ddlClientes").value;
-    const ddlProyectos = document.getElementById("ddlProyectos");
-    
-    // Resetear segunda lista y ocultar todo
-    ddlProyectos.innerHTML = '<option value="">-- Seleccione N° --</option>';
-    ocultarDetalles();
-
-    if (!clienteSel) {
-        ddlProyectos.disabled = true;
-        return;
-    }
-
-    // Filtrar proyectos del cliente
-    const filtrados = baseDatosCompleta.filter(p => p.cliente === clienteSel);
-
-    filtrados.forEach(p => {
-        let opt = document.createElement("option");
-        // AQUÍ ESTÁ LO QUE PEDISTE:
-        // Text: ID del Proyecto (Ej: 7560)
-        // Value: ID del Proyecto
-        opt.text = p.id; 
-        opt.value = p.id; 
-        ddlProyectos.appendChild(opt);
+// Función auxiliar necesaria para convertir el archivo descargado
+function getBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
     });
-
-    ddlProyectos.disabled = false;
-}
-
-function seleccionarProyecto() {
-    const idProyecto = document.getElementById("ddlProyectos").value;
-    
-    if (!idProyecto) {
-        ocultarDetalles();
-        return;
-    }
-
-    // Buscar proyecto seleccionado
-    proyectoActual = baseDatosCompleta.find(p => p.id === idProyecto);
-
-    if (proyectoActual) {
-        // Llenar la ficha de detalles
-        setText("lblNombre", proyectoActual.nombre);
-        setText("lblCliente", proyectoActual.cliente);
-        setText("lblDivision", proyectoActual.division);
-        setText("lblContrato", proyectoActual.contrato);
-        setText("lblAPI", proyectoActual.api);
-
-        // Mostrar secciones
-        document.getElementById("infoProyecto").classList.remove("oculto");
-        document.getElementById("seccionPlantillas").classList.remove("oculto");
-    }
-}
-
-function ocultarDetalles() {
-    document.getElementById("infoProyecto").classList.add("oculto");
-    document.getElementById("seccionPlantillas").classList.add("oculto");
-    proyectoActual = null;
-}
-
-function setText(id, text) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text || "---";
-}
-
-// Función que envía la orden a Word
-window.seleccionarPlantilla = function(tipo) {
-    if(!proyectoActual) return;
-    
-    const mensaje = {
-        accion: "CREAR_DOCUMENTO",
-        plantilla: tipo,
-        datos: proyectoActual
-    };
-    Office.context.ui.messageParent(JSON.stringify(mensaje));
 }
