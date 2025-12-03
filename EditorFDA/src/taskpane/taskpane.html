@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
@@ -9,9 +9,23 @@
     <link href="taskpane.css" rel="stylesheet" type="text/css" />
 </head>
 <body class="ms-font-m ms-welcome ms-Fabric">
+    
+    <div class="header-fda">
+        <h2 class="titulo-header">FDA PROYECTOS</h2>
+    </div>
+
     <div class="padding">
-        <h2>Generador FDA</h2>
-        <p class="ms-font-s subtitulo">Rellena los datos para actualizar el informe.</p>
+        
+        <div class="contenedor-busqueda">
+            <label class="ms-Label label-negrita">Buscar por ID Proyecto:</label>
+            <div class="fila-flex">
+                <input type="text" id="inputBusqueda" class="caja-input" placeholder="Ej: 7560">
+                <button id="btnBuscar" class="boton boton-busqueda">🔍</button>
+            </div>
+            <p id="msgBusqueda" class="mensaje-busqueda"></p>
+        </div>
+
+        <p class="ms-font-s subtitulo">Datos del Documento:</p>
 
         <div class="grupo-input">
             <label class="ms-Label">Cliente</label>
@@ -37,7 +51,7 @@
             <label class="ms-Label">Nombre del Documento</label>
             <input type="text" id="inNombreDoc" class="caja-input" placeholder="Ej: Informe Técnico Final">
 
-            <div class="fila-flex">
+            <div class="fila-flex gap-grande">
                 <div class="col-70">
                     <label class="ms-Label">Código Documento</label>
                     <input type="text" id="inCodigo" class="caja-input" placeholder="Ej: 4600-INF-001">
@@ -52,7 +66,7 @@
         <br>
         
         <button id="btnGenerar" class="boton">
-            <span class="ms-Button-label">Generar Documento</span>
+            <span class="ms-Button-label">Generar / Actualizar Datos</span>
         </button>
         
         <p id="mensajeEstado" class="mensaje-estado"></p>
