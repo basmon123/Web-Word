@@ -3,39 +3,42 @@
 let baseDatosCompleta = [];
 let proyectoActual = null;
 
+// URL FIJA DE GITHUB (La que sabemos que funciona)
+// Asegúrate de que este archivo existe en tu repo: src/data/proyectos.json
+const urlFuenteDatos = "https://basmon123.github.io/Web-Word/EditorFDA/src/data/proyectos.json";
+
 Office.onReady(async () => {
     await cargarDatosIniciales();
     
-    // Eventos de cambio
+    // Eventos de los selectores
     document.getElementById("ddlClientes").onchange = filtrarProyectos;
     document.getElementById("ddlProyectos").onchange = seleccionarProyecto;
+    
+    // Evento del botón buscar (por si lo usas como fallback)
+    const btnSearch = document.getElementById("btnSearch");
+    if(btnSearch) btnSearch.onclick = buscar;
 });
 
 async function cargarDatosIniciales() {
     try {
-        // 1. TU URL DE POWER AUTOMATE (Pégala aquí entre comillas)
-        const urlPowerAutomate = "https://defaultef8b3c00d87343e58b66d56c25f2bd.fe.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/f07247265e884ff68b279824dc92d503/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=7geWrM9wwNwbTp9WQ1HapFrlmWBA57-sxK2ousBUeYo"
-
-        const response = await fetch(urlPowerAutomate);
+        console.log("Intentando cargar datos desde:", urlFuenteDatos);
         
-        // SharePoint devuelve un objeto { value: [ ... ] }
-        const datosSharePoint = await response.json();
+        const response = await fetch(urlFuenteDatos);
         
-        // 2. TRADUCCIÓN (Mapeo)
-        // Convertimos el formato de SharePoint al formato de tu App
-        baseDatosCompleta = datosSharePoint.value.map(item => ({
-            id: item.Title,               // 'Title' es el ID en SharePoint
-            nombre: item.NombreProyecto,  // Nombre interno de la columna
-            cliente: item.Cliente,
-            division: item.Division,
-            contrato: item.Contrato,
-            api: item.API,
-            carpeta_plantilla: item.CarpetaPlantilla
-        }));
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        
+        // GITHUB DEVUELVE EL ARRAY DIRECTO (No usamos .value)
+        baseDatosCompleta = await response.json(); 
 
-        // --- El resto sigue igual ---
+        console.log("Datos cargados:", baseDatosCompleta);
+
+        // Llenar lista de clientes
         const clientesUnicos = [...new Set(baseDatosCompleta.map(item => item.cliente))];
         const ddlClientes = document.getElementById("ddlClientes");
+        
+        // Limpiamos y llenamos
         ddlClientes.innerHTML = '<option value="">-- Seleccione Cliente --</option>';
         
         clientesUnicos.forEach(cliente => {
@@ -46,7 +49,10 @@ async function cargarDatosIniciales() {
         });
 
     } catch (error) {
-        console.error("Error cargando datos de SharePoint:", error);
+        console.error("Error crítico cargando datos:", error);
+        // Mostramos el error en el dropdown para saber qué pasa
+        const ddl = document.getElementById("ddlClientes");
+        if(ddl) ddl.innerHTML = '<option>Error de Conexión</option>';
     }
 }
 
@@ -54,7 +60,6 @@ function filtrarProyectos() {
     const clienteSeleccionado = document.getElementById("ddlClientes").value;
     const ddlProyectos = document.getElementById("ddlProyectos");
     
-    // Resetear lista de proyectos
     ddlProyectos.innerHTML = '<option value="">-- Seleccione Proyecto --</option>';
     document.getElementById("seccionPlantillas").classList.add("oculto");
     document.getElementById("infoProyecto").classList.add("oculto");
@@ -64,14 +69,13 @@ function filtrarProyectos() {
         return;
     }
 
-    // Filtrar: Dame solo los proyectos de este cliente
+    // Filtramos
     const proyectosFiltrados = baseDatosCompleta.filter(p => p.cliente === clienteSeleccionado);
 
-    // Llenar Dropdown
     proyectosFiltrados.forEach(p => {
         let opt = document.createElement("option");
-        opt.value = p.id; // El valor es el ID (7560)
-        opt.textContent = p.id + " - " + p.nombre; // Lo que se ve
+        opt.value = p.id;
+        opt.textContent = p.id + " - " + p.nombre;
         ddlProyectos.appendChild(opt);
     });
 
@@ -86,16 +90,30 @@ function seleccionarProyecto() {
         return;
     }
 
-    // Buscar el objeto completo del proyecto
     proyectoActual = baseDatosCompleta.find(p => p.id === idProyecto);
 
-    // Mostrar info
-    document.getElementById("lblNombre").textContent = proyectoActual.nombre;
-    document.getElementById("lblAPI").textContent = "API: " + proyectoActual.api;
-    document.getElementById("infoProyecto").classList.remove("oculto");
+    if (proyectoActual) {
+        document.getElementById("lblNombre").textContent = proyectoActual.nombre;
+        document.getElementById("lblAPI").textContent = "API: " + (proyectoActual.api || "N/A");
+        document.getElementById("infoProyecto").classList.remove("oculto");
+        document.getElementById("seccionPlantillas").classList.remove("oculto");
+    }
+}
+
+// BÚSQUEDA MANUAL (Por si escriben el ID en el input de texto antiguo)
+function buscar() {
+    const val = document.getElementById("inputSearch").value;
+    const found = baseDatosCompleta.find(p => p.id === val);
     
-    // Mostrar Plantillas
-    document.getElementById("seccionPlantillas").classList.remove("oculto");
+    if(found) {
+        // Si lo encuentran por ID manual, simulamos la selección en los dropdowns
+        document.getElementById("ddlClientes").value = found.cliente;
+        filtrarProyectos(); // Actualiza la segunda lista
+        document.getElementById("ddlProyectos").value = found.id;
+        seleccionarProyecto(); // Muestra la info
+    } else {
+        alert("Proyecto no encontrado en la base de datos.");
+    }
 }
 
 window.seleccionarPlantilla = function(tipo) {
