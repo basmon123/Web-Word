@@ -1,37 +1,42 @@
 /* global Office */
 
-const db = [
-    { id: "7560", nombre: "Estudio Pila ROM", cliente: "CODELCO" },
-    { id: "8890", nombre: "Ingeniería Tranque", cliente: "ANGLO" }
-];
-
 let proyectoActual = null;
 
 Office.onReady(() => {
     document.getElementById("btnSearch").onclick = buscar;
 });
 
-function buscar() {
+async function buscar() {
     const val = document.getElementById("inputSearch").value;
-    const found = db.find(p => p.id === val);
-    
-    // Elementos a mostrar/ocultar
     const infoBox = document.getElementById("infoProyecto");
     const plantillasBox = document.getElementById("seccionPlantillas");
 
-    if(found) {
-        proyectoActual = found;
-        document.getElementById("lblNombre").textContent = found.nombre;
-        document.getElementById("lblCliente").textContent = found.cliente;
+    // 1. CARGAR DATOS DESDE LA NUBE (GITHUB)
+    // Usamos la ruta relativa al servidor
+    try {
+        const response = await fetch("../../data/proyectos.json"); // Sube 2 niveles para encontrar data
+        const db = await response.json(); // Convierte el texto a objetos
+
+        // 2. BUSCAR EN LA LISTA DESCARGADA
+        const found = db.find(p => p.id === val);
         
-        // Quitamos la clase 'oculto' para mostrar
-        infoBox.classList.remove("oculto");
-        plantillasBox.classList.remove("oculto");
-    } else {
-        // Agregamos la clase 'oculto' para esconder
-        infoBox.classList.add("oculto");
-        plantillasBox.classList.add("oculto");
-        alert("Proyecto no encontrado");
+        if(found) {
+            proyectoActual = found;
+            document.getElementById("lblNombre").textContent = found.nombre;
+            document.getElementById("lblCliente").textContent = found.cliente;
+            
+            infoBox.classList.remove("oculto");
+            plantillasBox.classList.remove("oculto");
+        } else {
+            infoBox.classList.add("oculto");
+            plantillasBox.classList.add("oculto");
+            // Usamos un mensaje en pantalla en vez de alert para ser más elegantes
+            document.getElementById("lblNombre").textContent = "No encontrado";
+            infoBox.classList.remove("oculto");
+        }
+
+    } catch (error) {
+        console.error("Error cargando base de datos:", error);
     }
 }
 

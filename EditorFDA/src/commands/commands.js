@@ -38,27 +38,70 @@ async function procesarMensaje(arg) {
   }
 }
 
-// 3. ESTA FUNCIÓN CREA EL WORD (Simulado por ahora)
+// 3. ESTA FUNCIÓN CREA EL WORD DESDE UNA PLANTILLA REAL
 async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
-  await Word.run(async (context) => {
-    // AQUI OCURRE LA MAGIA: Creamos un documento nuevo en blanco
-    // (A futuro, aquí cargaremos el Base64 de la plantilla real)
-    const newDoc = context.application.createDocument();
-    
-    // Escribimos en el documento nuevo
-    const body = newDoc.body;
-    body.insertParagraph("DOCUMENTO GENERADO: " + nombrePlantilla.toUpperCase(), "Start");
-    body.insertParagraph("Proyecto: " + datosProyecto.id + " - " + datosProyecto.nombre, "End");
-    body.insertParagraph("Cliente: " + datosProyecto.cliente, "End");
-    
-    // Abrimos el documento nuevo
-    newDoc.open();
-    
-    await context.sync();
-  });
+  
+  // Mapeo: Nombre del icono -> Nombre del archivo real
+  const archivos = {
+      "Minuta": "Minuta.docx",
+      "Informe": "Informe.docx",
+      "Carta": "Carta.docx"
+  };
+
+  const nombreArchivo = archivos[nombrePlantilla];
+  if (!nombreArchivo) return;
+
+  // URL del archivo en la nube (GitHub)
+  // Ajusta esta ruta: sube desde 'commands' a raiz y entra a 'templates'
+  const urlPlantilla = "../../templates/" + nombreArchivo;
+
+  try {
+      // A. DESCARGAR EL ARCHIVO WORD
+      const response = await fetch(urlPlantilla);
+      if (!response.ok) throw new Error("No se encontró la plantilla");
+      
+      // B. CONVERTIR A BLOB (Archivo binario)
+      const blob = await response.blob();
+
+      // C. CONVERTIR A BASE64 (Lo que entiende Word)
+      const base64 = await getBase64FromBlob(blob);
+
+      await Word.run(async (context) => {
+        // D. CREAR DOCUMENTO USANDO EL BASE64
+        const newDoc = context.application.createDocument(base64);
+        
+        // E. INYECTAR DATOS DEL PROYECTO (Opcional, pero recomendado)
+        // Aquí podrías buscar los Tags en la plantilla nueva y llenarlos
+        // Para simplificar, primero abrimos el documento.
+        
+        newDoc.open();
+        await context.sync();
+        
+        // F. LLENADO DE DATOS (Una vez abierto, en el nuevo contexto)
+        // Nota: Esto requiere un manejo de contexto avanzado. 
+        // Por ahora, logremos que ABRA la plantilla real. El llenado lo hacemos en el paso siguiente.
+      });
+
+  } catch (error) {
+      console.error("Error al crear documento:", error);
+  }
 }
 
-// REGISTRO OBLIGATORIO (Para que el XML encuentre la función)
-// Nota: A veces se necesita 'g' o 'window' dependiendo del entorno, esto suele funcionar:
+// Función auxiliar para convertir archivos a texto base64
+function getBase64FromBlob(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            // El resultado viene como "data:application/vnd.openxml...;base64,....."
+            // Word solo quiere la parte después de la coma.
+            const base64String = reader.result.toString().split(',')[1];
+            resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+// ... (Mantén el registro del final g.abrirCatalogo = ... ) ...
 const g = typeof globalThis !== "undefined" ? globalThis : window;
 g.abrirCatalogo = abrirCatalogo;
