@@ -51,9 +51,9 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   const nombreArchivo = archivos[nombrePlantilla];
   if (!nombreArchivo) return;
 
-  // URL del archivo en la nube (GitHub)
-  // CORRECCIÓN: Solo subimos un nivel (..)
-const urlPlantilla = "../templates/" + nombreArchivo;
+// ANTES: .../templates/" + datosProyecto.id + "/"...
+// AHORA: Usamos .carpeta_plantilla (Ej: CODELCO)
+const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + datosProyecto.carpeta_plantilla + "/" + nombreArchivo;
 
   try {
       // A. DESCARGAR EL ARCHIVO WORD

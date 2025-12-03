@@ -12,33 +12,34 @@
         <h2>Nuevo Documento Técnico</h2>
         
         <div class="seccion-busqueda">
-            <label class="label-bold">1. Seleccione Proyecto:</label>
-            <div class="buscador-box">
-                <input type="text" id="inputSearch" placeholder="Ingrese ID (Ej: 7560)...">
-                <button id="btnSearch">Buscar</button>
-            </div>
             
+            <label for="ddlClientes" class="label-bold">1. Seleccione Cliente:</label>
+            <select id="ddlClientes" class="input-select" title="Lista de Clientes Disponibles">
+                <option value="">-- Cargar Clientes --</option>
+            </select>
+
+            <label for="ddlProyectos" class="label-bold margen-top">2. Seleccione Proyecto:</label>
+            <select id="ddlProyectos" class="input-select" disabled title="Lista de Proyectos del Cliente">
+                <option value="">-- Primero seleccione Cliente --</option>
+            </select>
+
             <div id="infoProyecto" class="info-box oculto">
-                <strong>Proyecto Detectado:</strong><br>
                 <span id="lblNombre" class="txt-resaltado">...</span><br>
-                <span id="lblCliente" class="txt-secundario">...</span>
+                <span id="lblAPI" class="txt-secundario">...</span>
             </div>
         </div>
 
         <div id="seccionPlantillas" class="seccion-plantillas oculto">
-            <label class="label-bold">2. Seleccione Plantilla:</label>
+            <label class="label-bold">3. Seleccione Plantilla:</label>
             <div class="grid-iconos">
                 <div class="icono-item" onclick="seleccionarPlantilla('Minuta')">
-                    <div class="img-doc">📝</div>
-                    <span>Minuta</span>
+                    <div class="img-doc">📝</div><span>Minuta</span>
                 </div>
                 <div class="icono-item" onclick="seleccionarPlantilla('Informe')">
-                    <div class="img-doc">📊</div>
-                    <span>Informe</span>
+                    <div class="img-doc">📊</div><span>Informe</span>
                 </div>
                 <div class="icono-item" onclick="seleccionarPlantilla('Carta')">
-                    <div class="img-doc">✉️</div>
-                    <span>Carta</span>
+                    <div class="img-doc">✉️</div><span>Carta</span>
                 </div>
             </div>
         </div>

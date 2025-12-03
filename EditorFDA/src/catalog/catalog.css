@@ -22,3 +22,20 @@ button:hover { background: #106ebe; }
 }
 .icono-item:hover { border-color: #0078d4; background: #eff6fc; transform: translateY(-3px); }
 .img-doc { font-size: 30px; margin-bottom: 5px; }
+
+/* ... (Mantén todo tu CSS anterior igual) ... */
+
+/* AGREGA ESTO AL FINAL: */
+
+.margen-top {
+    margin-top: 10px;
+}
+
+/* Asegúrate de tener también la clase para el select si no estaba: */
+.input-select { 
+    width: 100%; 
+    padding: 8px; 
+    border: 1px solid #ccc; 
+    border-radius: 4px; 
+    background: white; 
+}

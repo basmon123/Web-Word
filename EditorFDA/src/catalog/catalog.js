@@ -1,43 +1,87 @@
 /* global Office */
 
+let baseDatosCompleta = [];
 let proyectoActual = null;
 
-Office.onReady(() => {
-    document.getElementById("btnSearch").onclick = buscar;
+Office.onReady(async () => {
+    await cargarDatosIniciales();
+    
+    // Eventos de cambio
+    document.getElementById("ddlClientes").onchange = filtrarProyectos;
+    document.getElementById("ddlProyectos").onchange = seleccionarProyecto;
 });
 
-async function buscar() {
-    const val = document.getElementById("inputSearch").value;
-    const infoBox = document.getElementById("infoProyecto");
-    const plantillasBox = document.getElementById("seccionPlantillas");
-
-    // 1. CARGAR DATOS DESDE LA NUBE (GITHUB)
-    // Usamos la ruta relativa al servidor
+async function cargarDatosIniciales() {
     try {
-        const response = await fetch("../data/proyectos.json"); // Sube 2 niveles para encontrar data
-        const db = await response.json(); // Convierte el texto a objetos
+        // Cargar JSON
+        const response = await fetch("https://basmon123.github.io/Web-Word/EditorFDA/src/data/proyectos.json");
+        baseDatosCompleta = await response.json();
 
-        // 2. BUSCAR EN LA LISTA DESCARGADA
-        const found = db.find(p => p.id === val);
+        // Obtener Clientes Únicos (Para no repetir "Codelco" 20 veces en la lista)
+        const clientesUnicos = [...new Set(baseDatosCompleta.map(item => item.cliente))];
         
-        if(found) {
-            proyectoActual = found;
-            document.getElementById("lblNombre").textContent = found.nombre;
-            document.getElementById("lblCliente").textContent = found.cliente;
-            
-            infoBox.classList.remove("oculto");
-            plantillasBox.classList.remove("oculto");
-        } else {
-            infoBox.classList.add("oculto");
-            plantillasBox.classList.add("oculto");
-            // Usamos un mensaje en pantalla en vez de alert para ser más elegantes
-            document.getElementById("lblNombre").textContent = "No encontrado";
-            infoBox.classList.remove("oculto");
-        }
+        // Llenar el Dropdown de Clientes
+        const ddlClientes = document.getElementById("ddlClientes");
+        ddlClientes.innerHTML = '<option value="">-- Seleccione Cliente --</option>';
+        
+        clientesUnicos.forEach(cliente => {
+            let opt = document.createElement("option");
+            opt.value = cliente;
+            opt.textContent = cliente;
+            ddlClientes.appendChild(opt);
+        });
 
     } catch (error) {
-        console.error("Error cargando base de datos:", error);
+        console.error("Error cargando datos:", error);
     }
+}
+
+function filtrarProyectos() {
+    const clienteSeleccionado = document.getElementById("ddlClientes").value;
+    const ddlProyectos = document.getElementById("ddlProyectos");
+    
+    // Resetear lista de proyectos
+    ddlProyectos.innerHTML = '<option value="">-- Seleccione Proyecto --</option>';
+    document.getElementById("seccionPlantillas").classList.add("oculto");
+    document.getElementById("infoProyecto").classList.add("oculto");
+
+    if (!clienteSeleccionado) {
+        ddlProyectos.disabled = true;
+        return;
+    }
+
+    // Filtrar: Dame solo los proyectos de este cliente
+    const proyectosFiltrados = baseDatosCompleta.filter(p => p.cliente === clienteSeleccionado);
+
+    // Llenar Dropdown
+    proyectosFiltrados.forEach(p => {
+        let opt = document.createElement("option");
+        opt.value = p.id; // El valor es el ID (7560)
+        opt.textContent = p.id + " - " + p.nombre; // Lo que se ve
+        ddlProyectos.appendChild(opt);
+    });
+
+    ddlProyectos.disabled = false;
+}
+
+function seleccionarProyecto() {
+    const idProyecto = document.getElementById("ddlProyectos").value;
+    
+    if (!idProyecto) {
+        document.getElementById("seccionPlantillas").classList.add("oculto");
+        return;
+    }
+
+    // Buscar el objeto completo del proyecto
+    proyectoActual = baseDatosCompleta.find(p => p.id === idProyecto);
+
+    // Mostrar info
+    document.getElementById("lblNombre").textContent = proyectoActual.nombre;
+    document.getElementById("lblAPI").textContent = "API: " + proyectoActual.api;
+    document.getElementById("infoProyecto").classList.remove("oculto");
+    
+    // Mostrar Plantillas
+    document.getElementById("seccionPlantillas").classList.remove("oculto");
 }
 
 window.seleccionarPlantilla = function(tipo) {
