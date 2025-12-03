@@ -1,60 +1,28 @@
 /* Estilos Generales */
 body { 
     font-family: 'Segoe UI', sans-serif; 
-    padding: 0; 
-    margin: 0; 
+    padding: 10px; 
     background-color: #f3f2f1; 
 }
 
-.padding { 
-    padding: 15px; 
-}
-
-/* Encabezado */
-.header-fda { 
-    background: #fff; 
-    padding: 15px; 
+h2 { 
+    color: #0078d4; 
     border-bottom: 2px solid #0078d4; 
+    padding-bottom: 5px; 
+    margin-top: 0; 
 }
 
-.titulo-header {
-    margin: 0;
-    color: #0078d4;
-    font-size: 18px;
-}
-
+/* Clases Utilitarias (Reemplazo de estilos inline) */
 .subtitulo {
-    margin-top: 15px;
-    margin-bottom: 5px;
-    color: #333;
-    font-weight: 600;
+    color: #666;
+    margin-top: 0;
 }
 
-/* Buscador */
-.contenedor-busqueda {
-    background: #eff6fc; /* Azul muy clarito */
-    padding: 10px; 
-    border-radius: 5px; 
-    margin-bottom: 15px;
-    border: 1px solid #c7e0f4;
-}
-
-.label-negrita {
-    font-weight: bold;
-    display: block;
-    margin-bottom: 5px;
-}
-
-.boton-busqueda {
-    width: auto !important; /* Sobrescribe el ancho 100% del boton normal */
-    padding: 0 15px;
-    font-size: 16px;
-}
-
-.mensaje-busqueda {
-    font-size: 11px; 
-    margin: 5px 0 0 0; 
-    min-height: 15px;
+.mensaje-estado {
+    color: gray; 
+    font-size: 12px; 
+    margin-top: 10px;
+    min-height: 20px; /* Para que no salte si está vacío */
 }
 
 /* Grupos y Inputs */
@@ -88,21 +56,22 @@ body {
     margin-bottom: 2px;
 }
 
-/* Sistema Flex (Para poner cosas lado a lado) */
+/* Sistema de Grid Flexible (Para poner cosas lado a lado) */
 .fila-flex {
     display: flex;
-    gap: 5px;
+    gap: 10px;
     width: 100%;
 }
 
-.gap-grande {
-    gap: 10px;
+.col-70 {
+    width: 70%;
 }
 
-.col-70 { width: 70%; }
-.col-30 { width: 30%; }
+.col-30 {
+    width: 30%;
+}
 
-/* Botón Principal */
+/* Botón */
 .boton { 
     background-color: #0078d4; 
     color: white; 
@@ -112,21 +81,12 @@ body {
     cursor: pointer; 
     font-weight: bold; 
     transition: background-color 0.2s;
-    border-radius: 2px;
 }
 
 .boton:hover { 
     background-color: #106ebe; 
 }
 
-/* Mensajes de Estado */
-.mensaje-estado {
-    color: gray; 
-    font-size: 12px; 
-    margin-top: 10px;
-    text-align: center;
+.boton:active {
+    background-color: #005a9e;
 }
-
-/* Clases de utilidad para JS (Colores de mensajes) */
-.texto-exito { color: green; }
-.texto-error { color: red; }
