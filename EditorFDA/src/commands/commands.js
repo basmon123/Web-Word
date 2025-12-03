@@ -7,10 +7,11 @@ Office.onReady(() => {
 let dialog; // Variable para guardar la ventana
 
 // 1. ESTA FUNCIÓN LA LLAMA EL BOTÓN DE LA CINTA
+// 1. ESTA FUNCIÓN LA LLAMA EL BOTÓN DE LA CINTA
 function abrirCatalogo(event) {
-  // URL de tu archivo catalog.html (Asegúrate que coincida con tu GitHub/Localhost)
-  // TRUCO: Usamos location.origin para que funcione en Local y en Nube sin cambiar código
-  const url = window.location.origin + "/src/catalog/catalog.html";
+  // CORRECCIÓN: Ponemos la dirección COMPLETA y EXACTA de tu GitHub
+  // Así no hay forma de que se pierda
+  const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/catalog/catalog.html";
 
   // Abrimos la ventana emergente
   Office.context.ui.displayDialogAsync(url, { height: 60, width: 50 }, 
