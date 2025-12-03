@@ -1,0 +1,26 @@
+[
+  {
+    "id": "7560",
+    "nombre": "Estudio Diagnóstico Pila ROM",
+    "cliente": "CODELCO CHILE",
+    "division": "Gabriela Mistral",
+    "contrato": "4600025605",
+    "api": "G25D203"
+  },
+  {
+    "id": "8890",
+    "nombre": "Ingeniería de Detalles Tranque",
+    "cliente": "ANGLO AMERICAN",
+    "division": "Los Bronces",
+    "contrato": "550001234",
+    "api": "A99X100"
+  },
+  {
+    "id": "9000",
+    "nombre": "Nuevo Proyecto Expansión",
+    "cliente": "BHP",
+    "division": "Escondida",
+    "contrato": "99887766",
+    "api": "B500"
+  }
+]
