@@ -7,11 +7,9 @@ Office.onReady(() => {
 let dialog; // Variable para guardar la ventana
 
 // 1. ESTA FUNCIÓN LA LLAMA EL BOTÓN DE LA CINTA
-// 1. ESTA FUNCIÓN LA LLAMA EL BOTÓN DE LA CINTA
 function abrirCatalogo(event) {
-  // CORRECCIÓN: Ponemos la dirección COMPLETA y EXACTA de tu GitHub
-  // Así no hay forma de que se pierda
-  const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/catalog/catalog.html";
+  // TRUCO: Agregamos '?v=2' al final para romper el caché de Word
+  const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/catalog/catalog.html?v=2";
 
   // Abrimos la ventana emergente
   Office.context.ui.displayDialogAsync(url, { height: 60, width: 50 }, 
@@ -20,7 +18,6 @@ function abrirCatalogo(event) {
         console.error(asyncResult.error.message);
       } else {
         dialog = asyncResult.value;
-        // Nos ponemos a escuchar mensajes de la ventana
         dialog.addEventHandler(Office.EventType.DialogMessageReceived, procesarMensaje);
       }
     }
@@ -28,6 +25,7 @@ function abrirCatalogo(event) {
   
   if(event) event.completed();
 }
+
 
 // 2. ESTA FUNCIÓN RECIBE LA ORDEN DE LA VENTANA
 async function procesarMensaje(arg) {
