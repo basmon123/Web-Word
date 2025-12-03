@@ -14,7 +14,7 @@ async function buscar() {
     // 1. CARGAR DATOS DESDE LA NUBE (GITHUB)
     // Usamos la ruta relativa al servidor
     try {
-        const response = await fetch("../../data/proyectos.json"); // Sube 2 niveles para encontrar data
+        const response = await fetch("../data/proyectos.json"); // Sube 2 niveles para encontrar data
         const db = await response.json(); // Convierte el texto a objetos
 
         // 2. BUSCAR EN LA LISTA DESCARGADA
