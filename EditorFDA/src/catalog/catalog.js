@@ -19,8 +19,6 @@ Office.onReady(async () => {
     if(btnSearch) btnSearch.onclick = buscar;
 });
 
-JavaScript
-
 async function cargarDatosIniciales() {
     // URL de tu archivo en GitHub
     const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/data/proyectos.json";
