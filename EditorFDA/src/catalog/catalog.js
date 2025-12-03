@@ -13,14 +13,28 @@ Office.onReady(async () => {
 
 async function cargarDatosIniciales() {
     try {
-        // Cargar JSON
-        const response = await fetch("https://basmon123.github.io/Web-Word/EditorFDA/src/data/proyectos.json");
-        baseDatosCompleta = await response.json();
+        // 1. TU URL DE POWER AUTOMATE (Pégala aquí entre comillas)
+        const urlPowerAutomate = "https://defaultef8b3c00d87343e58b66d56c25f2bd.fe.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/f07247265e884ff68b279824dc92d503/triggers/manual/paths/invoke?api-version=1"; 
 
-        // Obtener Clientes Únicos (Para no repetir "Codelco" 20 veces en la lista)
-        const clientesUnicos = [...new Set(baseDatosCompleta.map(item => item.cliente))];
+        const response = await fetch(urlPowerAutomate);
         
-        // Llenar el Dropdown de Clientes
+        // SharePoint devuelve un objeto { value: [ ... ] }
+        const datosSharePoint = await response.json();
+        
+        // 2. TRADUCCIÓN (Mapeo)
+        // Convertimos el formato de SharePoint al formato de tu App
+        baseDatosCompleta = datosSharePoint.value.map(item => ({
+            id: item.Title,               // 'Title' es el ID en SharePoint
+            nombre: item.NombreProyecto,  // Nombre interno de la columna
+            cliente: item.Cliente,
+            division: item.Division,
+            contrato: item.Contrato,
+            api: item.API,
+            carpeta_plantilla: item.CarpetaPlantilla
+        }));
+
+        // --- El resto sigue igual ---
+        const clientesUnicos = [...new Set(baseDatosCompleta.map(item => item.cliente))];
         const ddlClientes = document.getElementById("ddlClientes");
         ddlClientes.innerHTML = '<option value="">-- Seleccione Cliente --</option>';
         
@@ -32,7 +46,7 @@ async function cargarDatosIniciales() {
         });
 
     } catch (error) {
-        console.error("Error cargando datos:", error);
+        console.error("Error cargando datos de SharePoint:", error);
     }
 }
 
