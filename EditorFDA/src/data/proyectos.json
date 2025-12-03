@@ -1,1 +1,40 @@
-{"body":[{"id":"Title","nombre":"NombreProyecto","cliente":"Cliente","division":"Division","contrato":"Contrato","api":"API","carpeta:plantilla":"CarpetaPlantilla"},{"id":"Title","nombre":"NombreProyecto","cliente":"Cliente","division":"Division","contrato":"Contrato","api":"API","carpeta:plantilla":"CarpetaPlantilla"},{"id":"Title","nombre":"NombreProyecto","cliente":"Cliente","division":"Division","contrato":"Contrato","api":"API","carpeta:plantilla":"CarpetaPlantilla"},{"id":"Title","nombre":"NombreProyecto","cliente":"Cliente","division":"Division","contrato":"Contrato","api":"API","carpeta:plantilla":"CarpetaPlantilla"},{"id":"Title","nombre":"NombreProyecto","cliente":"Cliente","division":"Division","contrato":"Contrato","api":"API","carpeta:plantilla":"CarpetaPlantilla"}]}
+{
+  "body": [
+    {
+      "id": "P2023-001",
+      "nombre": "INGENIERIA BASICA SISTEMA DE...",
+      "cliente": "CODELCO",
+      "division": "DET",
+      "contrato": "4600015582",
+      "api": "API-001",
+      "carpeta_plantilla": "General"
+    },
+    {
+      "id": "P2023-002",
+      "nombre": "INGENIERIA DE DETALLES MEJORAMIENTO...",
+      "cliente": "CODELCO",
+      "division": "DTE",
+      "contrato": "4600016621",
+      "api": "API-002",
+      "carpeta_plantilla": "General"
+    },
+    {
+      "id": "P2023-003",
+      "nombre": "SERVICIO DE APOYO A LA GESTION...",
+      "cliente": "CODELCO",
+      "division": "DTE",
+      "contrato": "4600019932",
+      "api": "API-003",
+      "carpeta_plantilla": "General"
+    },
+    {
+      "id": "P2023-004",
+      "nombre": "SERVICIO DE INGENIERIA MULTIDISCIPLINARIA...",
+      "cliente": "ANGLOAMERICAN",
+      "division": "LOS BRONCES",
+      "contrato": "CW224523",
+      "api": "API-004",
+      "carpeta_plantilla": "Anglo"
+    }
+  ]
+}
