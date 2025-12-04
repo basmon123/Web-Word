@@ -176,6 +176,11 @@ function getBase64FromBlob(blob) {
 
 }
 
+// ... (Mantén el registro del final g.abrirCatalogo = ... ) ...
+
+const g = typeof globalThis !== "undefined" ? globalThis : window;
+
+g.abrirCatalogo = abrirCatalogo;
 
 
 // 1. LA FUNCION
@@ -207,8 +212,3 @@ Office.actions.associate("limpiarFormato", limpiarFormato);
 
 
 
-// ... (Mantén el registro del final g.abrirCatalogo = ... ) ...
-
-const g = typeof globalThis !== "undefined" ? globalThis : window;
-
-g.abrirCatalogo = abrirCatalogo;
