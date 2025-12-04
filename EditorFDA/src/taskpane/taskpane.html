@@ -7,18 +7,8 @@
     <title>Editor FDA</title>
     <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js" type="text/javascript"></script>
     <link href="taskpane.css" rel="stylesheet" type="text/css" />
-    
-    <style>
-        .separador { margin: 20px 0; border: 0; border-top: 1px solid #ccc; }
-        .fila-botones { display: flex; gap: 5px; margin-bottom: 10px; }
-        .boton-secundario { background-color: #0078d4; color: white; border: none; padding: 8px; cursor: pointer; flex: 1; }
-        .boton-estilo { background-color: #f3f2f1; border: 1px solid #ccc; padding: 5px; width: 100%; text-align: left; margin-bottom: 5px; cursor: pointer; }
-        .boton-estilo:hover { background-color: #e1dfdd; }
-    </style>
 </head>
-
 <body class="ms-font-m ms-welcome ms-Fabric">
-
     <div class="padding">
         <h2>Generador FDA</h2>
         <p class="ms-font-s subtitulo">Rellena los datos para actualizar el informe.</p>
@@ -66,22 +56,8 @@
         </button>
         
         <p id="mensajeEstado" class="mensaje-estado"></p>
-
-        <hr class="separador">
-        
-        <h3>Herramientas Rápidas</h3>
-        <div class="fila-botones">
-            <button id="btnLimpiar" class="boton-secundario">Limpiar Formato</button>
-            <button id="btnFecha" class="boton-secundario">Insertar Fecha</button>
-        </div>
-
-        <h3>Estilos FDA</h3>
-        <div>
-            <button id="btnTitulo1" class="boton-estilo"><b>1.0</b> Título Principal</button>
-            <button id="btnTitulo2" class="boton-estilo" style="padding-left: 15px;"><b>1.1</b> Subtítulo</button>
-            <button id="btnTitulo3" class="boton-estilo" style="padding-left: 25px;"><b>1.1.1</b> Detalle</button>
-        </div>
-
     </div>
     
-    <script type="text/javascript" src="
+    <script type="text/javascript" src="taskpane.js"></script>
+</body>
+</html>
