@@ -85,22 +85,39 @@ function getBase64FromBlob(blob) {
 // 2. LÓGICA DE HERRAMIENTAS (Limpiar Formato)
 // ==========================================
 
-async function limpiarFormato(event) {
+// --- FUNCIÓN DE FECHA ---
+async function insertarFecha(event) {
   try {
     await Word.run(async (context) => {
+      // 1. Obtener la ubicación del cursor
       const range = context.document.getSelection();
-      range.clearFormatting();
+      
+      // 2. Obtener fecha de hoy
+      const hoy = new Date();
+      const fechaTexto = hoy.toLocaleDateString("es-ES", {
+          year: 'numeric', month: 'long', day: 'numeric'
+      });
+      
+      // 3. Escribir en Word
+      range.insertText(fechaTexto, "Replace");
+      
+      // 4. Sincronizar
       await context.sync();
     });
   } catch (error) {
-    console.error(error);
+    // Si falla, escribimos el error en el documento para verlo
+    await Word.run(async (context) => {
+        context.document.body.insertParagraph("ERROR JS: " + error.message, "Start");
+        await context.sync();
+    });
   } finally {
-    // 3. AVISAR A WORD QUE TERMINAMOS
+    // 5. IMPORTANTE: Avisar al botón que terminó
     if (event) {
-      event.completed();
+        event.completed();
     }
   }
 }
+
 
 // ==========================================
 // 3. REGISTRO OFICIAL (LA PARTE CLAVE)
@@ -109,4 +126,4 @@ async function limpiarFormato(event) {
 // Esto elimina la interferencia.
 
 Office.actions.associate("abrirCatalogo", abrirCatalogo);
-Office.actions.associate("limpiarFormato", limpiarFormato);
+Office.actions.associate("insertarFecha", insertarFecha);
