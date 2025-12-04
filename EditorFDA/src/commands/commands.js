@@ -85,29 +85,32 @@ function getBase64FromBlob(blob) {
 // ==========================================
 
 async function limpiarFormato(event) {
-  // PRUEBA DE VIDA: Lanza un error visual apenas se toque el botón
-  console.log("Botón presionado"); // Esto no se ve fácil
-  throw new Error("¡El archivo JS cargó correctamente!"); 
-  
-  // ... resto del código ...
   try {
     await Word.run(async (context) => {
-      // 1. Obtener la selección
+      // 1. Obtener selección
       const range = context.document.getSelection();
       
-      // 2. Limpiar el formato
+      // 2. Limpiar formato
       range.clearFormatting();
       
       // 3. Sincronizar
       await context.sync();
     });
   } catch (error) {
-    console.error("Error al limpiar formato: " + error);
-  }
-
-  // AVISO DE TERMINADO
-  if (event) {
-    event.completed();
+    // Si hay error, lo escribimos en el documento para poder leerlo
+    console.error(error);
+    await Word.run(async (context) => {
+      const body = context.document.body;
+      body.insertParagraph("ERROR: " + error.message, "Start");
+      await context.sync();
+    });
+  } finally {
+    // ESTO ES LO IMPORTANTE:
+    // El bloque 'finally' se ejecuta SIEMPRE, haya error o no.
+    // Esto quita el mensaje de "Trabajando en..."
+    if (event) {
+      event.completed();
+    }
   }
 }
 
