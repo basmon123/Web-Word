@@ -81,35 +81,86 @@ function getBase64FromBlob(blob) {
     });
 }
 
-// --- CÓDIGO AÑADIDO PARA EL BOTÓN DE FECHA ---
+// --- 2. HERRAMIENTAS DE FORMATO ---
 
-function insertarFecha(event) {
-  Word.run(function (context) {
-    
-    // 1. Insertar fecha
-    var body = context.document.body;
-    var hoy = new Date().toLocaleDateString();
-    
-    // Insertamos al inicio del documento solo para probar que está vivo
-    body.insertParagraph("FECHA DESDE TASKPANE.JS: " + hoy, "Start");
-
-    return context.sync();
-  })
-  .catch(function (error) {
-      console.log("Error: " + error);
-  })
-  .finally(function () {
-      // 2. Avisar que terminó (CRÍTICO)
-      if (event) {
-          event.completed();
+async function limpiarFormato(event) {
+  try {
+    await Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      
+      // Paso 1: Fuente
+      context.load(selection, "font");
+      await context.sync();
+      selection.font.set({ name: "Arial", size: 11, color: "#000000", bold: false, italic: false });
+      await context.sync();
+      
+      // Paso 2: Párrafo (Intento seguro)
+      context.load(selection, "paragraphFormat");
+      await context.sync();
+      try { 
+          selection.paragraphFormat.alignment = "Justified"; 
+          await context.sync(); 
+      } catch (e) { 
+          console.warn("No se pudo justificar (posible tabla o restricción)."); 
       }
-  });
+    });
+  } catch (error) { console.error(error); } 
+  finally { if (event) event.completed(); }
 }
 
+async function insertarFecha(event) {
+  await Word.run(async (context) => {
+    const selection = context.document.getSelection();
+    const fechaHoy = new Date().toLocaleDateString();
+    selection.insertText(fechaHoy, "Replace");
+    await context.sync();
+  });
+  if (event) event.completed();
+}
+
+// --- 3. ESTILOS FDA (1.0, 1.1, 1.1.1) ---
+
+async function estiloTitulo1(event) {
+  await aplicarEstiloProfesional("Título 1", "Heading 1");
+  if (event) event.completed();
+}
+
+async function estiloTitulo2(event) {
+  await aplicarEstiloProfesional("Título 2", "Heading 2");
+  if (event) event.completed();
+}
+
+async function estiloTitulo3(event) {
+  await aplicarEstiloProfesional("Título 3", "Heading 3");
+  if (event) event.completed();
+}
+
+// Función auxiliar inteligente (Prueba Español -> Falla -> Prueba Inglés)
+async function aplicarEstiloProfesional(nombreEsp, nombreIng) {
+  await Word.run(async (context) => {
+    try {
+      const selection = context.document.getSelection();
+      selection.style = nombreEsp; // Intento Español
+      await context.sync();
+    } catch (error) {
+      // Si falla, intentamos Inglés silenciosamente
+      try {
+        const selection = context.document.getSelection();
+        selection.style = nombreIng;
+        await context.sync();
+      } catch (e2) {
+        console.warn("No se encontró el estilo ni en ESP ni ING.");
+      }
+    }
+  });
+}
 
 // 3. REGISTRO OFICIAL (LA PARTE CLAVE)
 // Aquí registramos AMBAS funciones usando el MISMO método.
 // Esto elimina la interferencia.
-
-Office.actions.associate("abrirCatalogo", abrirCatalogo);
+Office.actions.associate("limpiarFormato", limpiarFormato);
 Office.actions.associate("insertarFecha", insertarFecha);
+Office.actions.associate("estiloTitulo1", estiloTitulo1);
+Office.actions.associate("estiloTitulo2", estiloTitulo2);
+Office.actions.associate("estiloTitulo3", estiloTitulo3);
+Office.actions.associate("abrirCatalogo", abrirCatalogo);
