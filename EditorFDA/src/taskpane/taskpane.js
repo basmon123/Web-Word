@@ -75,7 +75,7 @@ function insertarFecha(event) {
     var hoy = new Date().toLocaleDateString();
     
     // Insertamos al inicio del documento solo para probar que está vivo
-    body.insertParagraph("FECHA DESDE TASKPANE.JS: " + hoy, "Start");
+    body.insertParagraph(hoy);
 
     return context.sync();
   })
