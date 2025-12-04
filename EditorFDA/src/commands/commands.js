@@ -215,29 +215,39 @@ g.abrirCatalogo = abrirCatalogo;
 //    NUEVAS FUNCIONES AGREGADAS PARA LOS BOTONES DEL MANIFEST
 // ====================================================================
 
-// A. Limpiar formato y estandarizar
+// A. Limpiar formato (Arial 10 + Justificado)
+// CORREGIDO: Ahora usa getSelection() en vez de body (para no borrar todo)
 async function limpiarFormato(event) {
   await Word.run(async (context) => {
-    const body = context.document.body;
-    body.clear(); // Limpia formato directo
-    body.font.name = "Arial";
-    body.font.size = 11;
-
-    // Justificar párrafos
-    const paragraphs = body.paragraphs;
-    paragraphs.load("items");
-    await context.sync();
+    // 1. Obtener solo lo que el usuario seleccionó
+    const range = context.document.getSelection();
     
-    paragraphs.items.forEach((p) => {
-      p.alignment = "Justified";
-    });
+    // 2. Forzar carga de propiedades para asegurar que existe selección
+    context.load(range, 'text');
+    await context.sync();
+
+    // 3. Aplicar formato directo sin borrar el texto
+    range.font.name = "Arial";
+    range.font.size = 10; // Cambiado a 10 como pediste
+    range.font.color = "black";
+    range.font.bold = false;
+    range.font.italic = false;
+
+    // 4. Intentar justificar (dentro de try/catch por si es una tabla)
+    try {
+        range.paragraphFormat.alignment = "Justified";
+        await context.sync();
+    } catch (e) {
+        console.log("No se pudo justificar (quizás es una tabla o imagen).");
+    }
     
     await context.sync();
   });
+  
   if(event) event.completed();
 }
 
-// B. Insertar fecha actual
+// B. Insertar fecha actual (Este funcionaba bien, lo mantenemos igual)
 async function insertarFecha(event) {
   await Word.run(async (context) => {
     const range = context.document.getSelection();
@@ -251,39 +261,62 @@ async function insertarFecha(event) {
 }
 
 // C. Funciones de Estilos (Título 1, 2 y 3)
+// CORREGIDO: Prueba nombre en Inglés Y Español para evitar fallos
 async function estiloTitulo1(event) {
-  await aplicarEstiloGeneral("Heading1");
+  await aplicarEstiloSeguro("Heading 1", "Título 1");
   if(event) event.completed();
 }
 
 async function estiloTitulo2(event) {
-  await aplicarEstiloGeneral("Heading2");
+  await aplicarEstiloSeguro("Heading 2", "Título 2");
   if(event) event.completed();
 }
 
 async function estiloTitulo3(event) {
-  await aplicarEstiloGeneral("Heading3");
+  await aplicarEstiloSeguro("Heading 3", "Título 3");
   if(event) event.completed();
 }
 
-// Auxiliar para estilos
-async function aplicarEstiloGeneral(nombreEstilo) {
+// Función auxiliar inteligente: Intenta inglés, si falla, intenta español
+async function aplicarEstiloSeguro(nombreIngles, nombreEspanol) {
   await Word.run(async (context) => {
     const range = context.document.getSelection();
-    range.style = nombreEstilo;
-    await context.sync();
+    
+    try {
+        // Intento 1: Nombre interno (Inglés)
+        range.style = nombreIngles;
+        await context.sync();
+    } catch (error) {
+        // Intento 2: Nombre local (Español)
+        try {
+            console.log("Falló estilo en inglés, probando español...");
+            range.style = nombreEspanol;
+            await context.sync();
+        } catch (e2) {
+            console.warn("No se encontró el estilo: " + nombreEspanol);
+        }
+    }
   });
 }
 
 // ====================================================================
-//    REGISTRO DE FUNCIONES (¡CRUCIAL PARA QUE WORD LAS ENCUENTRE!)
+//    REGISTRO DE FUNCIONES
 // ====================================================================
 
-// 1. Método moderno: Asociar nombres del Manifest con funciones JS
+// Asociación obligatoria para el Ribbon
 Office.actions.associate("abrirCatalogo", abrirCatalogo);
 Office.actions.associate("limpiarFormato", limpiarFormato);
 Office.actions.associate("insertarFecha", insertarFecha);
 Office.actions.associate("estiloTitulo1", estiloTitulo1);
 Office.actions.associate("estiloTitulo2", estiloTitulo2);
 Office.actions.associate("estiloTitulo3", estiloTitulo3);
+
+// Compatibilidad global
+const g = typeof globalThis !== "undefined" ? globalThis : window;
+g.abrirCatalogo = abrirCatalogo;
+g.limpiarFormato = limpiarFormato;
+g.insertarFecha = insertarFecha;
+g.estiloTitulo1 = estiloTitulo1;
+g.estiloTitulo2 = estiloTitulo2;
+g.estiloTitulo3 = estiloTitulo3;
 
