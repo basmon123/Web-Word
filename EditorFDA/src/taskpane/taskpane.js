@@ -65,30 +65,3 @@ async function run() {
   }
 }
 
-// --- CÓDIGO AÑADIDO PARA EL BOTÓN DE FECHA ---
-
-function insertarFecha(event) {
-  Word.run(function (context) {
-    
-    // 1. Insertar fecha
-    var body = context.document.body;
-    var hoy = new Date().toLocaleDateString();
-    
-    // Insertamos al inicio del documento solo para probar que está vivo
-    body.insertParagraph(hoy);
-
-    return context.sync();
-  })
-  .catch(function (error) {
-      console.log("Error: " + error);
-  })
-  .finally(function () {
-      // 2. Avisar que terminó (CRÍTICO)
-      if (event) {
-          event.completed();
-      }
-  });
-}
-
-
-Office.actions.associate("insertarFecha", insertarFecha);
