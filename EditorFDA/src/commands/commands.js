@@ -175,38 +175,40 @@ function getBase64FromBlob(blob) {
     });
 
 }
+
+
+
+// 1. LA FUNCION
+async function limpiarFormato(event) {
+  try {
+    await Word.run(async (context) => {
+      // Obtener la selección actual del usuario
+      const range = context.document.getSelection();
+      
+      // Comando para limpiar formato
+      range.clearFormatting();
+      
+      // Sincronizar cambios con Word
+      await context.sync();
+    });
+  } catch (error) {
+    console.error("Error al limpiar formato: " + error);
+  }
+
+  // 2. AVISAR QUE TERMINÓ (Obligatorio para botones de función)
+  if (event) {
+    event.completed();
+  }
+}
+
+// 3. REGISTRO (Vincula el XML con este JS)
+// El primer texto "limpiarFormato" debe ser IDÉNTICO al <FunctionName> del XML
+Office.actions.associate("limpiarFormato", limpiarFormato);
+
+
+
 // ... (Mantén el registro del final g.abrirCatalogo = ... ) ...
 
 const g = typeof globalThis !== "undefined" ? globalThis : window;
 
 g.abrirCatalogo = abrirCatalogo;
-
-
-/**
- * Función para limpiar el formato del texto seleccionado.
- * @param event El evento que viene del botón.
- */
-function limpiarFormato(event) {
-  Word.run(function (context) {
-    // 1. Obtener la selección actual
-    var selection = context.document.getSelection();
-    
-    // 2. Limpiar el formato
-    selection.clearFormatting();
-
-    // 3. Sincronizar con Word
-    return context.sync();
-  })
-  .catch(function (error) {
-    console.log("Error: " + error);
-  })
-  .then(function () {
-    // 4. AVISAR A OFFICE QUE TERMINAMOS (¡Vital!)
-    event.completed();
-  });
-}
-
-// --- ZONA DE REGISTRO ---
-// Esto debe estar AL FINAL del archivo.
-// El primer nombre es el ID que usas en el XML. El segundo es la función de arriba.
-Office.actions.associate("limpiarFormato", limpiarFormato);

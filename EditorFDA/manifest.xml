@@ -192,7 +192,8 @@
         <bt:Image id="Icon.32x32" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-32.png"/>
         <bt:Image id="Icon.80x80" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-80.png"/>
       </bt:Images>
-      <bt:Urls>
+  
+    <bt:Urls>
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://basmon123.github.io/Web-Word"/>
         
         <bt:Url id="Commands.Url" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/src/commands/commands.html"/>
