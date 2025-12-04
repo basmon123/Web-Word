@@ -102,6 +102,87 @@ function getBase64FromBlob(blob) {
     });
 }
 
-// ... (Mantén el registro del final g.abrirCatalogo = ... ) ...
+// ====================================================================
+//    NUEVAS FUNCIONES AGREGADAS PARA LOS BOTONES DEL MANIFEST
+// ====================================================================
+
+// A. Limpiar formato y estandarizar
+async function limpiarFormato(event) {
+  await Word.run(async (context) => {
+    const body = context.document.body;
+    body.clear(); // Limpia formato directo
+    body.font.name = "Arial";
+    body.font.size = 11;
+
+    // Justificar párrafos
+    const paragraphs = body.paragraphs;
+    paragraphs.load("items");
+    await context.sync();
+    
+    paragraphs.items.forEach((p) => {
+      p.alignment = "Justified";
+    });
+    
+    await context.sync();
+  });
+  if(event) event.completed();
+}
+
+// B. Insertar fecha actual
+async function insertarFecha(event) {
+  await Word.run(async (context) => {
+    const range = context.document.getSelection();
+    const hoy = new Date();
+    const opciones = { year: 'numeric', month: 'long', day: 'numeric' };
+    const fechaTexto = hoy.toLocaleDateString('es-ES', opciones);
+    range.insertText(fechaTexto, "Replace");
+    await context.sync();
+  });
+  if(event) event.completed();
+}
+
+// C. Funciones de Estilos (Título 1, 2 y 3)
+async function estiloTitulo1(event) {
+  await aplicarEstiloGeneral("Heading1");
+  if(event) event.completed();
+}
+
+async function estiloTitulo2(event) {
+  await aplicarEstiloGeneral("Heading2");
+  if(event) event.completed();
+}
+
+async function estiloTitulo3(event) {
+  await aplicarEstiloGeneral("Heading3");
+  if(event) event.completed();
+}
+
+// Auxiliar para estilos
+async function aplicarEstiloGeneral(nombreEstilo) {
+  await Word.run(async (context) => {
+    const range = context.document.getSelection();
+    range.style = nombreEstilo;
+    await context.sync();
+  });
+}
+
+// ====================================================================
+//    REGISTRO DE FUNCIONES (¡CRUCIAL PARA QUE WORD LAS ENCUENTRE!)
+// ====================================================================
+
+// 1. Método moderno: Asociar nombres del Manifest con funciones JS
+Office.actions.associate("abrirCatalogo", abrirCatalogo);
+Office.actions.associate("limpiarFormato", limpiarFormato);
+Office.actions.associate("insertarFecha", insertarFecha);
+Office.actions.associate("estiloTitulo1", estiloTitulo1);
+Office.actions.associate("estiloTitulo2", estiloTitulo2);
+Office.actions.associate("estiloTitulo3", estiloTitulo3);
+
+// 2. Método antiguo (Mantengo el tuyo para compatibilidad)
 const g = typeof globalThis !== "undefined" ? globalThis : window;
 g.abrirCatalogo = abrirCatalogo;
+g.limpiarFormato = limpiarFormato;
+g.insertarFecha = insertarFecha;
+g.estiloTitulo1 = estiloTitulo1;
+g.estiloTitulo2 = estiloTitulo2;
+g.estiloTitulo3 = estiloTitulo3;
