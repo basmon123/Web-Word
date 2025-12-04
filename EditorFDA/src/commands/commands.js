@@ -211,86 +211,121 @@ const g = typeof globalThis !== "undefined" ? globalThis : window;
 g.abrirCatalogo = abrirCatalogo;
 
 
-// ====================================================================
-//    NUEVAS FUNCIONES AGREGADAS PARA LOS BOTONES DEL MANIFEST
-// ====================================================================
-
-// A. Limpiar formato (Arial 10 + Justificado)
-/async function limpiarFormato(event) {
-  try {
-    await Word.run(async (context) => {
-      const selection = context.document.getSelection();
-      
-      // Paso 1: Fuente
-      context.load(selection, "font");
-      await context.sync();
-      selection.font.set({ name: "Arial", size: 11, color: "#000000", bold: false, italic: false });
-      await context.sync();
-      
-      // Paso 2: Párrafo (Intento seguro)
-      context.load(selection, "paragraphFormat");
-      await context.sync();
-      try { 
-          selection.paragraphFormat.alignment = "Justified"; 
-          await context.sync(); 
-      } catch (e) { 
-          console.warn("No se pudo justificar (posible tabla o restricción)."); 
-      }
-    });
-  } catch (error) { console.error(error); } 
-  finally { if (event) event.completed(); }
-}
-
-async function insertarFecha(event) {
+// ==========================================
+// 2. FUNCIÓN: Limpiar Formato (CORREGIDO)
+// ==========================================
+async function limpiarFormato(event) {
   await Word.run(async (context) => {
-    const selection = context.document.getSelection();
-    const fechaHoy = new Date().toLocaleDateString();
-    selection.insertText(fechaHoy, "Replace");
+    // CORRECCIÓN CLAVE: Usamos getSelection() en vez de body.
+    // getSelection = Solo lo que sombreaste con el mouse.
+    const range = context.document.getSelection();
+    
+    // Cargamos el texto para asegurar que Word procese el rango
+    context.load(range, 'text'); 
+    await context.sync();
+
+    // Si no hay nada seleccionado, avisamos (opcional) o no hacemos nada
+    if (range.text === "") {
+        console.log("Nada seleccionado.");
+    } else {
+        // Aplicamos formato SOLO a la selección
+        range.font.name = "Arial";
+        range.font.size = 10;
+        range.font.color = "black";
+        range.font.bold = false;
+        range.font.italic = false;
+        
+        // Limpiamos resaltados
+        range.font.highlightColor = null; 
+
+        // Intentamos justificar (protegido contra errores en tablas)
+        try {
+            range.paragraphFormat.alignment = "Justified";
+        } catch (e) {
+            console.warn("No se pudo justificar (quizás es tabla).");
+        }
+    }
+    
     await context.sync();
   });
+  
+  // Avisar a Office que terminamos
   if (event) event.completed();
 }
 
-// --- 3. ESTILOS FDA (1.0, 1.1, 1.1.1) ---
+// ==========================================
+// 3. FUNCIÓN: Insertar Fecha
+// ==========================================
+async function insertarFecha(event) {
+  await Word.run(async (context) => {
+    const range = context.document.getSelection();
+    const hoy = new Date();
+    const opciones = { year: 'numeric', month: 'long', day: 'numeric' };
+    const fechaTexto = hoy.toLocaleDateString('es-ES', opciones);
+    
+    range.insertText(fechaTexto, "Replace");
+    await context.sync();
+  });
+  
+  if (event) event.completed();
+}
+
+// ==========================================
+// 4. FUNCIONES: Estilos de Título (CORREGIDO)
+// ==========================================
+
+// Helper: Intenta aplicar estilo en Inglés, si falla, usa Español
+async function aplicarEstiloSeguro(nombreIngles, nombreEspanol) {
+    await Word.run(async (context) => {
+        const range = context.document.getSelection();
+        try {
+            // Intento 1: Word interno (generalmente Inglés)
+            range.style = nombreIngles;
+            await context.sync();
+        } catch (error) {
+            // Intento 2: Word local (Español)
+            try {
+                range.style = nombreEspanol;
+                await context.sync();
+            } catch (e2) {
+                console.warn("No existe el estilo: " + nombreEspanol);
+            }
+        }
+    });
+}
 
 async function estiloTitulo1(event) {
-  await aplicarEstiloProfesional("Título 1", "Heading 1");
+  await aplicarEstiloSeguro("Heading 1", "Título 1");
   if (event) event.completed();
 }
 
 async function estiloTitulo2(event) {
-  await aplicarEstiloProfesional("Título 2", "Heading 2");
+  await aplicarEstiloSeguro("Heading 2", "Título 2");
   if (event) event.completed();
 }
 
 async function estiloTitulo3(event) {
-  await aplicarEstiloProfesional("Título 3", "Heading 3");
+  await aplicarEstiloSeguro("Heading 3", "Título 3");
   if (event) event.completed();
 }
 
-// Función auxiliar inteligente (Prueba Español -> Falla -> Prueba Inglés)
-async function aplicarEstiloProfesional(nombreEsp, nombreIng) {
-  await Word.run(async (context) => {
-    try {
-      const selection = context.document.getSelection();
-      selection.style = nombreEsp; // Intento Español
-      await context.sync();
-    } catch (error) {
-      // Si falla, intentamos Inglés silenciosamente
-      try {
-        const selection = context.document.getSelection();
-        selection.style = nombreIng;
-        await context.sync();
-      } catch (e2) {
-        console.warn("No se encontró el estilo ni en ESP ni ING.");
-      }
-    }
-  });
-}
+// ==========================================
+// 5. REGISTRO DE FUNCIONES (OBLIGATORIO)
+// ==========================================
 
-// --- 4. REGISTRO DE FUNCIONES ---
+// Mapeo para Office
+Office.actions.associate("abrirCatalogo", abrirCatalogo);
 Office.actions.associate("limpiarFormato", limpiarFormato);
 Office.actions.associate("insertarFecha", insertarFecha);
 Office.actions.associate("estiloTitulo1", estiloTitulo1);
 Office.actions.associate("estiloTitulo2", estiloTitulo2);
 Office.actions.associate("estiloTitulo3", estiloTitulo3);
+
+// Mapeo global (seguridad extra)
+const g = typeof globalThis !== "undefined" ? globalThis : window;
+g.abrirCatalogo = abrirCatalogo;
+g.limpiarFormato = limpiarFormato;
+g.insertarFecha = insertarFecha;
+g.estiloTitulo1 = estiloTitulo1;
+g.estiloTitulo2 = estiloTitulo2;
+g.estiloTitulo3 = estiloTitulo3;
