@@ -89,3 +89,6 @@ function insertarFecha(event) {
       }
   });
 }
+
+
+Office.actions.associate("insertarFecha", insertarFecha);
