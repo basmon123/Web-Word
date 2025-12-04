@@ -85,6 +85,11 @@ function getBase64FromBlob(blob) {
 // ==========================================
 
 async function limpiarFormato(event) {
+  // PRUEBA DE VIDA: Lanza un error visual apenas se toque el botón
+  console.log("Botón presionado"); // Esto no se ve fácil
+  throw new Error("¡El archivo JS cargó correctamente!"); 
+  
+  // ... resto del código ...
   try {
     await Word.run(async (context) => {
       // 1. Obtener la selección
