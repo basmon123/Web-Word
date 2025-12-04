@@ -2,6 +2,7 @@
 
 Office.onReady(() => {
   // Inicialización lista
+  console.log("Office initialized en commands.js");
 });
 
 let dialog; 
@@ -87,27 +88,14 @@ function getBase64FromBlob(blob) {
 async function limpiarFormato(event) {
   try {
     await Word.run(async (context) => {
-      // 1. Obtener selección
       const range = context.document.getSelection();
-      
-      // 2. Limpiar formato
       range.clearFormatting();
-      
-      // 3. Sincronizar
       await context.sync();
     });
   } catch (error) {
-    // Si hay error, lo escribimos en el documento para poder leerlo
     console.error(error);
-    await Word.run(async (context) => {
-      const body = context.document.body;
-      body.insertParagraph("ERROR: " + error.message, "Start");
-      await context.sync();
-    });
   } finally {
-    // ESTO ES LO IMPORTANTE:
-    // El bloque 'finally' se ejecuta SIEMPRE, haya error o no.
-    // Esto quita el mensaje de "Trabajando en..."
+    // 3. AVISAR A WORD QUE TERMINAMOS
     if (event) {
       event.completed();
     }
