@@ -105,7 +105,7 @@ async function insertarFecha(event) {
 // --- 3. ESTILOS FDA (1.0, 1.1, 1.1.1) ---
 
 async function estiloTitulo1(event) {
-  await aplicarEstiloProfesional("Título 1", "Heading 1");
+  await aplicarEstiloProfesional("Título 1.0", "Heading 1");
   if (event) event.completed();
 }
 
