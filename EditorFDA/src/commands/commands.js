@@ -1,7 +1,6 @@
 /* global Office, Word */
 
 
-
 Office.onReady(() => {
 
   // Inicialización si fuera necesaria
@@ -9,9 +8,7 @@ Office.onReady(() => {
 });
 
 
-
 let dialog; // Variable para guardar la ventana
-
 
 
 // 1. ESTA FUNCIÓN LA LLAMA EL BOTÓN DE LA CINTA
@@ -46,14 +43,10 @@ function abrirCatalogo(event) {
 
   );
 
- 
 
   if(event) event.completed();
 
 }
-
-
-
 
 
 // 2. ESTA FUNCIÓN RECIBE LA ORDEN DE LA VENTANA
@@ -62,11 +55,7 @@ async function procesarMensaje(arg) {
 
   dialog.close(); // Cerramos la ventana primero
 
- 
-
   const mensaje = JSON.parse(arg.message); // Leemos el JSON {accion, plantilla, datos}
-
-
 
   if (mensaje.accion === "CREAR_DOCUMENTO") {
 
@@ -77,12 +66,9 @@ async function procesarMensaje(arg) {
 }
 
 
-
 // 3. ESTA FUNCIÓN CREA EL WORD DESDE UNA PLANTILLA REAL
 
 async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
-
- 
 
   // Mapeo: Nombre del icono -> Nombre del archivo real
 
@@ -96,20 +82,15 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
 
   };
 
-
-
   const nombreArchivo = archivos[nombrePlantilla];
 
   if (!nombreArchivo) return;
-
-
 
 // ANTES: .../templates/" + datosProyecto.id + "/"...
 
 // AHORA: Usamos .carpeta_plantilla (Ej: CODELCO)
 
 const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + datosProyecto.carpeta_plantilla + "/" + nombreArchivo;
-
 
 
   try {
@@ -120,18 +101,15 @@ const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templat
 
       if (!response.ok) throw new Error("No se encontró la plantilla");
 
-     
 
       // B. CONVERTIR A BLOB (Archivo binario)
 
       const blob = await response.blob();
 
 
-
       // C. CONVERTIR A BASE64 (Lo que entiende Word)
 
       const base64 = await getBase64FromBlob(blob);
-
 
 
       await Word.run(async (context) => {
@@ -140,8 +118,6 @@ const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templat
 
         const newDoc = context.application.createDocument(base64);
 
-       
-
         // E. INYECTAR DATOS DEL PROYECTO (Opcional, pero recomendado)
 
         // Aquí podrías buscar los Tags en la plantilla nueva y llenarlos
@@ -149,13 +125,11 @@ const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templat
         // Para simplificar, primero abrimos el documento.
 
        
-
         newDoc.open();
 
         await context.sync();
 
-       
-
+      
         // F. LLENADO DE DATOS (Una vez abierto, en el nuevo contexto)
 
         // Nota: Esto requiere un manejo de contexto avanzado.
@@ -173,8 +147,6 @@ const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templat
   }
 
 }
-
-
 
 // Función auxiliar para convertir archivos a texto base64
 
@@ -203,10 +175,38 @@ function getBase64FromBlob(blob) {
     });
 
 }
-
 // ... (Mantén el registro del final g.abrirCatalogo = ... ) ...
 
 const g = typeof globalThis !== "undefined" ? globalThis : window;
 
 g.abrirCatalogo = abrirCatalogo;
 
+
+/**
+ * Función para limpiar el formato del texto seleccionado.
+ * @param event El evento que viene del botón.
+ */
+function limpiarFormato(event) {
+  Word.run(function (context) {
+    // 1. Obtener la selección actual
+    var selection = context.document.getSelection();
+    
+    // 2. Limpiar el formato
+    selection.clearFormatting();
+
+    // 3. Sincronizar con Word
+    return context.sync();
+  })
+  .catch(function (error) {
+    console.log("Error: " + error);
+  })
+  .then(function () {
+    // 4. AVISAR A OFFICE QUE TERMINAMOS (¡Vital!)
+    event.completed();
+  });
+}
+
+// --- ZONA DE REGISTRO ---
+// Esto debe estar AL FINAL del archivo.
+// El primer nombre es el ID que usas en el XML. El segundo es la función de arriba.
+Office.actions.associate("limpiarFormato", limpiarFormato);
