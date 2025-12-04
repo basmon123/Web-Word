@@ -35,7 +35,7 @@
             <LearnMoreUrl resid="GetStarted.LearnMoreUrl"/>
           </GetStarted>
           
-          <FunctionFile resid="Commands.Url"/>
+          <FunctionFile resid="Taskpane.Url"/>
           
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
             <CustomTab id="TabFDA">
