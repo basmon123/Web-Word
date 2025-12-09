@@ -1,8 +1,9 @@
 /* Estilos Generales */
 body { 
     font-family: 'Segoe UI', sans-serif; 
-    padding: 10px; 
+    padding: 15px; 
     background-color: #f3f2f1; 
+    color: #323130;
 }
 
 h2 { 
@@ -12,32 +13,84 @@ h2 {
     margin-top: 0; 
 }
 
-/* Clases Utilitarias (Reemplazo de estilos inline) */
+h3 {
+    font-size: 14px;
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #0078d4;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+/* Clases Utilitarias */
 .subtitulo {
     color: #666;
     margin-top: 0;
+    margin-bottom: 15px;
 }
 
 .mensaje-estado {
     color: gray; 
     font-size: 12px; 
     margin-top: 10px;
-    min-height: 20px; /* Para que no salte si está vacío */
+    min-height: 20px; 
 }
 
-/* Grupos y Inputs */
-.grupo-input { 
+.separador {
+    border: 0;
+    border-top: 1px solid #c8c6c4;
+    margin: 20px 0;
+}
+
+/* --- SECCIÓN 1: ESTILOS DE LECTURA (SharePoint Data) --- */
+.grupo-dato-lectura {
     background: white; 
-    padding: 10px; 
+    padding: 15px; 
     margin-bottom: 10px; 
     border: 1px solid #e1dfdd; 
-    border-radius: 2px;
+    border-radius: 4px;
+    box-shadow: 0 1.6px 3.6px 0 rgba(0,0,0,0.132), 0 0.3px 0.9px 0 rgba(0,0,0,0.108);
+}
+
+.fila-dato {
+    display: flex;
+    justify-content: space-between; /* Separa etiqueta y valor a los extremos */
+    margin-bottom: 8px;
+    font-size: 13px;
+    border-bottom: 1px solid #f3f2f1;
+    padding-bottom: 4px;
+}
+
+.fila-dato:last-child {
+    border-bottom: none;
+}
+
+.etiqueta {
+    font-weight: 600;
+    color: #605e5c;
+    width: 40%;
+}
+
+.valor {
+    color: #201f1e;
+    width: 60%;
+    text-align: right; /* Alinea los valores a la derecha para orden */
+    word-break: break-word; /* Si el texto es muy largo, baja de línea */
+}
+
+/* --- SECCIÓN 2: ESTILOS DE EDICIÓN (Inputs) --- */
+.grupo-input { 
+    background: white; 
+    padding: 15px; 
+    margin-bottom: 10px; 
+    border: 1px solid #e1dfdd; 
+    border-radius: 4px;
 }
 
 .caja-input { 
     width: 100%; 
-    padding: 6px; 
-    margin-bottom: 8px; 
+    padding: 8px; 
+    margin-bottom: 12px; 
     border: 1px solid #605e5c; 
     box-sizing: border-box; 
     border-radius: 2px;
@@ -45,7 +98,7 @@ h2 {
 
 .caja-input:focus {
     border-color: #0078d4;
-    outline: none;
+    outline: 2px solid #c7e0f4; /* Un focus ring estilo Office */
 }
 
 .ms-Label { 
@@ -53,22 +106,7 @@ h2 {
     font-size: 12px; 
     color: #323130; 
     display: block; 
-    margin-bottom: 2px;
-}
-
-/* Sistema de Grid Flexible (Para poner cosas lado a lado) */
-.fila-flex {
-    display: flex;
-    gap: 10px;
-    width: 100%;
-}
-
-.col-70 {
-    width: 70%;
-}
-
-.col-30 {
-    width: 30%;
+    margin-bottom: 4px;
 }
 
 /* Botón */
@@ -80,6 +118,7 @@ h2 {
     border: none; 
     cursor: pointer; 
     font-weight: bold; 
+    border-radius: 2px;
     transition: background-color 0.2s;
 }
 

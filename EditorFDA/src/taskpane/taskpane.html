@@ -11,50 +11,55 @@
 <body class="ms-font-m ms-welcome ms-Fabric">
     <div class="padding">
         <h2>Generador FDA</h2>
-        <p class="ms-font-s subtitulo">Rellena los datos para actualizar el informe.</p>
+        <p class="ms-font-s subtitulo">Información cargada desde SharePoint.</p>
 
-        <div class="grupo-input">
-            <label class="ms-Label">Cliente</label>
-            <input type="text" id="inCliente" class="caja-input" placeholder="Ej: Codelco">
-
-            <label class="ms-Label">División</label>
-            <input type="text" id="inDivision" class="caja-input" placeholder="Ej: Gabriela Mistral">
-
-            <label class="ms-Label">Nombre del Proyecto</label>
-            <input type="text" id="inProyecto" class="caja-input" placeholder="Ej: Estudio Diagnóstico...">
+        <div class="grupo-dato-lectura">
+            <h3>Datos generales del proyecto</h3>
             
-            <label class="ms-Label">N° Contrato</label>
-            <input type="text" id="inContrato" class="caja-input" placeholder="Ej: 4600025605">
+            <div class="fila-dato">
+                <span class="etiqueta">Cliente:</span>
+                <span id="lblCliente" class="valor">--</span>
+            </div>
             
-            <label class="ms-Label">Código API</label>
-            <input type="text" id="inAPI" class="caja-input" placeholder="Ej: G25D203">
-        </div>
+            <div class="fila-dato">
+                <span class="etiqueta">División:</span>
+                <span id="lblDivision" class="valor">--</span>
+            </div>
+            
+            <div class="fila-dato">
+                <span class="etiqueta">Tipo de servicio:</span>
+                <span id="lblServicio" class="valor">--</span>
+            </div>
 
-        <div class="grupo-input">
-            <label class="ms-Label">Servicios / Tipo Doc</label>
-            <input type="text" id="inServicios" class="caja-input" placeholder="Ej: Estudio / Informe">
+            <div class="fila-dato">
+                <span class="etiqueta">N° Contrato:</span>
+                <span id="lblContrato" class="valor">--</span>
+            </div>
 
-            <label class="ms-Label">Nombre del Documento</label>
-            <input type="text" id="inNombreDoc" class="caja-input" placeholder="Ej: Informe Técnico Final">
+            <div class="fila-dato">
+                <span class="etiqueta">N° API:</span>
+                <span id="lblApi" class="valor">--</span>
+            </div>
 
-            <div class="fila-flex">
-                <div class="col-70">
-                    <label class="ms-Label">Código Documento</label>
-                    <input type="text" id="inCodigo" class="caja-input" placeholder="Ej: 4600-INF-001">
-                </div>
-                <div class="col-30">
-                    <label class="ms-Label">Revisión</label>
-                    <input type="text" id="inRevision" class="caja-input" placeholder="B">
-                </div>
+            <div class="fila-dato">
+                <span class="etiqueta">Nombre del Proyecto:</span>
+                <span id="lblProyecto" class="valor">--</span>
             </div>
         </div>
 
-        <br>
-        
-        <button id="btnGenerar" class="boton">
-            <span class="ms-Button-label">Generar Documento</span>
-        </button>
-        
+        <hr class="separador">
+
+        <div class="grupo-input">
+            <h3>Edición del Documento</h3>
+            
+            <label class="ms-Label">Título del documento (ccNombreDoc)</label>
+            <input type="text" id="txtTituloDoc" class="caja-input" placeholder="Ej: Informe de Avance Semanal">
+            
+            <button id="btnActualizarTitulo" class="boton">
+                <span class="ms-Button-label">Actualizar Título</span>
+            </button>
+        </div>
+
         <p id="mensajeEstado" class="mensaje-estado"></p>
     </div>
     
