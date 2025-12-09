@@ -1,7 +1,6 @@
 /* global Office, Word */
 
 Office.onReady(() => {
-  // Inicialización lista
   console.log("Office initialized en commands.js");
 });
 
@@ -12,8 +11,8 @@ let dialog;
 // ==========================================
 
 function abrirCatalogo(event) {
-  // Nota: ?v=3 para asegurar que no cachee viejo
-  const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/catalog/catalog.html?v=3";
+  // Nota: ?v=4 para asegurar que no cachee viejo
+  const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/catalog/catalog.html?v=4";
 
   Office.context.ui.displayDialogAsync(url, { height: 60, width: 50 },
     function (asyncResult) {
@@ -26,7 +25,6 @@ function abrirCatalogo(event) {
     }
   );
   
-  // Avisamos a la cinta que el botón se presionó correctamente
   if(event) event.completed();
 }
 
@@ -39,7 +37,10 @@ async function procesarMensaje(arg) {
   }
 }
 
+// --- FUNCIÓN PRINCIPAL ACTUALIZADA: CREAR + RELLENAR ---
 async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
+  
+  // 1. Mapeo de archivos (Asegúrate que coincidan con tus archivos reales)
   const archivos = {
       "Minuta": "Minuta.docx",
       "Informe": "Informe.docx",
@@ -49,9 +50,11 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   const nombreArchivo = archivos[nombrePlantilla];
   if (!nombreArchivo) return;
 
+  // Construimos la URL
   const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + datosProyecto.carpeta_plantilla + "/" + nombreArchivo;
 
   try {
+      // 2. Descargar la plantilla
       const response = await fetch(urlPlantilla);
       if (!response.ok) throw new Error("No se encontró la plantilla");
       
@@ -59,7 +62,44 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
       const base64 = await getBase64FromBlob(blob);
 
       await Word.run(async (context) => {
+        // 3. Crear el documento nuevo en memoria (sin abrirlo aún)
         const newDoc = context.application.createDocument(base64);
+
+        // --- G. RELLENADO AUTOMÁTICO DE DATOS ---
+        // Conectamos los datos de SharePoint con las cajitas (Tags) de Word.
+        
+        // IMPORTANTE: Asegúrate de que "valor" tenga el nombre EXACTO de tu columna en SharePoint/JSON.
+        const mapaDatos = [
+            { tag: "ccCliente",    valor: datosProyecto.Cliente },
+            { tag: "ccDivisión",   valor: datosProyecto.Division },
+            { tag: "ccProyecto",   valor: datosProyecto.NombreProyecto }, 
+            { tag: "ccContrato",   valor: datosProyecto.Contrato },
+            { tag: "ccAPI",        valor: datosProyecto.API },
+            { tag: "ccServicios",  valor: datosProyecto.Servicios },
+            { tag: "ccCodigo",     valor: datosProyecto.CodigoDoc }
+        ];
+
+        // Recorremos la lista y rellenamos
+        for (let item of mapaDatos) {
+            // Si el dato viene vacío, saltamos al siguiente
+            if (!item.valor) continue;
+
+            // Buscamos la cajita en el NUEVO documento
+            const controls = newDoc.body.contentControls.getByTag(item.tag);
+            controls.load("items");
+            
+            await context.sync();
+
+            // Si la encontramos, escribimos dentro
+            if (controls.items.length > 0) {
+                controls.items.forEach((control) => {
+                    // Convertimos a String por seguridad
+                    control.insertText(String(item.valor), "Replace");
+                });
+            }
+        }
+
+        // 4. Abrimos el documento ya rellenado
         newDoc.open();
         await context.sync();
       });
