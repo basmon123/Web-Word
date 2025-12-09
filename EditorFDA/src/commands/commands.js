@@ -89,7 +89,7 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
             { tag: "ccContrato",   valor: datosProyecto.Contrato },
             { tag: "ccAPI",        valor: datosProyecto.API },
             // Asumiendo que 7560 es el Título/ID
-            { tag: "ccCodigo",     valor: datosProyecto.Título || datosProyecto.Title }
+            { tag: "ccID",     valor: datosProyecto.Título || datosProyecto.Title }
         ];
 
         for (let item of mapaDatos) {
