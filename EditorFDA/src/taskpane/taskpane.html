@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
@@ -9,48 +9,34 @@
     <link href="taskpane.css" rel="stylesheet" type="text/css" />
 </head>
 <body class="ms-font-m ms-welcome ms-Fabric">
+
     <div class="padding">
         <h2>Generador FDA</h2>
         <p class="ms-font-s subtitulo">Información cargada desde SharePoint.</p>
 
+        <div class="grupo-input">
+            <label class="ms-Label" for="ddlProyectos">Seleccionar Proyecto / Plantilla:</label>
+            
+            <select id="ddlProyectos" class="caja-input" title="Seleccionar un proyecto de la lista">
+                <option value="">Cargando lista...</option>
+            </select>
+        </div>
+
         <div class="grupo-dato-lectura">
-            <h3>Datos generales del proyecto</h3>
+            <h3>DATOS GENERALES DEL PROYECTO</h3>
             
-            <div class="fila-dato">
-                <span class="etiqueta">Cliente:</span>
-                <span id="lblCliente" class="valor">--</span>
-            </div>
-            
-            <div class="fila-dato">
-                <span class="etiqueta">División:</span>
-                <span id="lblDivision" class="valor">--</span>
-            </div>
-            
-            <div class="fila-dato">
-                <span class="etiqueta">Tipo de servicio:</span>
-                <span id="lblServicio" class="valor">--</span>
-            </div>
-
-            <div class="fila-dato">
-                <span class="etiqueta">N° Contrato:</span>
-                <span id="lblContrato" class="valor">--</span>
-            </div>
-
-            <div class="fila-dato">
-                <span class="etiqueta">N° API:</span>
-                <span id="lblApi" class="valor">--</span>
-            </div>
-
-            <div class="fila-dato">
-                <span class="etiqueta">Nombre del Proyecto:</span>
-                <span id="lblProyecto" class="valor">--</span>
-            </div>
+            <div class="fila-dato"><span class="etiqueta">Cliente:</span><span id="lblCliente" class="valor">--</span></div>
+            <div class="fila-dato"><span class="etiqueta">División:</span><span id="lblDivision" class="valor">--</span></div>
+            <div class="fila-dato"><span class="etiqueta">Tipo de servicio:</span><span id="lblServicio" class="valor">--</span></div>
+            <div class="fila-dato"><span class="etiqueta">N° Contrato:</span><span id="lblContrato" class="valor">--</span></div>
+            <div class="fila-dato"><span class="etiqueta">N° API:</span><span id="lblApi" class="valor">--</span></div>
+            <div class="fila-dato"><span class="etiqueta">Nombre del Proyecto:</span><span id="lblProyecto" class="valor">--</span></div>
         </div>
 
         <hr class="separador">
 
         <div class="grupo-input">
-            <h3>Edición del Documento</h3>
+            <h3>EDICIÓN DEL DOCUMENTO</h3>
             
             <label class="ms-Label">Título del documento (ccNombreDoc)</label>
             <input type="text" id="txtTituloDoc" class="caja-input" placeholder="Ej: Informe de Avance Semanal">
