@@ -1,138 +1,99 @@
-/* global document, Office, Word, fetch */
-
-let datosProyectoActual = {};
+/* global document, Office, Word */
 
 Office.onReady((info) => {
     if (info.host === Office.HostType.Word) {
-        // 1. Configurar botones
+        // 1. Configurar botón de actualizar título
         document.getElementById("btnActualizarTitulo").onclick = actualizarTituloDocumento;
-        document.getElementById("btnVolver").onclick = mostrarCatalogo;
 
-        // 2. Cargar el catálogo al iniciar
-        iniciarCatalogo();
+        // 2. RECUPERAR DATOS AUTOMÁTICAMENTE
+        cargarDatosDeMemoria();
     }
 });
 
-//URL DE TU JSON EN GITHUB
-const URL_JSON = "https://raw.githubusercontent.com/basmon123/templates/main/data.json"; 
-
-// --- A. LÓGICA DEL CATÁLOGO ---
-
-async function iniciarCatalogo() {
+// --- FUNCIÓN PRINCIPAL: LEER MEMORIA ---
+async function cargarDatosDeMemoria() {
     try {
-        const response = await fetch(URL_JSON);
-        const data = await response.json();
+        // Buscamos en el buzón "FDA_ProyectoActual"
+        const jsonDatos = localStorage.getItem("FDA_ProyectoActual");
         
-        // Asumiendo que tu JSON tiene una propiedad "projects" o es un array directo
-        // Ajusta esto según la estructura de tu JSON (ej: data.projects o data)
-        const proyectos = data.projects || data; 
-        
-        renderizarTarjetas(proyectos);
-    } catch (error) {
-        console.error("Error cargando catálogo:", error);
-        document.getElementById("contenedor-tarjetas").innerHTML = "<p style='color:red'>Error al cargar proyectos.</p>";
+        if (jsonDatos) {
+            const datos = JSON.parse(jsonDatos);
+            console.log("Datos encontrados en memoria:", datos);
+
+            // A. Llenar la parte visual (Labels)
+            setText("lblCliente", datos.Cliente);
+            setText("lblDivision", datos.Division);
+            setText("lblServicio", datos.TipoServicio);
+            setText("lblContrato", datos.NumeroContrato);
+            setText("lblApi", datos.NumeroAPI);
+            setText("lblProyecto", datos.NombreProyecto);
+
+            // B. Pre-llenar el input del título
+            const inputTitulo = document.getElementById("txtTituloDoc");
+            if (inputTitulo) {
+                inputTitulo.value = datos.NombreDoc || ""; 
+                inputTitulo.placeholder = "Ej: Informe de Avance";
+            }
+
+            // C. Escribir en el Word (Content Controls de solo lectura)
+            // Esto asegura que si abriste la plantilla, se llenen los datos duros
+            await escribirDatosBaseEnWord(datos);
+
+        } else {
+            console.log("No hay datos en memoria.");
+            document.getElementById("mensajeEstado").textContent = "⚠️ No se detectó selección de proyecto previa.";
+        }
+    } catch (e) {
+        console.error("Error leyendo memoria:", e);
     }
 }
 
-function renderizarTarjetas(listaProyectos) {
-    const contenedor = document.getElementById("contenedor-tarjetas");
-    contenedor.innerHTML = ""; // Limpiar
+// --- ESCRITURA EN WORD ---
+async function escribirDatosBaseEnWord(datos) {
+    await Word.run(async (context) => {
+        const tagsMapa = [
+            { t: "ccCliente",              v: datos.Cliente }, 
+            { t: "ccDivisión",             v: datos.Division },
+            { t: "ccServicios",            v: datos.TipoServicio },
+            { t: "ccContrato",             v: datos.NumeroContrato },
+            { t: "ccAPI",                  v: datos.NumeroAPI },
+            { t: "ccProyecto",             v: datos.NombreProyecto }
+        ];
 
-    listaProyectos.forEach(proyecto => {
-        // Crear tarjeta HTML
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-            <h4>${proyecto.NombreProyecto || "Sin Nombre"}</h4>
-            <p><strong>Cliente:</strong> ${proyecto.Cliente || "-"}</p>
-            <p><strong>División:</strong> ${proyecto.Division || "-"}</p>
-        `;
-
-        // EVENTO CLAVE: AL HACER CLIC EN LA TARJETA
-        card.onclick = () => {
-            seleccionarProyecto(proyecto);
-        };
-
-        contenedor.appendChild(card);
+        for (let item of tagsMapa) {
+            if (!item.v) continue;
+            let ccs = context.document.contentControls.getByTag(item.t);
+            ccs.load("items");
+            await context.sync();
+            if (ccs.items.length > 0) {
+                ccs.items.forEach(cc => cc.insertText(item.v, "Replace"));
+            }
+        }
     });
 }
 
-async function seleccionarProyecto(proyecto) {
-    // 1. Abrir el documento (Lógica que ya tenías, aquí simplificada)
-    // Si tu JSON tiene una URL de plantilla, úsala aquí.
-    if (proyecto.urlPlantilla) {
-        // createFromTemplate(proyecto.urlPlantilla)... (Tu lógica de apertura)
-        console.log("Abriendo plantilla: " + proyecto.urlPlantilla);
-        
-        // NOTA: Si abres un documento nuevo, el Add-in puede recargarse.
-        // Si el Add-in se recarga, perderemos el estado. 
-        // Para Add-ins persistentes, asumimos que trabajas sobre el doc actual 
-        // o que el usuario ya abrió el doc y solo selecciona los datos.
-    }
-
-    // 2. Cargar datos en la Vista Detalle
-    await cargarDatosEnTaskpane(proyecto);
-
-    // 3. Cambiar de pantalla
-    mostrarDetalle();
-}
-
-// --- B. NAVEGACIÓN ENTRE VISTAS ---
-
-function mostrarDetalle() {
-    document.getElementById("vista-catalogo").style.display = "none";
-    document.getElementById("vista-detalle").style.display = "block";
-}
-
-function mostrarCatalogo() {
-    document.getElementById("vista-detalle").style.display = "none";
-    document.getElementById("vista-catalogo").style.display = "block";
-}
-
-// --- C. LÓGICA DEL DETALLE (Tu código nuevo) ---
-
-window.cargarDatosEnTaskpane = async function(datos) {
-    console.log("Cargando datos...", datos);
-    datosProyectoActual = datos;
-
-    // Llenar textos (SPAN)
-    setText("lblCliente", datos.Cliente);
-    setText("lblDivision", datos.Division);
-    setText("lblServicio", datos.TipoServicio);
-    setText("lblContrato", datos.NumeroContrato);
-    setText("lblApi", datos.NumeroAPI);
-    setText("lblProyecto", datos.NombreProyecto);
-
-    // Llenar input editable
-    const inputTitulo = document.getElementById("txtTituloDoc");
-    if(inputTitulo) inputTitulo.value = datos.NombreDoc || "";
-
-    // Escribir automáticamente en Word los datos base
-    await escribirDatosBaseEnWord(datos);
-};
-
-// ... (Aquí van tus funciones actualizarTituloDocumento y escribirDatosBaseEnWord tal cual las tenías antes) ...
-
 async function actualizarTituloDocumento() {
-    // ... Tu lógica de actualizar título ...
     const nuevoTitulo = document.getElementById("txtTituloDoc").value;
+    const msgLabel = document.getElementById("mensajeEstado");
+
+    if(!nuevoTitulo) return;
+    if(msgLabel) msgLabel.textContent = "Actualizando...";
+
     await Word.run(async (context) => {
         const controls = context.document.contentControls.getByTag("ccNombreDoc");
         controls.load("items");
         await context.sync();
+        
         if (controls.items.length > 0) {
-             controls.items[0].insertText(nuevoTitulo, "Replace");
+             controls.items.forEach(cc => cc.insertText(nuevoTitulo, "Replace"));
+             if(msgLabel) msgLabel.textContent = "✅ Título actualizado.";
+        } else {
+             if(msgLabel) msgLabel.textContent = "⚠️ No se encontró el control ccNombreDoc.";
         }
     });
-    document.getElementById("mensajeEstado").textContent = "Título actualizado.";
-}
-
-async function escribirDatosBaseEnWord(datos) {
-     // ... Tu lógica de escribir los datos duros ...
-     // Copia aquí la función escribirDatosBaseEnWord que te di en la respuesta anterior
 }
 
 function setText(id, val) {
     const el = document.getElementById(id);
-    if (el) el.textContent = val || "-";
+    if (el) el.textContent = val || "--";
 }

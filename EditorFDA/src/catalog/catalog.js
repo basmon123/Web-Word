@@ -278,3 +278,16 @@ window.seleccionarPlantilla = function(tipo) {
     Office.context.ui.messageParent(JSON.stringify(mensaje));
 
 }
+
+
+// --- EN TU CÓDIGO DEL CATÁLOGO / BOTÓN NUEVO ---
+
+function alSeleccionarProyecto(proyecto) {
+    
+    // 1. GUARDAR EN MEMORIA (Esta es la clave)
+    // "FDA_ProyectoActual" es la clave secreta que usa el código de arriba
+    localStorage.setItem("FDA_ProyectoActual", JSON.stringify(proyecto));
+
+    // 2. Tu código actual que abre el documento...
+    // abrirDocumento(proyecto.url);
+}
