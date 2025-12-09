@@ -40,8 +40,6 @@ async function procesarMensaje(arg) {
 // --- FUNCIÓN PRINCIPAL CORREGIDA (MÉTODO DE INYECCIÓN) ---
 async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   
-  console.log("--- INICIANDO CREACIÓN PERFECTA (FORMATO + DATOS) ---");
-
   // 1. Mapeo de archivos
   const archivos = {
       "Minuta": "Minuta.docx",
@@ -52,7 +50,7 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   const nombreArchivo = archivos[nombrePlantilla];
   if (!nombreArchivo) return;
 
-  // Ajuste según tu SharePoint
+  // Ajuste según tu SharePoint (CarpetaPlantilla)
   const carpeta = datosProyecto.CarpetaPlantilla || "CODELCO"; 
   const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + carpeta + "/" + nombreArchivo;
 
@@ -65,51 +63,57 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
       const base64 = await getBase64FromBlob(blob);
 
       await Word.run(async (context) => {
-        // 3. Crear el documento en memoria (NO ABRIR AÚN)
-        // newDoc es un objeto que podemos manipular aunque no se vea
+        // 3. Crear el documento en memoria
         const newDoc = context.application.createDocument(base64);
 
-        // --- 4. RELLENADO DE DATOS (EN MEMORIA) ---
-        // Definimos el mapa (Tag Word <-> Columna SharePoint)
+        // --- REPORTE DE DIAGNÓSTICO (Esto escribirá en tu hoja) ---
+        let reporte = ["--- REPORTE DE DEBUG ---"];
+        
+        // 4. MAPEO (Ajustado a tu imagen de SharePoint)
+        // Asegúrate que los nombres a la derecha (datosProyecto.X) sean iguales a tu SharePoint
         const mapaDatos = [
-            { tag: "ccCliente",    valor: datosProyecto.Cliente },
-            { tag: "ccDivisión",   valor: datosProyecto.Division },
-            { tag: "ccProyecto",   valor: datosProyecto.NombreProyecto }, 
-            { tag: "ccContrato",   valor: datosProyecto.Contrato },
-            { tag: "ccAPI",        valor: datosProyecto.API },
-            // Intenta buscar Título o Title
-            { tag: "ccID",     valor: datosProyecto.Título || datosProyecto.Title }
+            { tag: "ccCliente",    nombreColumna: "Cliente",        valor: datosProyecto.Cliente },
+            { tag: "ccDivisión",   nombreColumna: "Division",       valor: datosProyecto.Division },
+            { tag: "ccProyecto",   nombreColumna: "NombreProyecto", valor: datosProyecto.NombreProyecto }, 
+            { tag: "ccContrato",   nombreColumna: "Contrato",       valor: datosProyecto.Contrato },
+            { tag: "ccAPI",        nombreColumna: "API",            valor: datosProyecto.API },
+            // Probamos 'Title' o 'Título' para el código
+            { tag: "ccCodigo",     nombreColumna: "Título",         valor: datosProyecto.Título || datosProyecto.Title }
         ];
 
         for (let item of mapaDatos) {
-            // Si el dato es null o vacío, pasamos
+            // A. Verificamos si el dato llegó de SharePoint
             if (!item.valor) {
-                console.log(`El dato para ${item.tag} está vacío.`);
+                reporte.push(`❌ FALLO DATO: La columna '${item.nombreColumna}' vino vacía o con nombre incorrecto.`);
                 continue;
+            } else {
+                reporte.push(`✅ DATO OK: '${item.nombreColumna}' = '${item.valor}'`);
             }
 
-            // Buscamos el control DENTRO del documento nuevo (newDoc)
+            // B. Buscamos la cajita en Word
             const controls = newDoc.body.contentControls.getByTag(item.tag);
             controls.load("items");
-            
-            // Sincronizamos para leer los controles de ese documento en memoria
             await context.sync();
 
             if (controls.items.length > 0) {
+                // C. Intentamos escribir
                 controls.items.forEach((control) => {
-                    // Escribimos el dato
                     control.insertText(String(item.valor), "Replace");
                 });
-                console.log(`✅ Rellenado: ${item.tag} -> ${item.valor}`);
+                reporte.push(`   -> 🔵 ÉXITO WORD: Se escribió en la etiqueta '${item.tag}'.`);
             } else {
-                console.warn(`⚠️ No encontré el Tag en Word: ${item.tag}`);
+                reporte.push(`   -> ⚠️ FALLO WORD: No existe ninguna cajita con etiqueta '${item.tag}' en la plantilla.`);
             }
         }
         
-        // 5. ABRIR EL DOCUMENTO (EL ÚLTIMO PASO)
-        // Ahora que ya está rellenado, le decimos a Word "Muéstralo".
+        // 5. ESCRIBIR EL REPORTE AL PRINCIPIO DEL DOCUMENTO
+        // Así podrás leer qué pasó
+        const parrafoReporte = newDoc.body.insertParagraph(reporte.join("\n"), "Start");
+        parrafoReporte.font.color = "red"; // Lo ponemos en rojo para que destaque
+        parrafoReporte.font.size = 9;
+
+        // 6. ABRIR
         newDoc.open();
-        
         await context.sync();
       });
 
