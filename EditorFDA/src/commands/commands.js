@@ -38,9 +38,14 @@ async function procesarMensaje(arg) {
 }
 
 // --- FUNCIÓN PRINCIPAL ACTUALIZADA: CREAR + RELLENAR ---
+// --- FUNCIÓN PRINCIPAL AJUSTADA A TU SHAREPOINT ---
 async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   
-  // 1. Mapeo de archivos (Asegúrate que coincidan con tus archivos reales)
+  // 1. DIAGNÓSTICO DE DATOS (Míralo en la consola si falla)
+  console.log("--- DATOS RECIBIDOS DESDE SHAREPOINT ---");
+  console.log(JSON.stringify(datosProyecto, null, 2));
+
+  // 2. Mapeo de archivos
   const archivos = {
       "Minuta": "Minuta.docx",
       "Informe": "Informe.docx",
@@ -50,62 +55,78 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   const nombreArchivo = archivos[nombrePlantilla];
   if (!nombreArchivo) return;
 
-  // Construimos la URL
-  const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + datosProyecto.carpeta_plantilla + "/" + nombreArchivo;
+  // CORRECCIÓN 1: Usamos 'CarpetaPlantilla' (Igual a tu imagen)
+  // Si en el JSON viene con otro nombre, el log de arriba nos lo dirá.
+  const carpeta = datosProyecto.CarpetaPlantilla || datosProyecto.carpetaPlantilla || "CODELCO"; 
+  
+  const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + carpeta + "/" + nombreArchivo;
+  console.log("Intentando descargar desde:", urlPlantilla);
 
   try {
-      // 2. Descargar la plantilla
+      // 3. Descargar la plantilla
       const response = await fetch(urlPlantilla);
-      if (!response.ok) throw new Error("No se encontró la plantilla");
+      if (!response.ok) throw new Error("Error al descargar plantilla (" + response.status + ")");
       
       const blob = await response.blob();
       const base64 = await getBase64FromBlob(blob);
 
       await Word.run(async (context) => {
-        // 3. Crear el documento nuevo en memoria (sin abrirlo aún)
+        // 4. Crear el documento
         const newDoc = context.application.createDocument(base64);
 
-        // --- G. RELLENADO AUTOMÁTICO DE DATOS ---
-        // Conectamos los datos de SharePoint con las cajitas (Tags) de Word.
+        // --- G. RELLENADO (MAPEO EXACTO A TU IMAGEN) ---
         
-        // IMPORTANTE: Asegúrate de que "valor" tenga el nombre EXACTO de tu columna en SharePoint/JSON.
+        // Izquierda (tag): Lo que pusiste en la cajita azul de Word (Propiedades > Etiqueta)
+        // Derecha (valor): El nombre de la columna en TU SharePoint (según la foto)
+        
         const mapaDatos = [
-            { tag: "ccCliente",    valor: datosProyecto.Cliente },
-            { tag: "ccDivisión",   valor: datosProyecto.Division },
-            { tag: "ccProyecto",   valor: datosProyecto.NombreProyecto }, 
-            { tag: "ccContrato",   valor: datosProyecto.Contrato },
-            { tag: "ccAPI",        valor: datosProyecto.API },
-            { tag: "ccServicios",  valor: datosProyecto.Servicios },
-            { tag: "ccCodigo",     valor: datosProyecto.CodigoDoc }
+            { tag: "ccCliente",    valor: datosProyecto.Cliente },        // Columna 'Cliente'
+            { tag: "ccDivisión",   valor: datosProyecto.Division },       // Columna 'Division'
+            { tag: "ccProyecto",   valor: datosProyecto.NombreProyecto }, // Columna 'NombreProyecto'
+            { tag: "ccContrato",   valor: datosProyecto.Contrato },       // Columna 'Contrato'
+            { tag: "ccAPI",        valor: datosProyecto.API },            // Columna 'API'
+            
+            // OJO AQUÍ: Asumo que la columna 'Título' (7560) es tu Código
+            { tag: "ccID",     valor: datosProyecto.Título || datosProyecto.Title }, 
+            
+            // Estos no se ven en la foto, pero los dejo por si acaso existen ocultos
+            { tag: "ccServicios",  valor: datosProyecto.Servicios }
         ];
 
-        // Recorremos la lista y rellenamos
+        // Recorremos y rellenamos
         for (let item of mapaDatos) {
-            // Si el dato viene vacío, saltamos al siguiente
-            if (!item.valor) continue;
+            // Si el dato no existe, avisamos en consola y seguimos
+            if (!item.valor) {
+                console.log(`Dato vacío para tag: ${item.tag}`);
+                continue;
+            }
 
-            // Buscamos la cajita en el NUEVO documento
+            // Buscamos la cajita azul en el Word nuevo
             const controls = newDoc.body.contentControls.getByTag(item.tag);
             controls.load("items");
-            
             await context.sync();
 
-            // Si la encontramos, escribimos dentro
             if (controls.items.length > 0) {
+                // Rellenamos todas las copias de esa etiqueta
                 controls.items.forEach((control) => {
-                    // Convertimos a String por seguridad
                     control.insertText(String(item.valor), "Replace");
                 });
+            } else {
+                console.log(`No encontré cajita en Word con etiqueta: ${item.tag}`);
             }
         }
 
-        // 4. Abrimos el documento ya rellenado
         newDoc.open();
         await context.sync();
       });
 
   } catch (error) {
-      console.error("Error al crear documento:", error);
+      console.error("FALLO CRÍTICO:", error);
+      // Esto escribirá el error en el documento actual para que lo veas sí o sí
+      await Word.run(async (ctx) => {
+        ctx.document.body.insertParagraph("ERROR: " + error.message + "\nURL: " + urlPlantilla, "Start");
+        await ctx.sync();
+      });
   }
 }
 
