@@ -75,7 +75,7 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
             { tag: "ccProyecto",   valor: datosProyecto.nombre },  // Antes era 'NombreProyecto'
             { tag: "ccContrato",   valor: datosProyecto.contrato },
             { tag: "ccAPI",        valor: datosProyecto.api },
-            { tag: "ccCodigo",     valor: datosProyecto.id }       // El ID es el número (7560)
+            { tag: "ccID",     valor: datosProyecto.id }       // El ID es el número (7560)
         ];
 
         for (let item of mapaDatos) {
