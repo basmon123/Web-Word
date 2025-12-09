@@ -3,7 +3,8 @@
 Office.onReady((info) => {
     if (info.host === Office.HostType.Word) {
         // 1. Configurar botón de actualizar título
-        document.getElementById("btnActualizarTitulo").onclick = actualizarTituloDocumento;
+        const btn = document.getElementById("btnActualizarTitulo");
+        if (btn) btn.onclick = actualizarTituloDocumento;
 
         // 2. RECUPERAR DATOS AUTOMÁTICAMENTE
         cargarDatosDeMemoria();
@@ -18,30 +19,35 @@ async function cargarDatosDeMemoria() {
         
         if (jsonDatos) {
             const datos = JSON.parse(jsonDatos);
-            console.log("Datos encontrados en memoria:", datos);
+            console.log("Datos encontrados (objeto):", datos);
 
             // A. Llenar la parte visual (Labels)
-            setText("lblCliente", datos.Cliente);
-            setText("lblDivision", datos.Division);
-            setText("lblServicio", datos.TipoServicio);
-            setText("lblContrato", datos.NumeroContrato);
-            setText("lblApi", datos.NumeroAPI);
-            setText("lblProyecto", datos.NombreProyecto);
+            // IMPORTANTE: Aquí usamos los nombres en MINÚSCULA tal cual vienen de catalog.js
+            setText("lblCliente",   datos.cliente);    // antes datos.Cliente
+            setText("lblDivision",  datos.division);   // antes datos.Division
+            setText("lblContrato",  datos.contrato);   // antes datos.NumeroContrato
+            setText("lblApi",       datos.api);        // antes datos.NumeroAPI
+            setText("lblProyecto",  datos.nombre);     // antes datos.NombreProyecto
+            
+            // Nota: En tu catalog.js no vi que mapearas "tipo de servicio". 
+            // Si existe en el JSON original, agrégalo al map del catalog.js. 
+            // Por ahora intentamos leerlo si existe, si no, saldrá "--"
+            setText("lblServicio",  datos.servicio || datos.TipoServicio); 
 
-            // B. Pre-llenar el input del título
+            // B. Pre-llenar el input del título (si existiera una propiedad para ello)
             const inputTitulo = document.getElementById("txtTituloDoc");
             if (inputTitulo) {
-                inputTitulo.value = datos.NombreDoc || ""; 
-                inputTitulo.placeholder = "Ej: Informe de Avance";
+                // Si tienes un nombre de doc por defecto, úsalo, sino vacío
+                inputTitulo.value = datos.nombre_doc || ""; 
             }
 
-            // C. Escribir en el Word (Content Controls de solo lectura)
-            // Esto asegura que si abriste la plantilla, se llenen los datos duros
+            // C. Escribir en el Word (Content Controls)
             await escribirDatosBaseEnWord(datos);
 
         } else {
             console.log("No hay datos en memoria.");
-            document.getElementById("mensajeEstado").textContent = "⚠️ No se detectó selección de proyecto previa.";
+            const msg = document.getElementById("mensajeEstado");
+            if(msg) msg.textContent = "⚠️ No se detectó selección de proyecto previa.";
         }
     } catch (e) {
         console.error("Error leyendo memoria:", e);
@@ -51,30 +57,43 @@ async function cargarDatosDeMemoria() {
 // --- ESCRITURA EN WORD ---
 async function escribirDatosBaseEnWord(datos) {
     await Word.run(async (context) => {
+        // Mapeo corregido: Etiquetas del Word (izquierda) vs Variables del Catalog (derecha)
         const tagsMapa = [
-            { t: "ccCliente",              v: datos.Cliente }, 
-            { t: "ccDivisión",             v: datos.Division },
-            { t: "ccServicios",            v: datos.TipoServicio },
-            { t: "ccContrato",             v: datos.NumeroContrato },
-            { t: "ccAPI",                  v: datos.NumeroAPI },
-            { t: "ccProyecto",             v: datos.NombreProyecto }
+            { t: "ccCliente",              v: datos.cliente }, 
+            { t: "ccDivisión",             v: datos.division },
+            { t: "ccServicios",            v: datos.servicio }, // Ajustar si agregas servicio al catalog
+            { t: "ccContrato",             v: datos.contrato },
+            { t: "ccAPI",                  v: datos.api },
+            { t: "ccProyecto",             v: datos.nombre },
+            // Encabezados (si usas duplicados para encabezados)
+            { t: "ccCliente_encabezado",   v: datos.cliente },
+            { t: "ccNProyecto_Encabezado", v: datos.nombre }
         ];
 
         for (let item of tagsMapa) {
-            if (!item.v) continue;
+            if (!item.v) continue; // Si el dato está vacío, saltamos
+            
+            // Buscamos el control por TAG
             let ccs = context.document.contentControls.getByTag(item.t);
             ccs.load("items");
             await context.sync();
+            
             if (ccs.items.length > 0) {
-                ccs.items.forEach(cc => cc.insertText(item.v, "Replace"));
+                // Escribimos en todos los controles con ese tag
+                ccs.items.forEach(cc => {
+                    cc.insertText(item.v, "Replace"); 
+                });
             }
         }
     });
 }
 
 async function actualizarTituloDocumento() {
-    const nuevoTitulo = document.getElementById("txtTituloDoc").value;
+    const txtTitulo = document.getElementById("txtTituloDoc");
     const msgLabel = document.getElementById("mensajeEstado");
+    
+    if(!txtTitulo) return;
+    const nuevoTitulo = txtTitulo.value;
 
     if(!nuevoTitulo) return;
     if(msgLabel) msgLabel.textContent = "Actualizando...";
