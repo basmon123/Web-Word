@@ -5,41 +5,82 @@ let datosProyectoActual = {};
 Office.onReady((info) => {
     if (info.host === Office.HostType.Word) {
         // 1. Configurar botones
-        document.getElementById("btnActualizarTitulo").onclick = actualizarTituloDocumento;
-        document.getElementById("btnVolver").onclick = mostrarCatalogo;
+        const btnAct = document.getElementById("btnActualizarTitulo");
+        if(btnAct) btnAct.onclick = actualizarTituloDocumento;
+        
+        const btnVolver = document.getElementById("btnVolver");
+        if(btnVolver) btnVolver.onclick = mostrarCatalogo;
 
-        // 2. Cargar el catálogo al iniciar
+        // 2. Cargar el catálogo
         iniciarCatalogo();
     }
 });
 
-//URL DE TU JSON EN GITHUB
+// URL DE TU JSON (Asegúrate que tu repo sea PÚBLICO y el nombre del archivo sea exacto)
 const URL_JSON = "https://raw.githubusercontent.com/basmon123/templates/main/data.json"; 
 
 // --- A. LÓGICA DEL CATÁLOGO ---
 
 async function iniciarCatalogo() {
     try {
+        console.log("Intentando descargar catálogo desde GitHub...");
         const response = await fetch(URL_JSON);
+        
+        // Verificamos si la respuesta fue exitosa (código 200)
+        if (!response.ok) {
+            throw new Error(`Error de red: ${response.status}`);
+        }
+
         const data = await response.json();
-        
-        // Asumiendo que tu JSON tiene una propiedad "projects" o es un array directo
-        // Ajusta esto según la estructura de tu JSON (ej: data.projects o data)
         const proyectos = data.projects || data; 
-        
         renderizarTarjetas(proyectos);
+
     } catch (error) {
-        console.error("Error cargando catálogo:", error);
-        document.getElementById("contenedor-tarjetas").innerHTML = "<p style='color:red'>Error al cargar proyectos.</p>";
+        console.warn("⚠️ No se pudo cargar desde GitHub. Usando datos locales de prueba.", error);
+        // SI FALLA GITHUB, CARGAMOS ESTOS DATOS DE RESPALDO:
+        usarDatosLocales();
     }
+}
+
+function usarDatosLocales() {
+    const proyectosPrueba = [
+        {
+            "NombreProyecto": "Proyecto Demo Local 1",
+            "Cliente": "Cliente Prueba",
+            "Division": "División Norte",
+            "TipoServicio": "Ingeniería Básica",
+            "NumeroContrato": "4600-TEST-01",
+            "NumeroAPI": "API-001",
+            "NombreDoc": "Informe de Inicio"
+        },
+        {
+            "NombreProyecto": "Estudio de Suelos",
+            "Cliente": "Minera Ejemplo",
+            "Division": "División Sur",
+            "TipoServicio": "Geotecnia",
+            "NumeroContrato": "5500-GEO-99",
+            "NumeroAPI": "API-GEO",
+            "NombreDoc": "Reporte Técnico"
+        }
+    ];
+    renderizarTarjetas(proyectosPrueba);
+    
+    // Mostramos un aviso visual de que estamos offline/local
+    const contenedor = document.getElementById("contenedor-tarjetas");
+    const aviso = document.createElement("p");
+    aviso.style.color = "orange";
+    aviso.style.fontSize = "11px";
+    aviso.textContent = "Nota: Mostrando datos de prueba (Error conectando a GitHub).";
+    contenedor.insertBefore(aviso, contenedor.firstChild);
 }
 
 function renderizarTarjetas(listaProyectos) {
     const contenedor = document.getElementById("contenedor-tarjetas");
-    contenedor.innerHTML = ""; // Limpiar
+    if(!contenedor) return;
+    
+    contenedor.innerHTML = ""; // Limpiar mensaje de "Cargando..."
 
     listaProyectos.forEach(proyecto => {
-        // Crear tarjeta HTML
         const card = document.createElement("div");
         card.className = "card";
         card.innerHTML = `
@@ -48,7 +89,6 @@ function renderizarTarjetas(listaProyectos) {
             <p><strong>División:</strong> ${proyecto.Division || "-"}</p>
         `;
 
-        // EVENTO CLAVE: AL HACER CLIC EN LA TARJETA
         card.onclick = () => {
             seleccionarProyecto(proyecto);
         };
@@ -58,17 +98,8 @@ function renderizarTarjetas(listaProyectos) {
 }
 
 async function seleccionarProyecto(proyecto) {
-    // 1. Abrir el documento (Lógica que ya tenías, aquí simplificada)
-    // Si tu JSON tiene una URL de plantilla, úsala aquí.
-    if (proyecto.urlPlantilla) {
-        // createFromTemplate(proyecto.urlPlantilla)... (Tu lógica de apertura)
-        console.log("Abriendo plantilla: " + proyecto.urlPlantilla);
-        
-        // NOTA: Si abres un documento nuevo, el Add-in puede recargarse.
-        // Si el Add-in se recarga, perderemos el estado. 
-        // Para Add-ins persistentes, asumimos que trabajas sobre el doc actual 
-        // o que el usuario ya abrió el doc y solo selecciona los datos.
-    }
+    // 1. Aquí iría la lógica para abrir la plantilla si tuvieras la URL
+    console.log("Proyecto seleccionado:", proyecto.NombreProyecto);
 
     // 2. Cargar datos en la Vista Detalle
     await cargarDatosEnTaskpane(proyecto);
@@ -79,32 +110,24 @@ async function seleccionarProyecto(proyecto) {
 
 // --- B. NAVEGACIÓN ENTRE VISTAS ---
 
-// --- B. NAVEGACIÓN ENTRE VISTAS ---
-
 function mostrarDetalle() {
-    // Ocultar catálogo agregando la clase
     document.getElementById("vista-catalogo").classList.add("oculto");
-    // Mostrar detalle quitando la clase
     document.getElementById("vista-detalle").classList.remove("oculto");
 }
 
 function mostrarCatalogo() {
-    // Mostrar catálogo quitando la clase
     document.getElementById("vista-catalogo").classList.remove("oculto");
-    // Ocultar detalle agregando la clase
     document.getElementById("vista-detalle").classList.add("oculto");
     
-    // Opcional: Limpiar mensaje de estado al volver
     const msg = document.getElementById("mensajeEstado");
     if(msg) msg.textContent = "";
 }
-// --- C. LÓGICA DEL DETALLE (Tu código nuevo) ---
+
+// --- C. LÓGICA DEL DETALLE ---
 
 window.cargarDatosEnTaskpane = async function(datos) {
-    console.log("Cargando datos...", datos);
     datosProyectoActual = datos;
 
-    // Llenar textos (SPAN)
     setText("lblCliente", datos.Cliente);
     setText("lblDivision", datos.Division);
     setText("lblServicio", datos.TipoServicio);
@@ -112,33 +135,62 @@ window.cargarDatosEnTaskpane = async function(datos) {
     setText("lblApi", datos.NumeroAPI);
     setText("lblProyecto", datos.NombreProyecto);
 
-    // Llenar input editable
     const inputTitulo = document.getElementById("txtTituloDoc");
     if(inputTitulo) inputTitulo.value = datos.NombreDoc || "";
 
-    // Escribir automáticamente en Word los datos base
     await escribirDatosBaseEnWord(datos);
 };
 
-// ... (Aquí van tus funciones actualizarTituloDocumento y escribirDatosBaseEnWord tal cual las tenías antes) ...
-
 async function actualizarTituloDocumento() {
-    // ... Tu lógica de actualizar título ...
+    const msgLabel = document.getElementById("mensajeEstado");
     const nuevoTitulo = document.getElementById("txtTituloDoc").value;
+
+    if (!nuevoTitulo) {
+        if (msgLabel) msgLabel.textContent = "⚠️ El título está vacío.";
+        return;
+    }
+    
+    if (msgLabel) msgLabel.textContent = "Actualizando...";
+
     await Word.run(async (context) => {
         const controls = context.document.contentControls.getByTag("ccNombreDoc");
         controls.load("items");
         await context.sync();
+        
+        let count = 0;
         if (controls.items.length > 0) {
-             controls.items[0].insertText(nuevoTitulo, "Replace");
+             controls.items.forEach(cc => {
+                 cc.insertText(nuevoTitulo, "Replace");
+                 count++;
+             });
         }
+        await context.sync();
+        
+        if (msgLabel) msgLabel.textContent = count > 0 ? "✅ Título actualizado." : "⚠️ No se encontró 'ccNombreDoc' en el Word.";
     });
-    document.getElementById("mensajeEstado").textContent = "Título actualizado.";
 }
 
 async function escribirDatosBaseEnWord(datos) {
-     // ... Tu lógica de escribir los datos duros ...
-     // Copia aquí la función escribirDatosBaseEnWord que te di en la respuesta anterior
+    await Word.run(async (context) => {
+        const tagsMapa = [
+            { t: "ccCliente",              v: datos.Cliente }, 
+            { t: "ccDivisión",             v: datos.Division },
+            { t: "ccServicios",            v: datos.TipoServicio },
+            { t: "ccContrato",             v: datos.NumeroContrato },
+            { t: "ccAPI",                  v: datos.NumeroAPI },
+            { t: "ccProyecto",             v: datos.NombreProyecto }
+        ];
+
+        for (let item of tagsMapa) {
+            if (!item.v) continue;
+            let ccs = context.document.contentControls.getByTag(item.t);
+            ccs.load("items");
+            await context.sync();
+            if (ccs.items.length > 0) {
+                ccs.items.forEach(cc => cc.insertText(item.v, "Replace"));
+            }
+        }
+    });
 }
 
 function setText(id, val) {
