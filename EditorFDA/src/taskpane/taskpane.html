@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es"> 
+<html>
 <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
@@ -7,53 +7,60 @@
     <title>Editor FDA</title>
     <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js" type="text/javascript"></script>
     <link href="taskpane.css" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="ms-font-m ms-welcome ms-Fabric">
-    
-    <div id="vista-catalogo">
-        <div class="padding">
-            <h2>Seleccionar Proyecto</h2>
-            <p class="ms-font-s subtitulo">Elige una plantilla para comenzar.</p>
-            <div id="contenedor-tarjetas">
-                <p>Cargando proyectos...</p>
-            </div>
-        </div>
-    </div>
+    <div class="padding">
+        <h2>Generador FDA</h2>
+        <p class="ms-font-s subtitulo">Información cargada desde SharePoint.</p>
 
-    <div id="vista-detalle" class="oculto">
-        
-        <div class="toolbar">
-            <button id="btnVolver" class="btn-icon" title="Volver al catálogo">
-                <i class="fas fa-arrow-left"></i> Volver
-            </button>
-            <span class="titulo-toolbar">Detalles del Proyecto</span>
-        </div>
-
-        <div class="padding">
-            <div class="grupo-dato-lectura">
-                <h3>Datos generales del proyecto</h3>
-                <div class="fila-dato"><span class="etiqueta">Cliente:</span><span id="lblCliente" class="valor">--</span></div>
-                <div class="fila-dato"><span class="etiqueta">División:</span><span id="lblDivision" class="valor">--</span></div>
-                <div class="fila-dato"><span class="etiqueta">Tipo de servicio:</span><span id="lblServicio" class="valor">--</span></div>
-                <div class="fila-dato"><span class="etiqueta">N° Contrato:</span><span id="lblContrato" class="valor">--</span></div>
-                <div class="fila-dato"><span class="etiqueta">N° API:</span><span id="lblApi" class="valor">--</span></div>
-                <div class="fila-dato"><span class="etiqueta">Nombre del Proyecto:</span><span id="lblProyecto" class="valor">--</span></div>
-            </div>
-
-            <hr class="separador">
-
-            <div class="grupo-input">
-                <h3>Edición del Documento</h3>
-                <label class="ms-Label">Título del documento (ccNombreDoc)</label>
-                <input type="text" id="txtTituloDoc" class="caja-input" placeholder="Ej: Informe de Avance Semanal">
-                <button id="btnActualizarTitulo" class="boton">
-                    <span class="ms-Button-label">Actualizar Título</span>
-                </button>
+        <div class="grupo-dato-lectura">
+            <h3>Datos generales del proyecto</h3>
+            
+            <div class="fila-dato">
+                <span class="etiqueta">Cliente:</span>
+                <span id="lblCliente" class="valor">--</span>
             </div>
             
-            <p id="mensajeEstado" class="mensaje-estado"></p>
+            <div class="fila-dato">
+                <span class="etiqueta">División:</span>
+                <span id="lblDivision" class="valor">--</span>
+            </div>
+            
+            <div class="fila-dato">
+                <span class="etiqueta">Tipo de servicio:</span>
+                <span id="lblServicio" class="valor">--</span>
+            </div>
+
+            <div class="fila-dato">
+                <span class="etiqueta">N° Contrato:</span>
+                <span id="lblContrato" class="valor">--</span>
+            </div>
+
+            <div class="fila-dato">
+                <span class="etiqueta">N° API:</span>
+                <span id="lblApi" class="valor">--</span>
+            </div>
+
+            <div class="fila-dato">
+                <span class="etiqueta">Nombre del Proyecto:</span>
+                <span id="lblProyecto" class="valor">--</span>
+            </div>
         </div>
+
+        <hr class="separador">
+
+        <div class="grupo-input">
+            <h3>Edición del Documento</h3>
+            
+            <label class="ms-Label">Título del documento (ccNombreDoc)</label>
+            <input type="text" id="txtTituloDoc" class="caja-input" placeholder="Ej: Informe de Avance Semanal">
+            
+            <button id="btnActualizarTitulo" class="boton">
+                <span class="ms-Button-label">Actualizar Título</span>
+            </button>
+        </div>
+
+        <p id="mensajeEstado" class="mensaje-estado"></p>
     </div>
     
     <script type="text/javascript" src="taskpane.js"></script>

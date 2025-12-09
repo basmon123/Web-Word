@@ -1,147 +1,59 @@
-/* global document, Office, Word, fetch */
+/* global document, Office, Word */
 
+// Variable global para guardar los datos cargados temporalmente (opcional)
 let datosProyectoActual = {};
 
 Office.onReady((info) => {
-    if (info.host === Office.HostType.Word) {
-        // 1. Configurar botones
-        const btnAct = document.getElementById("btnActualizarTitulo");
-        if(btnAct) btnAct.onclick = actualizarTituloDocumento;
-        
-        const btnVolver = document.getElementById("btnVolver");
-        if(btnVolver) btnVolver.onclick = mostrarCatalogo;
-
-        // 2. Cargar el catálogo
-        iniciarCatalogo();
-    }
+  if (info.host === Office.HostType.Word) {
+    // Asignar el evento al NUEVO botón de actualizar título
+    const btn = document.getElementById("btnActualizarTitulo");
+    if (btn) btn.onclick = actualizarTituloDocumento;
+  }
 });
 
-// URL DE TU JSON (Asegúrate que tu repo sea PÚBLICO y el nombre del archivo sea exacto)
-const URL_JSON = "https://raw.githubusercontent.com/basmon123/templates/main/data.json"; 
-
-// --- A. LÓGICA DEL CATÁLOGO ---
-
-async function iniciarCatalogo() {
+/**
+ * ---------------------------------------------------------
+ * 1. FUNCIÓN PARA CARGAR DATOS (Lectura desde SharePoint)
+ * ---------------------------------------------------------
+ * Esta función la debes llamar desde tu lógica de Catálogo/SharePoint
+ * pasándole el objeto JSON del proyecto seleccionado.
+ */
+window.cargarDatosEnTaskpane = async function(datos) {
     try {
-        console.log("Intentando descargar catálogo desde GitHub...");
-        const response = await fetch(URL_JSON);
-        
-        // Verificamos si la respuesta fue exitosa (código 200)
-        if (!response.ok) {
-            throw new Error(`Error de red: ${response.status}`);
+        // A. Guardamos datos en variable global por si se necesitan luego
+        datosProyectoActual = datos;
+
+        // B. Llenamos la UI (Los SPAN de solo lectura)
+        setText("lblCliente", datos.Cliente);
+        setText("lblDivision", datos.Division);
+        setText("lblServicio", datos.TipoServicio);
+        setText("lblContrato", datos.NumeroContrato);
+        setText("lblApi", datos.NumeroAPI);
+        setText("lblProyecto", datos.NombreProyecto);
+
+        // C. Pre-llenar el input del Título si viene dato, si no, dejar vacío
+        const inputTitulo = document.getElementById("txtTituloDoc");
+        if(inputTitulo && datos.NombreDoc) {
+            inputTitulo.value = datos.NombreDoc;
         }
 
-        const data = await response.json();
-        const proyectos = data.projects || data; 
-        renderizarTarjetas(proyectos);
+        // D. Escribir AUTOMÁTICAMENTE en el Word los datos "Duros" del proyecto
+        //    (Cliente, Contrato, etc.) para que el usuario no tenga que hacerlo.
+        await escribirDatosBaseEnWord(datos);
 
     } catch (error) {
-        console.warn("⚠️ No se pudo cargar desde GitHub. Usando datos locales de prueba.", error);
-        // SI FALLA GITHUB, CARGAMOS ESTOS DATOS DE RESPALDO:
-        usarDatosLocales();
+        console.error("Error al cargar datos:", error);
     }
-}
-
-function usarDatosLocales() {
-    const proyectosPrueba = [
-        {
-            "NombreProyecto": "Proyecto Demo Local 1",
-            "Cliente": "Cliente Prueba",
-            "Division": "División Norte",
-            "TipoServicio": "Ingeniería Básica",
-            "NumeroContrato": "4600-TEST-01",
-            "NumeroAPI": "API-001",
-            "NombreDoc": "Informe de Inicio"
-        },
-        {
-            "NombreProyecto": "Estudio de Suelos",
-            "Cliente": "Minera Ejemplo",
-            "Division": "División Sur",
-            "TipoServicio": "Geotecnia",
-            "NumeroContrato": "5500-GEO-99",
-            "NumeroAPI": "API-GEO",
-            "NombreDoc": "Reporte Técnico"
-        }
-    ];
-    renderizarTarjetas(proyectosPrueba);
-    
-    // Mostramos un aviso visual de que estamos offline/local
-    const contenedor = document.getElementById("contenedor-tarjetas");
-    const aviso = document.createElement("p");
-    aviso.style.color = "orange";
-    aviso.style.fontSize = "11px";
-    aviso.textContent = "Nota: Mostrando datos de prueba (Error conectando a GitHub).";
-    contenedor.insertBefore(aviso, contenedor.firstChild);
-}
-
-function renderizarTarjetas(listaProyectos) {
-    const contenedor = document.getElementById("contenedor-tarjetas");
-    if(!contenedor) return;
-    
-    contenedor.innerHTML = ""; // Limpiar mensaje de "Cargando..."
-
-    listaProyectos.forEach(proyecto => {
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-            <h4>${proyecto.NombreProyecto || "Sin Nombre"}</h4>
-            <p><strong>Cliente:</strong> ${proyecto.Cliente || "-"}</p>
-            <p><strong>División:</strong> ${proyecto.Division || "-"}</p>
-        `;
-
-        card.onclick = () => {
-            seleccionarProyecto(proyecto);
-        };
-
-        contenedor.appendChild(card);
-    });
-}
-
-async function seleccionarProyecto(proyecto) {
-    // 1. Aquí iría la lógica para abrir la plantilla si tuvieras la URL
-    console.log("Proyecto seleccionado:", proyecto.NombreProyecto);
-
-    // 2. Cargar datos en la Vista Detalle
-    await cargarDatosEnTaskpane(proyecto);
-
-    // 3. Cambiar de pantalla
-    mostrarDetalle();
-}
-
-// --- B. NAVEGACIÓN ENTRE VISTAS ---
-
-function mostrarDetalle() {
-    document.getElementById("vista-catalogo").classList.add("oculto");
-    document.getElementById("vista-detalle").classList.remove("oculto");
-}
-
-function mostrarCatalogo() {
-    document.getElementById("vista-catalogo").classList.remove("oculto");
-    document.getElementById("vista-detalle").classList.add("oculto");
-    
-    const msg = document.getElementById("mensajeEstado");
-    if(msg) msg.textContent = "";
-}
-
-// --- C. LÓGICA DEL DETALLE ---
-
-window.cargarDatosEnTaskpane = async function(datos) {
-    datosProyectoActual = datos;
-
-    setText("lblCliente", datos.Cliente);
-    setText("lblDivision", datos.Division);
-    setText("lblServicio", datos.TipoServicio);
-    setText("lblContrato", datos.NumeroContrato);
-    setText("lblApi", datos.NumeroAPI);
-    setText("lblProyecto", datos.NombreProyecto);
-
-    const inputTitulo = document.getElementById("txtTituloDoc");
-    if(inputTitulo) inputTitulo.value = datos.NombreDoc || "";
-
-    await escribirDatosBaseEnWord(datos);
 };
 
+/**
+ * ---------------------------------------------------------
+ * 2. FUNCIÓN DE ESCRITURA MANUAL (Solo Título)
+ * ---------------------------------------------------------
+ * Se ejecuta al dar clic en "Actualizar Título"
+ */
 async function actualizarTituloDocumento() {
+  try {
     const msgLabel = document.getElementById("mensajeEstado");
     const nuevoTitulo = document.getElementById("txtTituloDoc").value;
 
@@ -149,50 +61,83 @@ async function actualizarTituloDocumento() {
         if (msgLabel) msgLabel.textContent = "⚠️ El título está vacío.";
         return;
     }
-    
-    if (msgLabel) msgLabel.textContent = "Actualizando...";
+
+    if (msgLabel) msgLabel.textContent = "Actualizando título...";
 
     await Word.run(async (context) => {
-        const controls = context.document.contentControls.getByTag("ccNombreDoc");
-        controls.load("items");
-        await context.sync();
-        
-        let count = 0;
-        if (controls.items.length > 0) {
-             controls.items.forEach(cc => {
-                 cc.insertText(nuevoTitulo, "Replace");
-                 count++;
-             });
-        }
-        await context.sync();
-        
-        if (msgLabel) msgLabel.textContent = count > 0 ? "✅ Título actualizado." : "⚠️ No se encontró 'ccNombreDoc' en el Word.";
+      // Solo buscamos el Content Control del título
+      // Asegúrate que en Word el Tag sea "ccNombreDoc"
+      const controls = context.document.contentControls.getByTag("ccNombreDoc");
+      controls.load("items");
+      
+      await context.sync();
+
+      let count = 0;
+      if (controls.items.length > 0) {
+        // Insertar texto en todos los controles que tengan ese Tag
+        controls.items.forEach((cc) => {
+            cc.insertText(nuevoTitulo, "Replace");
+            count++;
+        });
+      }
+
+      await context.sync();
+      
+      if (msgLabel) {
+          msgLabel.textContent = count > 0 
+            ? "✅ Título actualizado." 
+            : "⚠️ No se encontró el control 'ccNombreDoc' en el Word.";
+      }
     });
+
+  } catch (error) {
+    console.error(error);
+    const msgLabel = document.getElementById("mensajeEstado");
+    if (msgLabel) msgLabel.textContent = "❌ Error: " + error.message;
+  }
 }
 
+/**
+ * ---------------------------------------------------------
+ * 3. AUXILIAR: Escribe los datos fijos de SharePoint en Word
+ * ---------------------------------------------------------
+ */
 async function escribirDatosBaseEnWord(datos) {
     await Word.run(async (context) => {
+        // Mapeo de datos JSON -> Tags de Content Control en Word
+        // Ajusta los nombres de la derecha (datos.X) según tu JSON de SharePoint
         const tagsMapa = [
             { t: "ccCliente",              v: datos.Cliente }, 
+            { t: "ccCliente_encabezado",   v: datos.Cliente },
             { t: "ccDivisión",             v: datos.Division },
+            { t: "ccD_encabezado",         v: datos.Division },
             { t: "ccServicios",            v: datos.TipoServicio },
             { t: "ccContrato",             v: datos.NumeroContrato },
             { t: "ccAPI",                  v: datos.NumeroAPI },
-            { t: "ccProyecto",             v: datos.NombreProyecto }
+            { t: "ccProyecto",             v: datos.NombreProyecto },
+            { t: "ccNProyecto_Encabezado", v: datos.NombreProyecto }
+            // Nota: El título (ccNombreDoc) no lo actualizamos aquí, 
+            // lo dejamos para el botón manual o si quieres forzarlo, agrégalo.
         ];
 
         for (let item of tagsMapa) {
-            if (!item.v) continue;
+            if (!item.v) continue; // Si el dato es null o vacío, saltamos
+
             let ccs = context.document.contentControls.getByTag(item.t);
             ccs.load("items");
             await context.sync();
+
             if (ccs.items.length > 0) {
-                ccs.items.forEach(cc => cc.insertText(item.v, "Replace"));
+                ccs.items.forEach(cc => {
+                    cc.insertText(item.v, "Replace");
+                });
             }
         }
+        await context.sync();
     });
 }
 
+// Helper simple para poner texto en los labels
 function setText(id, val) {
     const el = document.getElementById(id);
     if (el) el.textContent = val || "-";
