@@ -1,145 +1,138 @@
-/* global document, Office, Word */
+/* global document, Office, Word, fetch */
 
-// Variable global para guardar los datos cargados temporalmente (opcional)
 let datosProyectoActual = {};
 
 Office.onReady((info) => {
-  if (info.host === Office.HostType.Word) {
-    // Asignar el evento al NUEVO botón de actualizar título
-    const btn = document.getElementById("btnActualizarTitulo");
-    if (btn) btn.onclick = actualizarTituloDocumento;
-  }
+    if (info.host === Office.HostType.Word) {
+        // 1. Configurar botones
+        document.getElementById("btnActualizarTitulo").onclick = actualizarTituloDocumento;
+        document.getElementById("btnVolver").onclick = mostrarCatalogo;
+
+        // 2. Cargar el catálogo al iniciar
+        iniciarCatalogo();
+    }
 });
 
-/**
- * ---------------------------------------------------------
- * 1. FUNCIÓN PARA CARGAR DATOS (Lectura desde SharePoint)
- * ---------------------------------------------------------
- * Esta función la debes llamar desde tu lógica de Catálogo/SharePoint
- * pasándole el objeto JSON del proyecto seleccionado.
- */
-window.cargarDatosEnTaskpane = async function(datos) {
+//URL DE TU JSON EN GITHUB
+const URL_JSON = "https://raw.githubusercontent.com/basmon123/templates/main/data.json"; 
+
+// --- A. LÓGICA DEL CATÁLOGO ---
+
+async function iniciarCatalogo() {
     try {
-        // A. Guardamos datos en variable global por si se necesitan luego
-        datosProyectoActual = datos;
-
-        // B. Llenamos la UI (Los SPAN de solo lectura)
-        setText("lblCliente", datos.Cliente);
-        setText("lblDivision", datos.Division);
-        setText("lblServicio", datos.TipoServicio);
-        setText("lblContrato", datos.NumeroContrato);
-        setText("lblApi", datos.NumeroAPI);
-        setText("lblProyecto", datos.NombreProyecto);
-
-        // C. Pre-llenar el input del Título si viene dato, si no, dejar vacío
-        const inputTitulo = document.getElementById("txtTituloDoc");
-        if(inputTitulo && datos.NombreDoc) {
-            inputTitulo.value = datos.NombreDoc;
-        }
-
-        // D. Escribir AUTOMÁTICAMENTE en el Word los datos "Duros" del proyecto
-        //    (Cliente, Contrato, etc.) para que el usuario no tenga que hacerlo.
-        await escribirDatosBaseEnWord(datos);
-
+        const response = await fetch(URL_JSON);
+        const data = await response.json();
+        
+        // Asumiendo que tu JSON tiene una propiedad "projects" o es un array directo
+        // Ajusta esto según la estructura de tu JSON (ej: data.projects o data)
+        const proyectos = data.projects || data; 
+        
+        renderizarTarjetas(proyectos);
     } catch (error) {
-        console.error("Error al cargar datos:", error);
+        console.error("Error cargando catálogo:", error);
+        document.getElementById("contenedor-tarjetas").innerHTML = "<p style='color:red'>Error al cargar proyectos.</p>";
     }
+}
+
+function renderizarTarjetas(listaProyectos) {
+    const contenedor = document.getElementById("contenedor-tarjetas");
+    contenedor.innerHTML = ""; // Limpiar
+
+    listaProyectos.forEach(proyecto => {
+        // Crear tarjeta HTML
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+            <h4>${proyecto.NombreProyecto || "Sin Nombre"}</h4>
+            <p><strong>Cliente:</strong> ${proyecto.Cliente || "-"}</p>
+            <p><strong>División:</strong> ${proyecto.Division || "-"}</p>
+        `;
+
+        // EVENTO CLAVE: AL HACER CLIC EN LA TARJETA
+        card.onclick = () => {
+            seleccionarProyecto(proyecto);
+        };
+
+        contenedor.appendChild(card);
+    });
+}
+
+async function seleccionarProyecto(proyecto) {
+    // 1. Abrir el documento (Lógica que ya tenías, aquí simplificada)
+    // Si tu JSON tiene una URL de plantilla, úsala aquí.
+    if (proyecto.urlPlantilla) {
+        // createFromTemplate(proyecto.urlPlantilla)... (Tu lógica de apertura)
+        console.log("Abriendo plantilla: " + proyecto.urlPlantilla);
+        
+        // NOTA: Si abres un documento nuevo, el Add-in puede recargarse.
+        // Si el Add-in se recarga, perderemos el estado. 
+        // Para Add-ins persistentes, asumimos que trabajas sobre el doc actual 
+        // o que el usuario ya abrió el doc y solo selecciona los datos.
+    }
+
+    // 2. Cargar datos en la Vista Detalle
+    await cargarDatosEnTaskpane(proyecto);
+
+    // 3. Cambiar de pantalla
+    mostrarDetalle();
+}
+
+// --- B. NAVEGACIÓN ENTRE VISTAS ---
+
+function mostrarDetalle() {
+    document.getElementById("vista-catalogo").style.display = "none";
+    document.getElementById("vista-detalle").style.display = "block";
+}
+
+function mostrarCatalogo() {
+    document.getElementById("vista-detalle").style.display = "none";
+    document.getElementById("vista-catalogo").style.display = "block";
+}
+
+// --- C. LÓGICA DEL DETALLE (Tu código nuevo) ---
+
+window.cargarDatosEnTaskpane = async function(datos) {
+    console.log("Cargando datos...", datos);
+    datosProyectoActual = datos;
+
+    // Llenar textos (SPAN)
+    setText("lblCliente", datos.Cliente);
+    setText("lblDivision", datos.Division);
+    setText("lblServicio", datos.TipoServicio);
+    setText("lblContrato", datos.NumeroContrato);
+    setText("lblApi", datos.NumeroAPI);
+    setText("lblProyecto", datos.NombreProyecto);
+
+    // Llenar input editable
+    const inputTitulo = document.getElementById("txtTituloDoc");
+    if(inputTitulo) inputTitulo.value = datos.NombreDoc || "";
+
+    // Escribir automáticamente en Word los datos base
+    await escribirDatosBaseEnWord(datos);
 };
 
-/**
- * ---------------------------------------------------------
- * 2. FUNCIÓN DE ESCRITURA MANUAL (Solo Título)
- * ---------------------------------------------------------
- * Se ejecuta al dar clic en "Actualizar Título"
- */
+// ... (Aquí van tus funciones actualizarTituloDocumento y escribirDatosBaseEnWord tal cual las tenías antes) ...
+
 async function actualizarTituloDocumento() {
-  try {
-    const msgLabel = document.getElementById("mensajeEstado");
+    // ... Tu lógica de actualizar título ...
     const nuevoTitulo = document.getElementById("txtTituloDoc").value;
-
-    if (!nuevoTitulo) {
-        if (msgLabel) msgLabel.textContent = "⚠️ El título está vacío.";
-        return;
-    }
-
-    if (msgLabel) msgLabel.textContent = "Actualizando título...";
-
     await Word.run(async (context) => {
-      // Solo buscamos el Content Control del título
-      // Asegúrate que en Word el Tag sea "ccNombreDoc"
-      const controls = context.document.contentControls.getByTag("ccNombreDoc");
-      controls.load("items");
-      
-      await context.sync();
-
-      let count = 0;
-      if (controls.items.length > 0) {
-        // Insertar texto en todos los controles que tengan ese Tag
-        controls.items.forEach((cc) => {
-            cc.insertText(nuevoTitulo, "Replace");
-            count++;
-        });
-      }
-
-      await context.sync();
-      
-      if (msgLabel) {
-          msgLabel.textContent = count > 0 
-            ? "✅ Título actualizado." 
-            : "⚠️ No se encontró el control 'ccNombreDoc' en el Word.";
-      }
-    });
-
-  } catch (error) {
-    console.error(error);
-    const msgLabel = document.getElementById("mensajeEstado");
-    if (msgLabel) msgLabel.textContent = "❌ Error: " + error.message;
-  }
-}
-
-/**
- * ---------------------------------------------------------
- * 3. AUXILIAR: Escribe los datos fijos de SharePoint en Word
- * ---------------------------------------------------------
- */
-async function escribirDatosBaseEnWord(datos) {
-    await Word.run(async (context) => {
-        // Mapeo de datos JSON -> Tags de Content Control en Word
-        // Ajusta los nombres de la derecha (datos.X) según tu JSON de SharePoint
-        const tagsMapa = [
-            { t: "ccCliente",              v: datos.Cliente }, 
-            { t: "ccCliente_encabezado",   v: datos.Cliente },
-            { t: "ccDivisión",             v: datos.Division },
-            { t: "ccD_encabezado",         v: datos.Division },
-            { t: "ccServicios",            v: datos.TipoServicio },
-            { t: "ccContrato",             v: datos.NumeroContrato },
-            { t: "ccAPI",                  v: datos.NumeroAPI },
-            { t: "ccProyecto",             v: datos.NombreProyecto },
-            { t: "ccNProyecto_Encabezado", v: datos.NombreProyecto }
-            // Nota: El título (ccNombreDoc) no lo actualizamos aquí, 
-            // lo dejamos para el botón manual o si quieres forzarlo, agrégalo.
-        ];
-
-        for (let item of tagsMapa) {
-            if (!item.v) continue; // Si el dato es null o vacío, saltamos
-
-            let ccs = context.document.contentControls.getByTag(item.t);
-            ccs.load("items");
-            await context.sync();
-
-            if (ccs.items.length > 0) {
-                ccs.items.forEach(cc => {
-                    cc.insertText(item.v, "Replace");
-                });
-            }
-        }
+        const controls = context.document.contentControls.getByTag("ccNombreDoc");
+        controls.load("items");
         await context.sync();
+        if (controls.items.length > 0) {
+             controls.items[0].insertText(nuevoTitulo, "Replace");
+        }
     });
+    document.getElementById("mensajeEstado").textContent = "Título actualizado.";
 }
 
-// Helper simple para poner texto en los labels
+async function escribirDatosBaseEnWord(datos) {
+     // ... Tu lógica de escribir los datos duros ...
+     // Copia aquí la función escribirDatosBaseEnWord que te di en la respuesta anterior
+}
+
 function setText(id, val) {
     const el = document.getElementById(id);
     if (el) el.textContent = val || "-";
 }
-//
