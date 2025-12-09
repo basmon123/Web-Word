@@ -37,15 +37,13 @@ async function procesarMensaje(arg) {
   }
 }
 
-// --- FUNCIÓN PRINCIPAL ACTUALIZADA: CREAR + RELLENAR ---
-// --- FUNCIÓN PRINCIPAL AJUSTADA A TU SHAREPOINT ---
+// --- FUNCIÓN PRINCIPAL CORREGIDA (MÉTODO DE INYECCIÓN) ---
 async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   
-  // 1. DIAGNÓSTICO DE DATOS (Míralo en la consola si falla)
-  console.log("--- DATOS RECIBIDOS DESDE SHAREPOINT ---");
-  console.log(JSON.stringify(datosProyecto, null, 2));
+  console.log("--- INICIANDO PROCESO DE INYECCIÓN ---");
+  console.log("Datos para rellenar:", JSON.stringify(datosProyecto, null, 2));
 
-  // 2. Mapeo de archivos
+  // 1. Mapeo de archivos
   const archivos = {
       "Minuta": "Minuta.docx",
       "Informe": "Informe.docx",
@@ -55,76 +53,72 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   const nombreArchivo = archivos[nombrePlantilla];
   if (!nombreArchivo) return;
 
-  // CORRECCIÓN 1: Usamos 'CarpetaPlantilla' (Igual a tu imagen)
-  // Si en el JSON viene con otro nombre, el log de arriba nos lo dirá.
-  const carpeta = datosProyecto.CarpetaPlantilla || datosProyecto.carpetaPlantilla || "CODELCO"; 
-  
+  // Usamos el nombre de columna tal cual tu imagen de SharePoint
+  const carpeta = datosProyecto.CarpetaPlantilla || "CODELCO"; 
   const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + carpeta + "/" + nombreArchivo;
-  console.log("Intentando descargar desde:", urlPlantilla);
 
   try {
-      // 3. Descargar la plantilla
+      // 2. Descargar la plantilla
       const response = await fetch(urlPlantilla);
-      if (!response.ok) throw new Error("Error al descargar plantilla (" + response.status + ")");
+      if (!response.ok) throw new Error("Error descargando plantilla");
       
       const blob = await response.blob();
       const base64 = await getBase64FromBlob(blob);
 
       await Word.run(async (context) => {
-        // 4. Crear el documento
-        const newDoc = context.application.createDocument(base64);
+        // --- CAMBIO RADICAL AQUÍ ---
+        
+        // En vez de crear un doc nuevo y perder la conexión,
+        // usamos el documento ACTUAL.
+        const currentBody = context.document.body;
+        
+        // "Replace": Borra todo lo que hay en el documento actual y pega la plantilla.
+        // Esto mantiene vivo el contexto para poder editarlo después.
+        currentBody.insertFileFromBase64(base64, "Replace");
+        
+        // Sincronizamos para que la plantilla aparezca visualmente
+        await context.sync();
+        console.log("Plantilla insertada con éxito. Iniciando rellenado...");
 
-        // --- G. RELLENADO (MAPEO EXACTO A TU IMAGEN) ---
-        
-        // Izquierda (tag): Lo que pusiste en la cajita azul de Word (Propiedades > Etiqueta)
-        // Derecha (valor): El nombre de la columna en TU SharePoint (según la foto)
-        
+        // --- G. RELLENADO DE DATOS ---
         const mapaDatos = [
-            { tag: "ccCliente",    valor: datosProyecto.Cliente },        // Columna 'Cliente'
-            { tag: "ccDivisión",   valor: datosProyecto.Division },       // Columna 'Division'
-            { tag: "ccProyecto",   valor: datosProyecto.NombreProyecto }, // Columna 'NombreProyecto'
-            { tag: "ccContrato",   valor: datosProyecto.Contrato },       // Columna 'Contrato'
-            { tag: "ccAPI",        valor: datosProyecto.API },            // Columna 'API'
-            
-            // OJO AQUÍ: Asumo que la columna 'Título' (7560) es tu Código
-            { tag: "ccID",     valor: datosProyecto.Título || datosProyecto.Title }, 
-            
-            // Estos no se ven en la foto, pero los dejo por si acaso existen ocultos
-            { tag: "ccServicios",  valor: datosProyecto.Servicios }
+            // Izquierda: Tag en Word (Propiedades) | Derecha: Columna SharePoint
+            { tag: "ccCliente",    valor: datosProyecto.Cliente },
+            { tag: "ccDivisión",   valor: datosProyecto.Division },
+            { tag: "ccProyecto",   valor: datosProyecto.NombreProyecto }, 
+            { tag: "ccContrato",   valor: datosProyecto.Contrato },
+            { tag: "ccAPI",        valor: datosProyecto.API },
+            // Asumiendo que 7560 es el Título/ID
+            { tag: "ccCodigo",     valor: datosProyecto.Título || datosProyecto.Title }
         ];
 
-        // Recorremos y rellenamos
         for (let item of mapaDatos) {
-            // Si el dato no existe, avisamos en consola y seguimos
-            if (!item.valor) {
-                console.log(`Dato vacío para tag: ${item.tag}`);
-                continue;
-            }
+            if (!item.valor) continue;
 
-            // Buscamos la cajita azul en el Word nuevo
-            const controls = newDoc.body.contentControls.getByTag(item.tag);
+            // Buscamos en el documento ACTUAL (context.document)
+            const controls = context.document.body.contentControls.getByTag(item.tag);
             controls.load("items");
             await context.sync();
 
             if (controls.items.length > 0) {
-                // Rellenamos todas las copias de esa etiqueta
                 controls.items.forEach((control) => {
+                    // Escribimos el dato
                     control.insertText(String(item.valor), "Replace");
                 });
             } else {
-                console.log(`No encontré cajita en Word con etiqueta: ${item.tag}`);
+                console.log(`Aviso: No encontré el Tag "${item.tag}" en esta plantilla.`);
             }
         }
-
-        newDoc.open();
+        
+        console.log("Rellenado finalizado.");
         await context.sync();
       });
 
   } catch (error) {
-      console.error("FALLO CRÍTICO:", error);
-      // Esto escribirá el error en el documento actual para que lo veas sí o sí
+      console.error("ERROR:", error);
+      // Escribir error en pantalla para que lo veas
       await Word.run(async (ctx) => {
-        ctx.document.body.insertParagraph("ERROR: " + error.message + "\nURL: " + urlPlantilla, "Start");
+        ctx.document.body.insertParagraph("Error: " + error.message, "Start");
         await ctx.sync();
       });
   }
