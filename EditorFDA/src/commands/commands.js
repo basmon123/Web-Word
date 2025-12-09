@@ -40,8 +40,7 @@ async function procesarMensaje(arg) {
 // --- FUNCIÓN PRINCIPAL CORREGIDA (MÉTODO DE INYECCIÓN) ---
 async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   
-  console.log("--- INICIANDO PROCESO DE INYECCIÓN ---");
-  console.log("Datos para rellenar:", JSON.stringify(datosProyecto, null, 2));
+  console.log("--- INICIANDO CREACIÓN PERFECTA (FORMATO + DATOS) ---");
 
   // 1. Mapeo de archivos
   const archivos = {
@@ -53,12 +52,12 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   const nombreArchivo = archivos[nombrePlantilla];
   if (!nombreArchivo) return;
 
-  // Usamos el nombre de columna tal cual tu imagen de SharePoint
+  // Ajuste según tu SharePoint
   const carpeta = datosProyecto.CarpetaPlantilla || "CODELCO"; 
   const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + carpeta + "/" + nombreArchivo;
 
   try {
-      // 2. Descargar la plantilla
+      // 2. Descargar
       const response = await fetch(urlPlantilla);
       if (!response.ok) throw new Error("Error descargando plantilla");
       
@@ -66,38 +65,34 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
       const base64 = await getBase64FromBlob(blob);
 
       await Word.run(async (context) => {
-        // --- CAMBIO RADICAL AQUÍ ---
-        
-        // En vez de crear un doc nuevo y perder la conexión,
-        // usamos el documento ACTUAL.
-        const currentBody = context.document.body;
-        
-        // "Replace": Borra todo lo que hay en el documento actual y pega la plantilla.
-        // Esto mantiene vivo el contexto para poder editarlo después.
-        currentBody.insertFileFromBase64(base64, "Replace");
-        
-        // Sincronizamos para que la plantilla aparezca visualmente
-        await context.sync();
-        console.log("Plantilla insertada con éxito. Iniciando rellenado...");
+        // 3. Crear el documento en memoria (NO ABRIR AÚN)
+        // newDoc es un objeto que podemos manipular aunque no se vea
+        const newDoc = context.application.createDocument(base64);
 
-        // --- G. RELLENADO DE DATOS ---
+        // --- 4. RELLENADO DE DATOS (EN MEMORIA) ---
+        // Definimos el mapa (Tag Word <-> Columna SharePoint)
         const mapaDatos = [
-            // Izquierda: Tag en Word (Propiedades) | Derecha: Columna SharePoint
             { tag: "ccCliente",    valor: datosProyecto.Cliente },
             { tag: "ccDivisión",   valor: datosProyecto.Division },
             { tag: "ccProyecto",   valor: datosProyecto.NombreProyecto }, 
             { tag: "ccContrato",   valor: datosProyecto.Contrato },
             { tag: "ccAPI",        valor: datosProyecto.API },
-            // Asumiendo que 7560 es el Título/ID
+            // Intenta buscar Título o Title
             { tag: "ccID",     valor: datosProyecto.Título || datosProyecto.Title }
         ];
 
         for (let item of mapaDatos) {
-            if (!item.valor) continue;
+            // Si el dato es null o vacío, pasamos
+            if (!item.valor) {
+                console.log(`El dato para ${item.tag} está vacío.`);
+                continue;
+            }
 
-            // Buscamos en el documento ACTUAL (context.document)
-            const controls = context.document.body.contentControls.getByTag(item.tag);
+            // Buscamos el control DENTRO del documento nuevo (newDoc)
+            const controls = newDoc.body.contentControls.getByTag(item.tag);
             controls.load("items");
+            
+            // Sincronizamos para leer los controles de ese documento en memoria
             await context.sync();
 
             if (controls.items.length > 0) {
@@ -105,22 +100,21 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
                     // Escribimos el dato
                     control.insertText(String(item.valor), "Replace");
                 });
+                console.log(`✅ Rellenado: ${item.tag} -> ${item.valor}`);
             } else {
-                console.log(`Aviso: No encontré el Tag "${item.tag}" en esta plantilla.`);
+                console.warn(`⚠️ No encontré el Tag en Word: ${item.tag}`);
             }
         }
         
-        console.log("Rellenado finalizado.");
+        // 5. ABRIR EL DOCUMENTO (EL ÚLTIMO PASO)
+        // Ahora que ya está rellenado, le decimos a Word "Muéstralo".
+        newDoc.open();
+        
         await context.sync();
       });
 
   } catch (error) {
       console.error("ERROR:", error);
-      // Escribir error en pantalla para que lo veas
-      await Word.run(async (ctx) => {
-        ctx.document.body.insertParagraph("Error: " + error.message, "Start");
-        await ctx.sync();
-      });
   }
 }
 
