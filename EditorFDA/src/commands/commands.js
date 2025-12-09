@@ -40,7 +40,11 @@ async function procesarMensaje(arg) {
 // --- FUNCIÓN PRINCIPAL ACTUALIZADA: CREAR + RELLENAR ---
 async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   
-  // 1. Mapeo de archivos (Asegúrate que coincidan con tus archivos reales)
+  // 1. DIAGNÓSTICO: Ver qué datos llegan realmente
+  console.log("--- INICIANDO CREACIÓN DE DOCUMENTO ---");
+  console.log("Plantilla seleccionada:", nombrePlantilla);
+  console.log("Datos recibidos (JSON CRUDO):", JSON.stringify(datosProyecto, null, 2));
+
   const archivos = {
       "Minuta": "Minuta.docx",
       "Informe": "Informe.docx",
@@ -48,13 +52,14 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   };
 
   const nombreArchivo = archivos[nombrePlantilla];
-  if (!nombreArchivo) return;
+  if (!nombreArchivo) {
+      console.error("Error: No existe archivo para la plantilla " + nombrePlantilla);
+      return;
+  }
 
-  // Construimos la URL
   const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + datosProyecto.carpeta_plantilla + "/" + nombreArchivo;
 
   try {
-      // 2. Descargar la plantilla
       const response = await fetch(urlPlantilla);
       if (!response.ok) throw new Error("No se encontró la plantilla");
       
@@ -62,14 +67,11 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
       const base64 = await getBase64FromBlob(blob);
 
       await Word.run(async (context) => {
-        // 3. Crear el documento nuevo en memoria (sin abrirlo aún)
         const newDoc = context.application.createDocument(base64);
 
-        // --- G. RELLENADO AUTOMÁTICO DE DATOS ---
-        // Conectamos los datos de SharePoint con las cajitas (Tags) de Word.
-        
-        // IMPORTANTE: Asegúrate de que "valor" tenga el nombre EXACTO de tu columna en SharePoint/JSON.
+        // --- DEFINICIÓN DEL MAPA ---
         const mapaDatos = [
+            // Revisa en la consola cómo se llaman realmente las propiedades
             { tag: "ccCliente",    valor: datosProyecto.Cliente },
             { tag: "ccDivisión",   valor: datosProyecto.Division },
             { tag: "ccProyecto",   valor: datosProyecto.NombreProyecto }, 
@@ -79,33 +81,37 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
             { tag: "ccCodigo",     valor: datosProyecto.CodigoDoc }
         ];
 
-        // Recorremos la lista y rellenamos
+        // --- DIAGNÓSTICO DEL BUCLE ---
         for (let item of mapaDatos) {
-            // Si el dato viene vacío, saltamos al siguiente
-            if (!item.valor) continue;
+            console.log(`Procesando Tag: "${item.tag}"`);
+            
+            if (!item.valor) {
+                console.warn(`⚠️ ALERTA: El valor para "${item.tag}" está VACÍO o UNDEFINED. Revisa el nombre en el JSON.`);
+                continue; 
+            } else {
+                console.log(`✅ Valor encontrado: "${item.valor}". Buscando control...`);
+            }
 
-            // Buscamos la cajita en el NUEVO documento
             const controls = newDoc.body.contentControls.getByTag(item.tag);
             controls.load("items");
-            
             await context.sync();
 
-            // Si la encontramos, escribimos dentro
             if (controls.items.length > 0) {
+                console.log(`🎉 ¡ÉXITO! Se encontraron ${controls.items.length} controles para "${item.tag}". Escribiendo...`);
                 controls.items.forEach((control) => {
-                    // Convertimos a String por seguridad
                     control.insertText(String(item.valor), "Replace");
                 });
+            } else {
+                console.error(`❌ ERROR: No se encontró ninguna cajita azul en el Word con el Tag "${item.tag}".`);
             }
         }
 
-        // 4. Abrimos el documento ya rellenado
         newDoc.open();
         await context.sync();
       });
 
   } catch (error) {
-      console.error("Error al crear documento:", error);
+      console.error("Error fatal:", error);
   }
 }
 
