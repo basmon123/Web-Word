@@ -31,7 +31,7 @@ async function run() {
     await Word.run(async (context) => {
       let contadores = 0;
       
-      // Lógica unificada para cuerpo y encabezados
+      // Lógica unificada para cuerpo y encabezados prueba
       const tagsMapa = [
           { t: "ccCliente", v: datos.ccCliente }, { t: "ccCliente_encabezado", v: datos.ccCliente },
           { t: "ccDivisión", v: datos.ccDivisión }, { t: "ccD_encabezado", v: datos.ccDivisión },
