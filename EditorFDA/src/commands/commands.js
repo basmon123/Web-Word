@@ -37,7 +37,7 @@ async function procesarMensaje(arg) {
   }
 }
 
-// --- FUNCIÓN PRINCIPAL CORREGIDA (MÉTODO DE INYECCIÓN) ---
+// --- FUNCIÓN PRINCIPAL CORREGIDA (NOMBRES CORRECTOS) ---
 async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   
   // 1. Mapeo de archivos
@@ -50,64 +50,60 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   const nombreArchivo = archivos[nombrePlantilla];
   if (!nombreArchivo) return;
 
-  // Valor por defecto para que no falle la descarga mientras investigamos
-  const carpeta = datosProyecto.CarpetaPlantilla || "CODELCO"; 
+  // Ajuste: El JSON dice "carpeta_plantilla" (minúscula), no "CarpetaPlantilla"
+  const carpeta = datosProyecto.carpeta_plantilla || "CODELCO"; 
   const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + carpeta + "/" + nombreArchivo;
 
   try {
+      // 2. Descargar la plantilla
       const response = await fetch(urlPlantilla);
-      if (!response.ok) throw new Error("Error descargando plantilla");
+      if (!response.ok) throw new Error("No se encontró la plantilla");
       
       const blob = await response.blob();
       const base64 = await getBase64FromBlob(blob);
 
       await Word.run(async (context) => {
+        // 3. Crear el documento en memoria (NO ABRIR AÚN)
         const newDoc = context.application.createDocument(base64);
 
-        // ============================================================
-        // 🕵️‍♂️ MODO SUPER ESPÍA: IMPRIMIR EL JSON EN EL DOC
-        // ============================================================
-        
-        // Convertimos TODO el objeto de datos a texto para leerlo
-        const datosCrudos = JSON.stringify(datosProyecto, null, 2);
-        
-        // Lo escribimos en rojo y grande al principio del documento
-        const parrafoDebug = newDoc.body.insertParagraph("DATOS RECIBIDOS:\n" + datosCrudos, "Start");
-        parrafoDebug.font.color = "red";
-        parrafoDebug.font.name = "Courier New"; // Fuente tipo código
-        parrafoDebug.font.size = 10;
-        
-        // Insertamos un salto de página para separar el reporte de la plantilla real
-        parrafoDebug.insertBreak(Word.BreakType.page, "After");
-
-        // ============================================================
-
-        // Intento de rellenado (seguramente fallará, pero lo dejamos)
+        // --- 4. RELLENADO DE DATOS (AHORA SÍ COINCIDEN) ---
+        // Izquierda (tag): Etiqueta en Word
+        // Derecha (valor): Propiedad EXACTA de tu JSON
         const mapaDatos = [
-            { tag: "ccCliente",    valor: datosProyecto.Cliente },
-            { tag: "ccDivisión",   valor: datosProyecto.Division },
-            { tag: "ccProyecto",   valor: datosProyecto.NombreProyecto }, 
-            { tag: "ccContrato",   valor: datosProyecto.Contrato },
-            { tag: "ccAPI",        valor: datosProyecto.API },
-            { tag: "ccCodigo",     valor: datosProyecto.Título || datosProyecto.Title }
+            { tag: "ccCliente",    valor: datosProyecto.cliente },
+            { tag: "ccDivisión",   valor: datosProyecto.division },
+            { tag: "ccProyecto",   valor: datosProyecto.nombre },  // Antes era 'NombreProyecto'
+            { tag: "ccContrato",   valor: datosProyecto.contrato },
+            { tag: "ccAPI",        valor: datosProyecto.api },
+            { tag: "ccCodigo",     valor: datosProyecto.id }       // El ID es el número (7560)
         ];
 
         for (let item of mapaDatos) {
+            // Si el dato viene vacío, saltamos al siguiente
             if (!item.valor) continue;
+
+            // Buscamos la cajita en el NUEVO documento
             const controls = newDoc.body.contentControls.getByTag(item.tag);
             controls.load("items");
+            
             await context.sync();
+
+            // Si la encontramos, escribimos dentro
             if (controls.items.length > 0) {
-                controls.items.forEach(c => c.insertText(String(item.valor), "Replace"));
+                controls.items.forEach((control) => {
+                    // Convertimos a String por seguridad
+                    control.insertText(String(item.valor), "Replace");
+                });
             }
         }
-        
+
+        // 5. Abrimos el documento ya rellenado
         newDoc.open();
         await context.sync();
       });
 
   } catch (error) {
-      console.error("ERROR:", error);
+      console.error("Error al crear documento:", error);
   }
 }
 
