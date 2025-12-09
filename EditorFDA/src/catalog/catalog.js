@@ -262,32 +262,28 @@ function setText(id, text) {
 
 // Función que envía la orden a Word
 
+// Función que envía la orden a Word
 window.seleccionarPlantilla = function(tipo) {
-
     if(!proyectoActual) return;
+
+    // --- 1. PASO CRÍTICO: GUARDAR EN MEMORIA ---
+    // Aquí guardamos el proyecto seleccionado en la "caja fuerte" del navegador.
+    // La clave "FDA_ProyectoActual" debe ser IDÉNTICA a la que usamos en taskpane.js
+    localStorage.setItem("FDA_ProyectoActual", JSON.stringify(proyectoActual));
+
+    // --- 2. Enviar mensaje al padre (commands.js) para abrir el documento ---
     const mensaje = {
-
         accion: "CREAR_DOCUMENTO",
-
         plantilla: tipo,
-
         datos: proyectoActual
-
     };
 
-    Office.context.ui.messageParent(JSON.stringify(mensaje));
-
+    // Verificamos si estamos en un contexto de diálogo para enviar el mensaje
+    if (Office.context.ui.messageParent) {
+        Office.context.ui.messageParent(JSON.stringify(mensaje));
+    } else {
+        console.error("No se pudo comunicar con la ventana padre.");
+    }
 }
 
 
-// --- EN TU CÓDIGO DEL CATÁLOGO / BOTÓN NUEVO ---
-
-function alSeleccionarProyecto(proyecto) {
-    
-    // 1. GUARDAR EN MEMORIA (Esta es la clave)
-    // "FDA_ProyectoActual" es la clave secreta que usa el código de arriba
-    localStorage.setItem("FDA_ProyectoActual", JSON.stringify(proyecto));
-
-    // 2. Tu código actual que abre el documento...
-    // abrirDocumento(proyecto.url);
-}
