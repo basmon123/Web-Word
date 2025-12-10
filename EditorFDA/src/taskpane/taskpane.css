@@ -129,3 +129,12 @@ h3 {
 .boton:active {
     background-color: #005a9e;
 }
+
+/* ... resto de tu CSS ... */
+
+/* Estilo para inputs bloqueados/readonly */
+.input-bloqueado {
+    background-color: #f3f2f1;
+    color: #666;
+    cursor: not-allowed;
+}

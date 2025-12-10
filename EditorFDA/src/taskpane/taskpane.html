@@ -11,6 +11,7 @@
 <body class="ms-font-m ms-welcome ms-Fabric">
 
     <div class="padding">
+        
         <div class="grupo-dato-lectura">
             <h3>DATOS GENERALES DEL PROYECTO</h3>
             
@@ -27,12 +28,35 @@
         <div class="grupo-input">
             <h3>EDICIÓN DEL DOCUMENTO</h3>
             
-            <label class="ms-Label">Título del documento</label>
-        
-            <input type="text" id="txtTituloDoc" class="caja-input" placeholder="Cargando título...">
+            <label class="ms-Label" for="txtTituloDoc">Título del documento</label>
+            <input type="text" id="txtTituloDoc" class="caja-input" placeholder="Cargando título..." title="Título del documento">
             
             <button id="btnActualizarTitulo" class="boton">
                 <span class="ms-Button-label">Actualizar Título</span>
+            </button>
+        </div>
+
+        <hr class="separador">
+
+        <div class="grupo-input">
+            <h3>DATOS DE LA REVISIÓN DEL DOCUMENTO</h3>
+            
+            <label class="ms-Label" for="ddlEmitidoPara">Emitido Para:</label>
+            <select id="ddlEmitidoPara" class="caja-input" title="Seleccionar motivo de emisión">
+                <option value="Interna">Revisión Interna Empresa de Ingeniería</option>
+                <option value="Codelco">Revisión de Codelco</option>
+                <option value="Fase">Siguiente Fase</option>
+            </select>
+        
+            <label class="ms-Label" for="ddlRevision">Revisión:</label>
+            <select id="ddlRevision" class="caja-input" title="Seleccionar letra de revisión">
+                </select>
+        
+            <label class="ms-Label" for="txtFecha">Fecha de Emisión:</label>
+            <input type="text" id="txtFecha" class="caja-input input-bloqueado" readonly title="Fecha actual generada automáticamente">
+        
+            <button id="btnActualizarRevision" class="boton">
+                <span class="ms-Button-label">Actualizar Datos de Revisión</span>
             </button>
         </div>
 
