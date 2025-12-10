@@ -100,6 +100,13 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
         // 5. Abrimos el documento ya rellenado
         newDoc.open();
         await context.sync();
+        // =======================================================
+        // 6. NUEVO: CERRAR EL DOCUMENTO ACTUAL (EL EN BLANCO)
+        // =======================================================
+        // 'context.document' se refiere al documento desde donde lanzaste el comando.
+        // 'skipSave' evita que pregunte "¿Desea guardar?" al cerrarse.
+        context.document.close(Word.CloseBehavior.skipSave); 
+        // =======================================================
       });
 
   } catch (error) {
