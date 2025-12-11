@@ -201,19 +201,6 @@ async function aplicarEstiloProfesional(nombreEsp, nombreIng) {
 }
 
 
-async function toggleNegrita(event) {
-  await Word.run(async (context) => {
-    const range = context.document.getSelection();
-    range.load("font/bold");
-    await context.sync();
-    
-    // Si está en negrita lo quita, si no, lo pone.
-    range.font.bold = !range.font.bold;
-    
-    await context.sync();
-  });
-  if (event) event.completed();
-}
 
 
 
@@ -227,5 +214,3 @@ Office.actions.associate("estiloTitulo2", estiloTitulo2);
 Office.actions.associate("estiloTitulo3", estiloTitulo3);
 Office.actions.associate("abrirCatalogo", abrirCatalogo);
 
-// REGISTRAR LA NUEVA FUNCIÓN
-Office.actions.associate("toggleNegrita", toggleNegrita);
