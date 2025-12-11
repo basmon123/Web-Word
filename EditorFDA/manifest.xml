@@ -86,6 +86,21 @@
                     <FunctionName>abrirCatalogo</FunctionName>
                   </Action>
                 </Control>
+                <Control xsi:type="Button" id="BtnCorrectorSofisticado">
+    <Label resid="NombreBotonCorrector" />
+    <Supertip>
+        <Title resid="TituloBotonCorrector" />
+        <Description resid="DescBotonCorrector" />
+    </Supertip>
+    <Icon>
+        <bt:Image size="16" resid="Icon.16x16"/>
+        <bt:Image size="32" resid="Icon.32x32"/>
+        <bt:Image size="80" resid="Icon.80x80"/>
+    </Icon>
+    <Action xsi:type="ExecuteFunction">
+        <FunctionName>validarEstilo</FunctionName>
+    </Action>
+</Control>
               </Group>
 
             </CustomTab>

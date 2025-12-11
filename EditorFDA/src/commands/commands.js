@@ -200,7 +200,62 @@ async function aplicarEstiloProfesional(nombreEsp, nombreIng) {
   });
 }
 
+async function validarEstilo(event) {
+  await Word.run(async (context) => {
+    
+    // 1. LISTA DE REGLAS "SOFISTICADAS" (Lo que tu jefe quiere corregir)
+    // Estructura: { error: "palabra a buscar", sugerencia: "lo correcto" }
+    const reglas = [
+      { error: "haiga", sugerencia: "haya" },
+      { error: "tamos", sugerencia: "estamos" },
+      { error: "ocupo que", sugerencia: "necesito que" },
+      { error: "asap", sugerencia: "lo antes posible" }
+    ];
 
+    let contadorErrores = 0;
+
+    // 2. RECORREMOS LAS REGLAS
+    // Usamos un bucle 'for...of' para manejar las promesas (await) correctamente
+    for (const regla of reglas) {
+      
+      // Buscamos la palabra en el cuerpo del documento
+      // matchWholeWord: true evita que marque partes de otras palabras
+      // matchCase: false para que no importe mayúsculas/minúsculas
+      const resultados = context.document.body.search(regla.error, { matchWholeWord: true, matchCase: false });
+      
+      // Cargamos la propiedad de fuente para poder modificarla
+      context.load(resultados, 'font');
+      
+      // Sincronizamos para traer los resultados de Word
+      await context.sync();
+
+      // 3. SI ENCONTRAMOS ERRORES, LOS RESALTAMOS
+      if (resultados.items.length > 0) {
+        resultados.items.forEach((item) => {
+          // La marcamos en amarillo chillón
+          item.font.highlightColor = "#FFFF00"; 
+          item.font.bold = true;
+          // Opcional: Podríamos añadir un comentario, pero por ahora solo resaltar.
+          contadorErrores++;
+        });
+      }
+    }
+
+    // 4. AVISO AL USUARIO (feedback visual)
+    if (contadorErrores > 0) {
+      console.log(`Se encontraron ${contadorErrores} problemas de estilo.`);
+      // En un add-in real, aquí podrías abrir el taskpane o mostrar una notificación pequeña
+    }
+
+    await context.sync();
+  });
+
+  // Importante: Avisar a Office que el botón terminó su trabajo
+  event.completed();
+}
+
+// REGISTRA LA FUNCIÓN (Importante para que el manifest.xml la encuentre)
+Office.actions.associate("validarEstilo", validarEstilo);
 
 
 
