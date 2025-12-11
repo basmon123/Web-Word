@@ -2,8 +2,7 @@
 
 // 1. CONFIGURACIÓN (Global)
 // -----------------------------------------------------------------------------
-// ¡IMPORTANTE! Pega aquí la URL que copiaste del paso 1 de tu flujo de Power Automate
-const URL_POWER_AUTOMATE = "https://defaultef8b3c00d87343e58b66d56c25f2bd.fe.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d88cc5b40d1b48bfa41f130960371fe1/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=QAwT8H-2RLeYuIvy4ISgzt0sXfcBX0JGvjjR_3l1V_Y"; 
+const URL_POWER_AUTOMATE = "PEGAR_AQUI_TU_URL_LARGA_DE_POWER_AUTOMATE"; 
 
 const OPCIONES_REVISION = {
     "Interna": ["A", "B"],
@@ -28,18 +27,17 @@ Office.onReady((info) => {
 });
 
 function asignarEventos() {
-    // --- NUEVO: Evento para el desplegable de documentos ---
+    // --- Evento del Dropdown ---
     const ddlDocs = document.getElementById("ddlDocumentos");
     if (ddlDocs) {
-        // Cuando cambias la selección, se inserta en el Word
         ddlDocs.onchange = insertarDocumentoSeleccionado;
     }
 
-    // Botón Revisión (Se mantiene igual)
+    // Botón Revisión
     const btnRev = document.getElementById("btnActualizarRevision");
     if (btnRev) btnRev.onclick = actualizarDatosRevision;
 
-    // Dropdown "Emitido Para" (Se mantiene igual)
+    // Dropdown "Emitido Para"
     const ddlEmitido = document.getElementById("ddlEmitidoPara");
     if (ddlEmitido) {
         ddlEmitido.onchange = actualizarListaRevisiones;
@@ -47,20 +45,18 @@ function asignarEventos() {
 }
 
 // ---------------------------------------------
-// 2. NUEVA LÓGICA: CONEXIÓN CON AZURE
+// 2. LÓGICA DE AZURE (Con Filtro Anti-Duplicados)
 // ---------------------------------------------
 
 async function cargarDocumentosDesdeAzure(idProyecto) {
     const ddl = document.getElementById("ddlDocumentos");
     if (!ddl) return;
 
-    // Mostrar estado de carga
     ddl.innerHTML = "<option>Cargando lista de documentos...</option>";
 
     try {
         console.log(`Consultando documentos para proyecto ID: ${idProyecto}`);
 
-        // Llamada a Power Automate (Tu API)
         const response = await fetch(URL_POWER_AUTOMATE, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -69,13 +65,30 @@ async function cargarDocumentosDesdeAzure(idProyecto) {
 
         if (!response.ok) throw new Error("Error de conexión con Power Automate");
 
-        const listaDocumentos = await response.json();
-        console.log("Documentos recibidos:", listaDocumentos);
+        const listaCruda = await response.json();
+        console.log(`Recibidos ${listaCruda.length} registros. Filtrando duplicados...`);
+
+        // --- FILTRO DE DUPLICADOS ---
+        const documentosUnicos = [];
+        const codigosVistos = new Set();
+
+        listaCruda.forEach(doc => {
+            // Usamos 'codFDA' como identificador único. Si está vacío, usamos el 'Nombre'.
+            // Esto asegura que "Cierre Operacional" aparezca solo una vez.
+            const idUnico = doc.codFDA || doc.Nombre; 
+
+            if (!codigosVistos.has(idUnico)) {
+                codigosVistos.add(idUnico);
+                documentosUnicos.push(doc);
+            }
+        });
+
+        console.log(`Lista final limpia: ${documentosUnicos.length} documentos.`);
 
         // Limpiar dropdown
         ddl.innerHTML = "";
 
-        if (!listaDocumentos || listaDocumentos.length === 0) {
+        if (documentosUnicos.length === 0) {
             ddl.innerHTML = "<option>No se encontraron documentos</option>";
             return;
         }
@@ -87,12 +100,15 @@ async function cargarDocumentosDesdeAzure(idProyecto) {
         ddl.appendChild(optDef);
 
         // Llenar el dropdown
-        listaDocumentos.forEach(doc => {
+        documentosUnicos.forEach(doc => {
             const opt = document.createElement("option");
-            // Texto visible: Nombre del Documento
-            opt.text = doc.NombreDocumento; 
-            // Valor oculto: Código del Cliente (necesario para insertar después)
-            opt.value = doc.CodigoCliente || "SIN-CODIGO"; 
+            
+            // OJO: Usamos las mayúsculas exactas de tu JSON
+            opt.text = doc.Nombre; 
+            
+            // Guardamos el código cliente en el valor (si es null ponemos guion)
+            opt.value = doc.codCliente || "SIN-CODIGO"; 
+            
             ddl.appendChild(opt);
         });
 
@@ -105,27 +121,25 @@ async function cargarDocumentosDesdeAzure(idProyecto) {
 async function insertarDocumentoSeleccionado() {
     const ddl = document.getElementById("ddlDocumentos");
     
-    // Obtenemos datos de la selección actual
-    const nombreDoc = ddl.options[ddl.selectedIndex].text; // Texto visible
-    const codigoCliente = ddl.value; // Valor oculto
+    const nombreDoc = ddl.options[ddl.selectedIndex].text;
+    let codigoCliente = ddl.value;
 
-    // Si seleccionó la opción por defecto, no hacemos nada
     if (!codigoCliente || codigoCliente === "") return;
+    if (codigoCliente === "SIN-CODIGO") codigoCliente = "N/A"; // Estético para Word
 
     console.log(`Insertando -> Nombre: ${nombreDoc}, Código: ${codigoCliente}`);
 
     await Word.run(async (context) => {
-        // 1. Insertar Nombre del Documento (ccNombreDoc)
+        // 1. Insertar Nombre
         const ctrlsNombre = context.document.contentControls.getByTag("ccNombreDoc");
         ctrlsNombre.load("items");
 
-        // 2. Insertar Código del Cliente (ccCodigoCliente)
+        // 2. Insertar Código Cliente
         const ctrlsCodigo = context.document.contentControls.getByTag("ccCodigoCliente");
         ctrlsCodigo.load("items");
 
         await context.sync();
 
-        // Escribimos en Word
         if (ctrlsNombre.items.length > 0) {
             ctrlsNombre.items.forEach(cc => cc.insertText(nombreDoc, "Replace"));
         }
@@ -139,18 +153,17 @@ async function insertarDocumentoSeleccionado() {
 }
 
 // ---------------------------------------------
-// 3. LÓGICA DE DATOS Y MEMORIA (Modificada)
+// 3. LÓGICA DE DATOS Y MEMORIA
 // ---------------------------------------------
 
 async function cargarDatosDeMemoria() {
     try {
-        console.log("Leyendo memoria local...");
         const jsonDatos = localStorage.getItem("FDA_ProyectoActual");
         
         if (jsonDatos) {
             const datos = JSON.parse(jsonDatos);
             
-            // Llenar etiquetas del panel
+            // UI Labels
             setText("lblCliente",   datos.cliente);
             setText("lblDivision",  datos.division);
             setText("lblContrato",  datos.contrato);
@@ -158,31 +171,29 @@ async function cargarDatosDeMemoria() {
             setText("lblProyecto",  datos.nombre);
             setText("lblServicio",  datos.servicio || datos.TipoServicio);
 
-            // Escribir datos base en el documento Word
+            // Escribir en Word (Datos base)
             escribirDatosBaseEnWord(datos).catch(e => console.warn(e));
 
-            // --- CRUCE CON AZURE ---
-            // Usamos el dato 'api' (o 'id') para buscar los documentos específicos
-            const idProyecto = datos.id;
+            // --- CORRECCIÓN CLAVE ---
+            // Usamos 'id' porque ya confirmamos que ese es el dato correcto (7827)
+            const idProyecto = datos.id; 
             
             if (idProyecto) {
                 cargarDocumentosDesdeAzure(idProyecto);
             } else {
-                console.warn("El proyecto en memoria no tiene un ID/API válido.");
+                console.warn("El proyecto en memoria no tiene un ID válido.");
+                const ddl = document.getElementById("ddlDocumentos");
+                if(ddl) ddl.innerHTML = "<option>Seleccione un proyecto primero</option>";
             }
 
-        } else {
-            console.log("No hay datos en memoria (Proyecto no seleccionado).");
         }
     } catch (e) {
         console.error("Error leyendo memoria:", e);
-        const msg = document.getElementById("mensajeEstado");
-        if(msg) msg.textContent = "⚠️ Error al leer datos locales.";
     }
 }
 
 // ---------------------------------------------
-// 4. FUNCIONES AUXILIARES (Sin cambios mayores)
+// 4. FUNCIONES AUXILIARES (Iguales)
 // ---------------------------------------------
 
 async function escribirDatosBaseEnWord(datos) {
@@ -219,7 +230,6 @@ function establecerFechaHoy() {
     const txtFecha = document.getElementById("txtFecha");
     if (txtFecha) {
         const hoy = new Date();
-        // Formato simple DD-MM-AAAA
         const dia = String(hoy.getDate()).padStart(2, '0');
         const mes = String(hoy.getMonth() + 1).padStart(2, '0');
         const anio = hoy.getFullYear();
@@ -258,7 +268,6 @@ async function actualizarDatosRevision() {
     await Word.run(async (context) => {
         const ddlEmitido = document.getElementById("ddlEmitidoPara");
         const textoEmitido = ddlEmitido.options[ddlEmitido.selectedIndex].text;
-        
         const textoRevision = document.getElementById("ddlRevision").value;
         const textoFecha = document.getElementById("txtFecha").value;
 
