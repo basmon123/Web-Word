@@ -201,66 +201,16 @@ async function aplicarEstiloProfesional(nombreEsp, nombreIng) {
 }
 
 async function validarEstilo(event) {
-  try {
-    await Word.run(async (context) => {
-      // 1. Obtener el cuerpo del documento
-      const body = context.document.body;
-
-      // ---------------------------------------------------------
-      // TAREA 1: Estandarizar Fuente (Arial 11)
-      // ---------------------------------------------------------
-      // Esto asegura que no haya mezclas raras de copiado y pegado.
-      body.font.name = "Arial";
-      body.font.size = 11;
-
-      // ---------------------------------------------------------
-      // TAREA 2: Eliminar dobles espacios
-      // ---------------------------------------------------------
-      // Buscamos "  " (dos espacios)
-      const searchResults = body.search("  ", { matchWildcards: false });
-      context.load(searchResults, "items");
-      
-      await context.sync();
-
-      // Recorremos los resultados y reemplazamos por un solo espacio
-      // Iteramos al revés para no romper los rangos al editar
-      for (let i = searchResults.items.length - 1; i >= 0; i--) {
-        searchResults.items[i].insertText(" ", "Replace");
-      }
-
-      // ---------------------------------------------------------
-      // TAREA 3: Resaltar palabras de advertencia (Auditoría)
-      // ---------------------------------------------------------
-      // Lista de palabras que quieres detectar
-      const palabrasProhibidas = ["BORRADOR", "PENDIENTE", "REVISAR", "TBD"];
-
-      for (let palabra of palabrasProhibidas) {
-        // Buscamos sin importar mayúsculas/minúsculas (matchCase: false)
-        const foundItems = body.search(palabra, { matchCase: false });
-        context.load(foundItems, "font");
-        
-        await context.sync();
-
-        // Las resaltamos en amarillo y ponemos el texto en rojo
-        for (let i = 0; i < foundItems.items.length; i++) {
-          foundItems.items[i].font.highlightColor = "Yellow";
-          foundItems.items[i].font.color = "Red";
-          foundItems.items[i].font.bold = true;
-        }
-      }
-
-      await context.sync();
-    });
-
-    console.log("Validación de estilo FDA completada.");
-    
-  } catch (error) {
-    console.error("Error en validarEstilo:", error);
-  }
-
-  // IMPORTANTE: Avisar a Office que terminamos
+  // PRUEBA SIMPLE: Escribir texto al inicio
+  await Word.run(async (context) => {
+    context.document.body.insertText("¡EL BOTÓN FUNCIONA! ", "Start");
+    await context.sync();
+  });
+  
   event.completed();
 }
+
+// Asegúrate que este nombre "validarEstilo" es idéntico al del XML
 Office.actions.associate("validarEstilo", validarEstilo);
 
 
