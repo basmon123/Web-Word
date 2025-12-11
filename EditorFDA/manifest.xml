@@ -5,12 +5,12 @@
            xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" 
            xsi:type="TaskPaneApp">
   
-  <Id>bb88cc99-0000-1111-2222-333344445566</Id>
-  <Version>1.1.0.0</Version>
+  <Id>cc77dd88-1111-2222-3333-444455556677</Id>
+  <Version>1.2.0.0</Version>
   <ProviderName>FDA Ingenieria</ProviderName>
   <DefaultLocale>es-ES</DefaultLocale>
   <DisplayName DefaultValue="EditorFDA"/>
-  <Description DefaultValue="Herramientas FDA integradas en Inicio."/>
+  <Description DefaultValue="Herramientas FDA."/>
   
   <IconUrl DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-64.png"/>
@@ -43,7 +43,8 @@
           <FunctionFile resid="Commands.Url"/>
           
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
-            <OfficeTab idMso="TabHome">
+            <CustomTab id="TabFDA">
+              <Label resid="TabFDA.Label"/> 
               
               <Group id="GrupoPrincipal">
                 <Label resid="GrupoPrincipal.Label"/>
@@ -69,16 +70,7 @@
                     <SourceLocation resid="Taskpane.Url"/>
                   </Action>
                 </Control>
-              </Group>
 
-              <Group id="GrupoUtilidades">
-                <Label resid="GrupoUtilidades.Label"/>
-                <Icon>
-                  <bt:Image size="16" resid="Icon.16x16"/>
-                  <bt:Image size="32" resid="Icon.32x32"/>
-                  <bt:Image size="80" resid="Icon.80x80"/>
-                </Icon>
-                
                 <Control xsi:type="Button" id="BtnCatalogo">
                   <Label resid="BtnCatalogo.Label"/>
                   <Supertip>
@@ -96,7 +88,7 @@
                 </Control>
               </Group>
 
-            </OfficeTab>
+            </CustomTab>
           </ExtensionPoint>
         </DesktopFormFactor>
       </Host>
@@ -117,8 +109,8 @@
       
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="¡Bienvenido al Editor FDA!"/>
-        <bt:String id="GrupoPrincipal.Label" DefaultValue="FDA Principal"/>
-        <bt:String id="GrupoUtilidades.Label" DefaultValue="FDA Acciones"/>
+        <bt:String id="TabFDA.Label" DefaultValue="FDA Herramientas"/>
+        <bt:String id="GrupoPrincipal.Label" DefaultValue="Gestión Documental"/>
         
         <bt:String id="TaskpaneButton.Label" DefaultValue="Generador Documentos"/>
         <bt:String id="BtnCatalogo.Label" DefaultValue="Nuevo Documento"/>
@@ -126,8 +118,8 @@
       
       <bt:LongStrings>
         <bt:String id="GetStarted.Description" DefaultValue="Complemento FDA cargado."/>
-        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Abre el panel para editar documentos."/>
-        <bt:String id="BtnCatalogo.Tooltip" DefaultValue="Abre el catálogo de plantillas."/>
+        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Abre el panel lateral para editar la información del proyecto."/>
+        <bt:String id="BtnCatalogo.Tooltip" DefaultValue="Abre el catálogo para seleccionar una plantilla nueva."/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>
