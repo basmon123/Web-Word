@@ -14,30 +14,22 @@ Office.onReady((info) => {
     if (info.host === Office.HostType.Word) {
         console.log("Office.js listo. Iniciando Taskpane...");
 
-        // A. ASIGNAR EVENTOS
         asignarEventos();
-
-        // B. INICIALIZAR INTERFAZ
         establecerFechaHoy();
         actualizarListaRevisiones();
-
-        // C. CARGAR DATOS (Memoria + Azure)
         cargarDatosDeMemoria();
     }
 });
 
 function asignarEventos() {
-    // --- Evento del Dropdown ---
     const ddlDocs = document.getElementById("ddlDocumentos");
     if (ddlDocs) {
         ddlDocs.onchange = insertarDocumentoSeleccionado;
     }
 
-    // Botón Revisión
     const btnRev = document.getElementById("btnActualizarRevision");
     if (btnRev) btnRev.onclick = actualizarDatosRevision;
 
-    // Dropdown "Emitido Para"
     const ddlEmitido = document.getElementById("ddlEmitidoPara");
     if (ddlEmitido) {
         ddlEmitido.onchange = actualizarListaRevisiones;
@@ -45,14 +37,14 @@ function asignarEventos() {
 }
 
 // ---------------------------------------------
-// 2. LÓGICA DE AZURE (Con Filtro Anti-Duplicados)
+// 2. LÓGICA DE AZURE (MODIFICADA: MUESTRA CÓDIGO FDA)
 // ---------------------------------------------
 
 async function cargarDocumentosDesdeAzure(idProyecto) {
     const ddl = document.getElementById("ddlDocumentos");
     if (!ddl) return;
 
-    ddl.innerHTML = "<option>Cargando lista de documentos...</option>";
+    ddl.innerHTML = "<option>Cargando códigos...</option>";
 
     try {
         console.log(`Consultando documentos para proyecto ID: ${idProyecto}`);
@@ -66,15 +58,14 @@ async function cargarDocumentosDesdeAzure(idProyecto) {
         if (!response.ok) throw new Error("Error de conexión con Power Automate");
 
         const listaCruda = await response.json();
-        console.log(`Recibidos ${listaCruda.length} registros. Filtrando duplicados...`);
+        console.log(`Recibidos ${listaCruda.length} registros. Filtrando...`);
 
         // --- FILTRO DE DUPLICADOS ---
         const documentosUnicos = [];
         const codigosVistos = new Set();
 
         listaCruda.forEach(doc => {
-            // Usamos 'codFDA' como identificador único. Si está vacío, usamos el 'Nombre'.
-            // Esto asegura que "Cierre Operacional" aparezca solo una vez.
+            // Usamos 'codFDA' como llave única
             const idUnico = doc.codFDA || doc.Nombre; 
 
             if (!codigosVistos.has(idUnico)) {
@@ -83,9 +74,6 @@ async function cargarDocumentosDesdeAzure(idProyecto) {
             }
         });
 
-        console.log(`Lista final limpia: ${documentosUnicos.length} documentos.`);
-
-        // Limpiar dropdown
         ddl.innerHTML = "";
 
         if (documentosUnicos.length === 0) {
@@ -93,9 +81,8 @@ async function cargarDocumentosDesdeAzure(idProyecto) {
             return;
         }
 
-        // Opción por defecto
         const optDef = document.createElement("option");
-        optDef.text = "-- Seleccione un documento --";
+        optDef.text = "-- Seleccione un Código FDA --";
         optDef.value = "";
         ddl.appendChild(optDef);
 
@@ -103,11 +90,17 @@ async function cargarDocumentosDesdeAzure(idProyecto) {
         documentosUnicos.forEach(doc => {
             const opt = document.createElement("option");
             
-            // OJO: Usamos las mayúsculas exactas de tu JSON
-            opt.text = doc.Nombre; 
+            // CAMBIO 1: MOSTRAR CÓDIGO FDA EN EL TEXTO VISIBLE
+            // Si por alguna razón no tiene código, mostramos el nombre como respaldo
+            opt.text = doc.codFDA || doc.Nombre; 
             
-            // Guardamos el código cliente en el valor (si es null ponemos guion)
-            opt.value = doc.codCliente || "SIN-CODIGO"; 
+            // EL VALOR PRINCIPAL SERÁ EL CÓDIGO FDA
+            opt.value = doc.codFDA || ""; 
+
+            // CAMBIO 2: GUARDAR DATOS EXTRA EN ATRIBUTOS OCULTOS
+            // Guardamos el Nombre y el Código Cliente para usarlos al seleccionar
+            opt.setAttribute("data-nombre", doc.Nombre || "");
+            opt.setAttribute("data-cliente", doc.codCliente || "");
             
             ddl.appendChild(opt);
         });
@@ -120,32 +113,52 @@ async function cargarDocumentosDesdeAzure(idProyecto) {
 
 async function insertarDocumentoSeleccionado() {
     const ddl = document.getElementById("ddlDocumentos");
+    const opcionSeleccionada = ddl.options[ddl.selectedIndex];
     
-    const nombreDoc = ddl.options[ddl.selectedIndex].text;
-    let codigoCliente = ddl.value;
+    // 1. Obtener el Código FDA (del valor del select)
+    const codigoFDA = ddl.value;
 
-    if (!codigoCliente || codigoCliente === "") return;
-    if (codigoCliente === "SIN-CODIGO") codigoCliente = "N/A"; // Estético para Word
+    // Si es la opción por defecto, salir
+    if (!codigoFDA || codigoFDA === "") return;
 
-    console.log(`Insertando -> Nombre: ${nombreDoc}, Código: ${codigoCliente}`);
+    // 2. Obtener Nombre y Cliente (de los atributos ocultos)
+    let nombreDoc = opcionSeleccionada.getAttribute("data-nombre");
+    let codigoCliente = opcionSeleccionada.getAttribute("data-cliente");
+
+    // Limpieza de datos (si vienen vacíos)
+    if (!codigoCliente || codigoCliente === "SIN-CODIGO") codigoCliente = "N/A";
+    if (!nombreDoc) nombreDoc = "DOCUMENTO SIN NOMBRE";
+
+    // CAMBIO 3: CONVERTIR NOMBRE A MAYÚSCULAS
+    nombreDoc = nombreDoc.toUpperCase();
+
+    console.log(`Insertando: FDA=${codigoFDA} | CL=${codigoCliente} | NOM=${nombreDoc}`);
 
     await Word.run(async (context) => {
-        // 1. Insertar Nombre
-        const ctrlsNombre = context.document.contentControls.getByTag("ccNombreDoc");
-        ctrlsNombre.load("items");
+        // Cargar los 3 controles
+        const ccFDA = context.document.contentControls.getByTag("ccCodigoFDA");
+        const ccCli = context.document.contentControls.getByTag("ccCodigoCliente");
+        const ccNom = context.document.contentControls.getByTag("ccNombreDoc"); // Título
 
-        // 2. Insertar Código Cliente
-        const ctrlsCodigo = context.document.contentControls.getByTag("ccCodigoCliente");
-        ctrlsCodigo.load("items");
+        ccFDA.load("items");
+        ccCli.load("items");
+        ccNom.load("items");
 
         await context.sync();
 
-        if (ctrlsNombre.items.length > 0) {
-            ctrlsNombre.items.forEach(cc => cc.insertText(nombreDoc, "Replace"));
+        // Insertar Código FDA
+        if (ccFDA.items.length > 0) {
+            ccFDA.items.forEach(cc => cc.insertText(codigoFDA, "Replace"));
         }
 
-        if (ctrlsCodigo.items.length > 0) {
-            ctrlsCodigo.items.forEach(cc => cc.insertText(codigoCliente, "Replace"));
+        // Insertar Código Cliente
+        if (ccCli.items.length > 0) {
+            ccCli.items.forEach(cc => cc.insertText(codigoCliente, "Replace"));
+        }
+
+        // Insertar Nombre Documento (EN MAYÚSCULAS)
+        if (ccNom.items.length > 0) {
+            ccNom.items.forEach(cc => cc.insertText(nombreDoc, "Replace"));
         }
 
         await context.sync();
@@ -163,7 +176,6 @@ async function cargarDatosDeMemoria() {
         if (jsonDatos) {
             const datos = JSON.parse(jsonDatos);
             
-            // UI Labels
             setText("lblCliente",   datos.cliente);
             setText("lblDivision",  datos.division);
             setText("lblContrato",  datos.contrato);
@@ -171,21 +183,18 @@ async function cargarDatosDeMemoria() {
             setText("lblProyecto",  datos.nombre);
             setText("lblServicio",  datos.servicio || datos.TipoServicio);
 
-            // Escribir en Word (Datos base)
             escribirDatosBaseEnWord(datos).catch(e => console.warn(e));
 
-            // --- CORRECCIÓN CLAVE ---
-            // Usamos 'id' porque ya confirmamos que ese es el dato correcto (7827)
+            // Cargar lista desde Azure usando el ID
             const idProyecto = datos.id; 
             
             if (idProyecto) {
                 cargarDocumentosDesdeAzure(idProyecto);
             } else {
-                console.warn("El proyecto en memoria no tiene un ID válido.");
+                console.warn("Sin ID válido.");
                 const ddl = document.getElementById("ddlDocumentos");
                 if(ddl) ddl.innerHTML = "<option>Seleccione un proyecto primero</option>";
             }
-
         }
     } catch (e) {
         console.error("Error leyendo memoria:", e);
@@ -193,7 +202,7 @@ async function cargarDatosDeMemoria() {
 }
 
 // ---------------------------------------------
-// 4. FUNCIONES AUXILIARES (Iguales)
+// 4. FUNCIONES AUXILIARES
 // ---------------------------------------------
 
 async function escribirDatosBaseEnWord(datos) {
