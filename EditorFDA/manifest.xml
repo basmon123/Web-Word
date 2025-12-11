@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" 
-           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" 
-           xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" 
-           xsi:type="TaskPaneApp">
-  <Id>aa11bb22-3333-4444-5555-666677778888</Id>
-  <Version>1.0.4.0</Version>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
+  <Id>dd33ee44-5555-6666-7777-888899990000</Id>
+  <Version>1.0.2.0</Version>
   <ProviderName>FDA Ingenieria</ProviderName>
   <DefaultLocale>es-ES</DefaultLocale>
   <DisplayName DefaultValue="EditorFDA"/>
@@ -45,9 +41,6 @@
             <CustomTab id="TabFDA">
               <Label resid="TabFDA.Label"/> 
               
-              <Group idMso="GroupFont" />
-              <Group idMso="GroupParagraph" />
-
               <Group id="GrupoPrincipal">
                 <Label resid="GrupoPrincipal.Label"/>
                 <Icon>
@@ -187,9 +180,6 @@
                 </Control>
               </Group>
 
-              <Group idMso="GroupEditing" />
-              <Group idMso="GroupProofing" />
-
             </CustomTab>
           </ExtensionPoint>
         </DesktopFormFactor>
@@ -203,9 +193,11 @@
         <bt:Image id="Icon.80x80" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-80.png"/>
       </bt:Images>
   
-      <bt:Urls>
+    <bt:Urls>
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://basmon123.github.io/Web-Word"/>
+        
         <bt:Url id="Commands.Url" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/src/commands/commands.html"/>
+        
         <bt:Url id="Taskpane.Url" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/src/taskpane/taskpane.html"/>
       </bt:Urls>
       
