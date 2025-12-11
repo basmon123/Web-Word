@@ -201,61 +201,69 @@ async function aplicarEstiloProfesional(nombreEsp, nombreIng) {
 }
 
 async function validarEstilo(event) {
-  await Word.run(async (context) => {
-    
-    // 1. LISTA DE REGLAS "SOFISTICADAS" (Lo que tu jefe quiere corregir)
-    // Estructura: { error: "palabra a buscar", sugerencia: "lo correcto" }
-    const reglas = [
-      { error: "haiga", sugerencia: "haya" },
-      { error: "tamos", sugerencia: "estamos" },
-      { error: "ocupo que", sugerencia: "necesito que" },
-      { error: "asap", sugerencia: "lo antes posible" }
-    ];
+  try {
+    await Word.run(async (context) => {
+      // 1. Obtener el cuerpo del documento
+      const body = context.document.body;
 
-    let contadorErrores = 0;
+      // ---------------------------------------------------------
+      // TAREA 1: Estandarizar Fuente (Arial 11)
+      // ---------------------------------------------------------
+      // Esto asegura que no haya mezclas raras de copiado y pegado.
+      body.font.name = "Arial";
+      body.font.size = 11;
 
-    // 2. RECORREMOS LAS REGLAS
-    // Usamos un bucle 'for...of' para manejar las promesas (await) correctamente
-    for (const regla of reglas) {
+      // ---------------------------------------------------------
+      // TAREA 2: Eliminar dobles espacios
+      // ---------------------------------------------------------
+      // Buscamos "  " (dos espacios)
+      const searchResults = body.search("  ", { matchWildcards: false });
+      context.load(searchResults, "items");
       
-      // Buscamos la palabra en el cuerpo del documento
-      // matchWholeWord: true evita que marque partes de otras palabras
-      // matchCase: false para que no importe mayúsculas/minúsculas
-      const resultados = context.document.body.search(regla.error, { matchWholeWord: true, matchCase: false });
-      
-      // Cargamos la propiedad de fuente para poder modificarla
-      context.load(resultados, 'font');
-      
-      // Sincronizamos para traer los resultados de Word
       await context.sync();
 
-      // 3. SI ENCONTRAMOS ERRORES, LOS RESALTAMOS
-      if (resultados.items.length > 0) {
-        resultados.items.forEach((item) => {
-          // La marcamos en amarillo chillón
-          item.font.highlightColor = "#FFFF00"; 
-          item.font.bold = true;
-          // Opcional: Podríamos añadir un comentario, pero por ahora solo resaltar.
-          contadorErrores++;
-        });
+      // Recorremos los resultados y reemplazamos por un solo espacio
+      // Iteramos al revés para no romper los rangos al editar
+      for (let i = searchResults.items.length - 1; i >= 0; i--) {
+        searchResults.items[i].insertText(" ", "Replace");
       }
-    }
 
-    // 4. AVISO AL USUARIO (feedback visual)
-    if (contadorErrores > 0) {
-      console.log(`Se encontraron ${contadorErrores} problemas de estilo.`);
-      // En un add-in real, aquí podrías abrir el taskpane o mostrar una notificación pequeña
-    }
+      // ---------------------------------------------------------
+      // TAREA 3: Resaltar palabras de advertencia (Auditoría)
+      // ---------------------------------------------------------
+      // Lista de palabras que quieres detectar
+      const palabrasProhibidas = ["BORRADOR", "PENDIENTE", "REVISAR", "TBD"];
 
-    await context.sync();
-  });
+      for (let palabra of palabrasProhibidas) {
+        // Buscamos sin importar mayúsculas/minúsculas (matchCase: false)
+        const foundItems = body.search(palabra, { matchCase: false });
+        context.load(foundItems, "font");
+        
+        await context.sync();
 
-  // Importante: Avisar a Office que el botón terminó su trabajo
+        // Las resaltamos en amarillo y ponemos el texto en rojo
+        for (let i = 0; i < foundItems.items.length; i++) {
+          foundItems.items[i].font.highlightColor = "Yellow";
+          foundItems.items[i].font.color = "Red";
+          foundItems.items[i].font.bold = true;
+        }
+      }
+
+      await context.sync();
+    });
+
+    console.log("Validación de estilo FDA completada.");
+    
+  } catch (error) {
+    console.error("Error en validarEstilo:", error);
+  }
+
+  // IMPORTANTE: Avisar a Office que terminamos
   event.completed();
 }
-
-// REGISTRA LA FUNCIÓN (Importante para que el manifest.xml la encuentre)
 Office.actions.associate("validarEstilo", validarEstilo);
+// Vinculación con el XML
+// Asegúrate de que el primer string sea EXACTAMENTE igual al <FunctionName> del XML
 
 
 
