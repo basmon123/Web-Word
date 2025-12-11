@@ -86,23 +86,24 @@
                     <FunctionName>abrirCatalogo</FunctionName>
                   </Action>
                 </Control>
+                
                 <Control xsi:type="Button" id="BtnCorrectorSofisticado">
-    <Label resid="NombreBotonCorrector" />
-    <Supertip>
-        <Title resid="TituloBotonCorrector" />
-        <Description resid="DescBotonCorrector" />
-    </Supertip>
-    <Icon>
-        <bt:Image size="16" resid="Icon.16x16"/>
-        <bt:Image size="32" resid="Icon.32x32"/>
-        <bt:Image size="80" resid="Icon.80x80"/>
-    </Icon>
-    <Action xsi:type="ExecuteFunction">
-        <FunctionName>validarEstilo</FunctionName>
-    </Action>
-</Control>
-              </Group>
+                    <Label resid="NombreBotonCorrector" />
+                    <Supertip>
+                        <Title resid="TituloBotonCorrector" />
+                        <Description resid="DescBotonCorrector" />
+                    </Supertip>
+                    <Icon>
+                        <bt:Image size="16" resid="Icon.16x16"/>
+                        <bt:Image size="32" resid="Icon.32x32"/>
+                        <bt:Image size="80" resid="Icon.80x80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                        <FunctionName>validarEstilo</FunctionName>
+                    </Action>
+                </Control>
 
+              </Group>
             </CustomTab>
           </ExtensionPoint>
         </DesktopFormFactor>
@@ -129,12 +130,17 @@
         
         <bt:String id="TaskpaneButton.Label" DefaultValue="Generador Documentos"/>
         <bt:String id="BtnCatalogo.Label" DefaultValue="Nuevo Documento"/>
+        
+        <bt:String id="NombreBotonCorrector" DefaultValue="Revisar Estilo"/>
+        <bt:String id="TituloBotonCorrector" DefaultValue="Corrector Sofisticado"/>
       </bt:ShortStrings>
       
       <bt:LongStrings>
         <bt:String id="GetStarted.Description" DefaultValue="Complemento FDA cargado."/>
         <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Abre el panel lateral para editar la información del proyecto."/>
         <bt:String id="BtnCatalogo.Tooltip" DefaultValue="Abre el catálogo para seleccionar una plantilla nueva."/>
+        
+        <bt:String id="DescBotonCorrector" DefaultValue="Ejecuta una validación avanzada del estilo del documento."/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>
