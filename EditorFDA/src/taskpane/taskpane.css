@@ -138,3 +138,19 @@ h3 {
     color: #666;
     cursor: not-allowed;
 }
+
+/* Agrega esto al final de taskpane.css */
+
+.nota-ayuda {
+    font-size: 11px;
+    color: #666666;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+/* Aprovechamos de asegurar que el select se vea bien */
+.caja-input {
+    width: 100%;
+    box-sizing: border-box; /* Esto evita que se salga del contenedor */
+    margin-bottom: 10px;
+}

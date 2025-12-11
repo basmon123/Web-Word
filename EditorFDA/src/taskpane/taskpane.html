@@ -25,21 +25,23 @@
 
         <hr class="separador">
 
-        <div class="grupo-input">
-            <h3>EDICIÓN DEL DOCUMENTO</h3>
-            
-            <label class="ms-Label" for="txtTituloDoc">Título del documento</label>
-            <input type="text" id="txtTituloDoc" class="caja-input" placeholder="Cargando título..." title="Título del documento">
-            
-            <button id="btnActualizarTitulo" class="boton">
-                <span class="ms-Button-label">Actualizar Título</span>
-            </button>
-        </div>
+      <div class="grupo-input">
+    <h3>SELECCIÓN DE DOCUMENTO</h3>
+    
+    <label class="ms-Label" for="ddlDocumentos">Documento del Proyecto:</label>
+    <select id="ddlDocumentos" class="caja-input" title="Seleccione un documento para autocompletar">
+        <option value="">-- Cargando datos... --</option>
+    </select>
+    
+    <p class="nota-ayuda">
+        *Al seleccionar, se insertará el Nombre y Código Cliente automáticamente.
+    </p>
+</div>
 
         <hr class="separador">
 
         <div class="grupo-input">
-            <h3>DATOS DE LA REVISIÓN DEL DOCUMENTO</h3>
+            <h3>DATOS DE LA REVISIÓN</h3>
             
             <label class="ms-Label" for="ddlEmitidoPara">Emitido Para:</label>
             <select id="ddlEmitidoPara" class="caja-input" title="Seleccionar motivo de emisión">
