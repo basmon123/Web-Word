@@ -1,234 +1,206 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
-  <Id>dd33ee44-5555-6666-7777-888899990000</Id>
-  <Version>1.0.2.0</Version>
-  <ProviderName>FDA Ingenieria</ProviderName>
-  <DefaultLocale>es-ES</DefaultLocale>
-  <DisplayName DefaultValue="EditorFDA"/>
-  <Description DefaultValue="Herramientas FDA."/>
-  
-  <IconUrl DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-64.png"/>
-  <SupportUrl DefaultValue="https://github.com/basmon123/Web-Word"/>
-  
-  <AppDomains>
-    <AppDomain>https://basmon123.github.io</AppDomain>
-  </AppDomains>
-  
-  <Hosts>
-    <Host Name="Document"/>
-  </Hosts>
-  
-  <DefaultSettings>
-    <SourceLocation DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/src/taskpane/taskpane.html"/>
-  </DefaultSettings>
-  
-  <Permissions>ReadWriteDocument</Permissions>
-  
-  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
-    <Hosts>
-      <Host xsi:type="Document">
-        <DesktopFormFactor>
-          <GetStarted>
-            <Title resid="GetStarted.Title"/>
-            <Description resid="GetStarted.Description"/>
-            <LearnMoreUrl resid="GetStarted.LearnMoreUrl"/>
-          </GetStarted>
-          
-          <FunctionFile resid="Commands.Url"/>
-          
-          <ExtensionPoint xsi:type="PrimaryCommandSurface">
-            <CustomTab id="TabFDA">
-              <Label resid="TabFDA.Label"/> 
-              
-              <Group id="GrupoPrincipal">
-                <Label resid="GrupoPrincipal.Label"/>
-                <Icon>
-                  <bt:Image size="16" resid="Icon.16x16"/>
-                  <bt:Image size="32" resid="Icon.32x32"/>
-                  <bt:Image size="80" resid="Icon.80x80"/>
-                </Icon>
-                <Control xsi:type="Button" id="TaskpaneButton">
-                  <Label resid="TaskpaneButton.Label"/>
-                  <Supertip>
-                    <Title resid="TaskpaneButton.Label"/>
-                    <Description resid="TaskpaneButton.Tooltip"/>
-                  </Supertip>
-                  <Icon>
-                    <bt:Image size="16" resid="Icon.16x16"/>
-                    <bt:Image size="32" resid="Icon.32x32"/>
-                    <bt:Image size="80" resid="Icon.80x80"/>
-                  </Icon>
-                  <Action xsi:type="ShowTaskpane">
-                    <TaskpaneId>ButtonId1</TaskpaneId>
-                    <SourceLocation resid="Taskpane.Url"/>
-                  </Action>
-                </Control>
-              </Group>
-
-              <Group id="GrupoUtilidades">
-                <Label resid="GrupoUtilidades.Label"/>
-                <Icon>
-                  <bt:Image size="16" resid="Icon.16x16"/>
-                  <bt:Image size="32" resid="Icon.32x32"/>
-                  <bt:Image size="80" resid="Icon.80x80"/>
-                </Icon>
-                
-                <Control xsi:type="Button" id="BtnCatalogo">
-                  <Label resid="BtnCatalogo.Label"/>
-                  <Supertip>
-                    <Title resid="BtnCatalogo.Label"/>
-                    <Description resid="BtnCatalogo.Tooltip"/>
-                  </Supertip>
-                  <Icon>
-                    <bt:Image size="16" resid="Icon.16x16"/>
-                    <bt:Image size="32" resid="Icon.32x32"/>
-                    <bt:Image size="80" resid="Icon.80x80"/>
-                  </Icon>
-                  <Action xsi:type="ExecuteFunction">
-                    <FunctionName>abrirCatalogo</FunctionName>
-                  </Action>
-                </Control>
-
-                <Control xsi:type="Button" id="BtnLimpiar">
-                  <Label resid="BtnLimpiar.Label"/>
-                  <Supertip>
-                    <Title resid="BtnLimpiar.Label"/>
-                    <Description resid="BtnLimpiar.Tooltip"/>
-                  </Supertip>
-                  <Icon>
-                    <bt:Image size="16" resid="Icon.16x16"/>
-                    <bt:Image size="32" resid="Icon.32x32"/>
-                    <bt:Image size="80" resid="Icon.80x80"/>
-                  </Icon>
-                  <Action xsi:type="ExecuteFunction">
-                    <FunctionName>limpiarFormato</FunctionName>
-                  </Action>
-                </Control>
-
-                <Control xsi:type="Button" id="BtnFecha">
-                  <Label resid="BtnFecha.Label"/>
-                  <Supertip>
-                    <Title resid="BtnFecha.Label"/>
-                    <Description resid="BtnFecha.Tooltip"/>
-                  </Supertip>
-                  <Icon>
-                    <bt:Image size="16" resid="Icon.16x16"/>
-                    <bt:Image size="32" resid="Icon.32x32"/>
-                    <bt:Image size="80" resid="Icon.80x80"/>
-                  </Icon>
-                  <Action xsi:type="ExecuteFunction">
-                    <FunctionName>insertarFecha</FunctionName>
-                  </Action>
-                </Control>
-              </Group>
-
-              <Group id="GrupoEstilos">
-                <Label resid="GrupoEstilos.Label"/>
-                <Icon>
-                  <bt:Image size="16" resid="Icon.16x16"/>
-                  <bt:Image size="32" resid="Icon.32x32"/>
-                  <bt:Image size="80" resid="Icon.80x80"/>
-                </Icon>
-                
-                <Control xsi:type="Button" id="BtnEstilo1">
-                  <Label resid="BtnEstilo1.Label"/>
-                  <Supertip>
-                    <Title resid="BtnEstilo1.Label"/>
-                    <Description resid="BtnEstilo1.Tooltip"/>
-                  </Supertip>
-                  <Icon>
-                    <bt:Image size="16" resid="Icon.16x16"/>
-                    <bt:Image size="32" resid="Icon.32x32"/>
-                    <bt:Image size="80" resid="Icon.80x80"/>
-                  </Icon>
-                  <Action xsi:type="ExecuteFunction">
-                    <FunctionName>estiloTitulo1</FunctionName>
-                  </Action>
-                </Control>
-
-                <Control xsi:type="Button" id="BtnEstilo2">
-                  <Label resid="BtnEstilo2.Label"/>
-                  <Supertip>
-                    <Title resid="BtnEstilo2.Label"/>
-                    <Description resid="BtnEstilo2.Tooltip"/>
-                  </Supertip>
-                  <Icon>
-                    <bt:Image size="16" resid="Icon.16x16"/>
-                    <bt:Image size="32" resid="Icon.32x32"/>
-                    <bt:Image size="80" resid="Icon.80x80"/>
-                  </Icon>
-                  <Action xsi:type="ExecuteFunction">
-                    <FunctionName>estiloTitulo2</FunctionName>
-                  </Action>
-                </Control>
-
-                <Control xsi:type="Button" id="BtnEstilo3">
-                  <Label resid="BtnEstilo3.Label"/>
-                  <Supertip>
-                    <Title resid="BtnEstilo3.Label"/>
-                    <Description resid="BtnEstilo3.Tooltip"/>
-                  </Supertip>
-                  <Icon>
-                    <bt:Image size="16" resid="Icon.16x16"/>
-                    <bt:Image size="32" resid="Icon.32x32"/>
-                    <bt:Image size="80" resid="Icon.80x80"/>
-                  </Icon>
-                  <Action xsi:type="ExecuteFunction">
-                    <FunctionName>estiloTitulo3</FunctionName>
-                  </Action>
-                </Control>
-              </Group>
-
-            </CustomTab>
-          </ExtensionPoint>
-        </DesktopFormFactor>
-      </Host>
-    </Hosts>
-    
-    <Resources>
-      <bt:Images>
-        <bt:Image id="Icon.16x16" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-16.png"/>
-        <bt:Image id="Icon.32x32" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-32.png"/>
-        <bt:Image id="Icon.80x80" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-80.png"/>
-      </bt:Images>
-  
-    <bt:Urls>
-        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://basmon123.github.io/Web-Word"/>
-        
-        <bt:Url id="Commands.Url" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/src/commands/commands.html"/>
-        
-        <bt:Url id="Taskpane.Url" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/src/taskpane/taskpane.html"/>
-      </bt:Urls>
-      
-      <bt:ShortStrings>
-        <bt:String id="GetStarted.Title" DefaultValue="¡Bienvenido al Editor FDA!"/>
-        <bt:String id="TabFDA.Label" DefaultValue="FDA Herramientas"/>
-        <bt:String id="GrupoPrincipal.Label" DefaultValue="Principal"/>
-        <bt:String id="GrupoUtilidades.Label" DefaultValue="Acciones Rápidas"/>
-        <bt:String id="GrupoEstilos.Label" DefaultValue="Estilos FDA"/>
-        
-        <bt:String id="TaskpaneButton.Label" DefaultValue="Generador Documentos"/>
-        <bt:String id="BtnLimpiar.Label" DefaultValue="Estandarizar Formato"/>
-        <bt:String id="BtnFecha.Label" DefaultValue="Insertar Fecha"/>
-        <bt:String id="BtnCatalogo.Label" DefaultValue="Nuevo Documento"/>
-        
-        <bt:String id="BtnEstilo1.Label" DefaultValue="Título 1.0"/>
-        <bt:String id="BtnEstilo2.Label" DefaultValue="Subtítulo 1.1"/>
-        <bt:String id="BtnEstilo3.Label" DefaultValue="Subtítulo 1.1.1"/>
-      </bt:ShortStrings>
-      
-      <bt:LongStrings>
-        <bt:String id="GetStarted.Description" DefaultValue="Complemento FDA cargado."/>
-        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Abre el panel para editar documentos."/>
-        <bt:String id="BtnLimpiar.Tooltip" DefaultValue="Convierte el texto a Arial 11 Justificado."/>
-        <bt:String id="BtnFecha.Tooltip" DefaultValue="Inserta la fecha de hoy."/>
-        <bt:String id="BtnCatalogo.Tooltip" DefaultValue="Abre el catálogo de plantillas."/>
-        
-        <bt:String id="BtnEstilo1.Tooltip" DefaultValue="Aplica estilo Título 1 (1.0)."/>
-        <bt:String id="BtnEstilo2.Tooltip" DefaultValue="Aplica estilo Título 2 (1.1)."/>
-        <bt:String id="BtnEstilo3.Tooltip" DefaultValue="Aplica estilo Título 3 (1.1.1)."/>
-      </bt:LongStrings>
-    </Resources>
-  </VersionOverrides>
+<Id>dd33ee44-5555-6666-7777-888899990000</Id>
+<Version>1.0.2.0</Version>
+<ProviderName>FDA Ingenieria</ProviderName>
+<DefaultLocale>es-ES</DefaultLocale>
+<DisplayName DefaultValue="EditorFDA"/>
+<Description DefaultValue="Herramientas FDA."/>
+<IconUrl DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-32.png"/>
+<HighResolutionIconUrl DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-64.png"/>
+<SupportUrl DefaultValue="https://github.com/basmon123/Web-Word"/>
+<AppDomains>
+<AppDomain>https://basmon123.github.io</AppDomain>
+</AppDomains>
+<Hosts>
+<Host Name="Document"/>
+</Hosts>
+<DefaultSettings>
+<SourceLocation DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/src/taskpane/taskpane.html"/>
+</DefaultSettings>
+<Permissions>ReadWriteDocument</Permissions>
+<VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+<Hosts>
+<Host xsi:type="Document">
+<DesktopFormFactor>
+<GetStarted>
+<Title resid="GetStarted.Title"/>
+<Description resid="GetStarted.Description"/>
+<LearnMoreUrl resid="GetStarted.LearnMoreUrl"/>
+</GetStarted>
+<FunctionFile resid="Commands.Url"/>
+<ExtensionPoint xsi:type="PrimaryCommandSurface">
+<CustomTab id="TabFDA">
+<Label resid="TabFDA.Label"/>
+<Group id="GrupoPrincipal">
+<Label resid="GrupoPrincipal.Label"/>
+<Icon>
+<bt:Image size="16" resid="Icon.16x16"/>
+<bt:Image size="32" resid="Icon.32x32"/>
+<bt:Image size="80" resid="Icon.80x80"/>
+</Icon>
+<Control xsi:type="Button" id="TaskpaneButton">
+<Label resid="TaskpaneButton.Label"/>
+<Supertip>
+<Title resid="TaskpaneButton.Label"/>
+<Description resid="TaskpaneButton.Tooltip"/>
+</Supertip>
+<Icon>
+<bt:Image size="16" resid="Icon.16x16"/>
+<bt:Image size="32" resid="Icon.32x32"/>
+<bt:Image size="80" resid="Icon.80x80"/>
+</Icon>
+<Action xsi:type="ShowTaskpane">
+<TaskpaneId>ButtonId1</TaskpaneId>
+<SourceLocation resid="Taskpane.Url"/>
+</Action>
+</Control>
+</Group>
+<Group id="GrupoUtilidades">
+<Label resid="GrupoUtilidades.Label"/>
+<Icon>
+<bt:Image size="16" resid="Icon.16x16"/>
+<bt:Image size="32" resid="Icon.32x32"/>
+<bt:Image size="80" resid="Icon.80x80"/>
+</Icon>
+<Control xsi:type="Button" id="BtnCatalogo">
+<Label resid="BtnCatalogo.Label"/>
+<Supertip>
+<Title resid="BtnCatalogo.Label"/>
+<Description resid="BtnCatalogo.Tooltip"/>
+</Supertip>
+<Icon>
+<bt:Image size="16" resid="Icon.16x16"/>
+<bt:Image size="32" resid="Icon.32x32"/>
+<bt:Image size="80" resid="Icon.80x80"/>
+</Icon>
+<Action xsi:type="ExecuteFunction">
+<FunctionName>abrirCatalogo</FunctionName>
+</Action>
+</Control>
+<Control xsi:type="Button" id="BtnLimpiar">
+<Label resid="BtnLimpiar.Label"/>
+<Supertip>
+<Title resid="BtnLimpiar.Label"/>
+<Description resid="BtnLimpiar.Tooltip"/>
+</Supertip>
+<Icon>
+<bt:Image size="16" resid="Icon.16x16"/>
+<bt:Image size="32" resid="Icon.32x32"/>
+<bt:Image size="80" resid="Icon.80x80"/>
+</Icon>
+<Action xsi:type="ExecuteFunction">
+<FunctionName>limpiarFormato</FunctionName>
+</Action>
+</Control>
+<Control xsi:type="Button" id="BtnFecha">
+<Label resid="BtnFecha.Label"/>
+<Supertip>
+<Title resid="BtnFecha.Label"/>
+<Description resid="BtnFecha.Tooltip"/>
+</Supertip>
+<Icon>
+<bt:Image size="16" resid="Icon.16x16"/>
+<bt:Image size="32" resid="Icon.32x32"/>
+<bt:Image size="80" resid="Icon.80x80"/>
+</Icon>
+<Action xsi:type="ExecuteFunction">
+<FunctionName>insertarFecha</FunctionName>
+</Action>
+</Control>
+</Group>
+<Group id="GrupoEstilos">
+<Label resid="GrupoEstilos.Label"/>
+<Icon>
+<bt:Image size="16" resid="Icon.16x16"/>
+<bt:Image size="32" resid="Icon.32x32"/>
+<bt:Image size="80" resid="Icon.80x80"/>
+</Icon>
+<Control xsi:type="Button" id="BtnEstilo1">
+<Label resid="BtnEstilo1.Label"/>
+<Supertip>
+<Title resid="BtnEstilo1.Label"/>
+<Description resid="BtnEstilo1.Tooltip"/>
+</Supertip>
+<Icon>
+<bt:Image size="16" resid="Icon.16x16"/>
+<bt:Image size="32" resid="Icon.32x32"/>
+<bt:Image size="80" resid="Icon.80x80"/>
+</Icon>
+<Action xsi:type="ExecuteFunction">
+<FunctionName>estiloTitulo1</FunctionName>
+</Action>
+</Control>
+<Control xsi:type="Button" id="BtnEstilo2">
+<Label resid="BtnEstilo2.Label"/>
+<Supertip>
+<Title resid="BtnEstilo2.Label"/>
+<Description resid="BtnEstilo2.Tooltip"/>
+</Supertip>
+<Icon>
+<bt:Image size="16" resid="Icon.16x16"/>
+<bt:Image size="32" resid="Icon.32x32"/>
+<bt:Image size="80" resid="Icon.80x80"/>
+</Icon>
+<Action xsi:type="ExecuteFunction">
+<FunctionName>estiloTitulo2</FunctionName>
+</Action>
+</Control>
+<Control xsi:type="Button" id="BtnEstilo3">
+<Label resid="BtnEstilo3.Label"/>
+<Supertip>
+<Title resid="BtnEstilo3.Label"/>
+<Description resid="BtnEstilo3.Tooltip"/>
+</Supertip>
+<Icon>
+<bt:Image size="16" resid="Icon.16x16"/>
+<bt:Image size="32" resid="Icon.32x32"/>
+<bt:Image size="80" resid="Icon.80x80"/>
+</Icon>
+<Action xsi:type="ExecuteFunction">
+<FunctionName>estiloTitulo3</FunctionName>
+</Action>
+</Control>
+</Group>
+</CustomTab>
+</ExtensionPoint>
+</DesktopFormFactor>
+</Host>
+</Hosts>
+<Resources>
+<bt:Images>
+<bt:Image id="Icon.16x16" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-16.png"/>
+<bt:Image id="Icon.32x32" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-32.png"/>
+<bt:Image id="Icon.80x80" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/assets/icon-80.png"/>
+</bt:Images>
+<bt:Urls>
+<bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://basmon123.github.io/Web-Word"/>
+<bt:Url id="Commands.Url" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/src/commands/commands.html"/>
+<bt:Url id="Taskpane.Url" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/src/taskpane/taskpane.html"/>
+</bt:Urls>
+<bt:ShortStrings>
+<bt:String id="GetStarted.Title" DefaultValue="¡Bienvenido al Editor FDA!"/>
+<bt:String id="TabFDA.Label" DefaultValue="FDA Herramientas"/>
+<bt:String id="GrupoPrincipal.Label" DefaultValue="Principal"/>
+<bt:String id="GrupoUtilidades.Label" DefaultValue="Acciones Rápidas"/>
+<bt:String id="GrupoEstilos.Label" DefaultValue="Estilos FDA"/>
+<bt:String id="TaskpaneButton.Label" DefaultValue="Generador Documentos"/>
+<bt:String id="BtnLimpiar.Label" DefaultValue="Estandarizar Formato"/>
+<bt:String id="BtnFecha.Label" DefaultValue="Insertar Fecha"/>
+<bt:String id="BtnCatalogo.Label" DefaultValue="Nuevo Documento"/>
+<bt:String id="BtnEstilo1.Label" DefaultValue="Título 1.0"/>
+<bt:String id="BtnEstilo2.Label" DefaultValue="Subtítulo 1.1"/>
+<bt:String id="BtnEstilo3.Label" DefaultValue="Subtítulo 1.1.1"/>
+</bt:ShortStrings>
+<bt:LongStrings>
+<bt:String id="GetStarted.Description" DefaultValue="Complemento FDA cargado."/>
+<bt:String id="TaskpaneButton.Tooltip" DefaultValue="Abre el panel para editar documentos."/>
+<bt:String id="BtnLimpiar.Tooltip" DefaultValue="Convierte el texto a Arial 11 Justificado."/>
+<bt:String id="BtnFecha.Tooltip" DefaultValue="Inserta la fecha de hoy."/>
+<bt:String id="BtnCatalogo.Tooltip" DefaultValue="Abre el catálogo de plantillas."/>
+<bt:String id="BtnEstilo1.Tooltip" DefaultValue="Aplica estilo Título 1 (1.0)."/>
+<bt:String id="BtnEstilo2.Tooltip" DefaultValue="Aplica estilo Título 2 (1.1)."/>
+<bt:String id="BtnEstilo3.Tooltip" DefaultValue="Aplica estilo Título 3 (1.1.1)."/>
+</bt:LongStrings>
+</Resources>
+</VersionOverrides>
 </OfficeApp>
