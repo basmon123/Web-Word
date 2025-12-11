@@ -163,7 +163,7 @@ async function cargarDatosDeMemoria() {
 
             // --- CRUCE CON AZURE ---
             // Usamos el dato 'api' (o 'id') para buscar los documentos específicos
-            const idProyecto = datos.api || datos.id;
+            const idProyecto = datos.id;
             
             if (idProyecto) {
                 cargarDocumentosDesdeAzure(idProyecto);
