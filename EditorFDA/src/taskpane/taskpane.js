@@ -3,7 +3,7 @@
 // 1. CONFIGURACIÓN (Global)
 // -----------------------------------------------------------------------------
 // ¡IMPORTANTE! Pega aquí la URL que copiaste del paso 1 de tu flujo de Power Automate
-const URL_POWER_AUTOMATE = "PEGAR_AQUI_TU_URL_LARGA_DE_POWER_AUTOMATE"; 
+const URL_POWER_AUTOMATE = "https://defaultef8b3c00d87343e58b66d56c25f2bd.fe.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d88cc5b40d1b48bfa41f130960371fe1/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=QAwT8H-2RLeYuIvy4ISgzt0sXfcBX0JGvjjR_3l1V_Y"; 
 
 const OPCIONES_REVISION = {
     "Interna": ["A", "B"],
