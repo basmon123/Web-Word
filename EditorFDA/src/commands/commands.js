@@ -200,18 +200,14 @@ async function aplicarEstiloProfesional(nombreEsp, nombreIng) {
   });
 }
 
-async function validarEstilo(event) {
-  // PRUEBA SIMPLE: Escribir texto al inicio
-  await Word.run(async (context) => {
-    context.document.body.insertText("¡EL BOTÓN FUNCIONA! ", "Start");
-    await context.sync();
-  });
-  
-  event.completed();
-}
 
-// Asegúrate que este nombre "validarEstilo" es idéntico al del XML
-Office.actions.associate("validarEstilo", validarEstilo);
-
-
+// 3. REGISTRO OFICIAL (LA PARTE CLAVE)
+// Aquí registramos AMBAS funciones usando el MISMO método.
+// Esto elimina la interferencia.
+Office.actions.associate("limpiarFormato", limpiarFormato);
+Office.actions.associate("insertarFecha", insertarFecha);
+Office.actions.associate("estiloTitulo1", estiloTitulo1);
+Office.actions.associate("estiloTitulo2", estiloTitulo2);
+Office.actions.associate("estiloTitulo3", estiloTitulo3);
+Office.actions.associate("abrirCatalogo", abrirCatalogo);
 
