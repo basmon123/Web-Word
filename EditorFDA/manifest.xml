@@ -195,7 +195,7 @@
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://basmon123.github.io/Web-Word"/>
         <bt:Url id="Commands.Url" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/src/commands/commands.html"/>
         <bt:Url id="Taskpane.Url" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/src/taskpane/taskpane.html"/>
-        <bt:Url id="UrlGeneradorTablas" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/src/generadorTablas/generadorTablas.html" />
+        <bt:Url id="UrlGeneradorTablas" DefaultValue="https://basmon123.github.io/Web-Word/EditorFDA/src/GeneradorTablas/generadorTablas.html" />
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="¡Bienvenido al Editor FDA!"/>
