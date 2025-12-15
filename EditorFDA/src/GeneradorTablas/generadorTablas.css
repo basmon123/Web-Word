@@ -23,3 +23,46 @@ input, select { padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
     margin-top: 10px;
 }
 .boton-cargar:hover { background-color: #106ebe; }
+
+
+/* --- ZONA DE DESARROLLO (SOLO PARA TI) --- */
+.dev-container {
+    margin-top: 15px;
+    border: 1px dashed #ccc;
+    padding: 5px;
+    background-color: #fff4e5; /* Fondo suave naranja */
+}
+
+.dev-title {
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.dev-instructions {
+    font-size: 10px;
+    color: #666;
+    margin: 5px 0;
+}
+
+.btn-dev-action {
+    background-color: orange;
+    color: black;
+    width: 100%;
+    border: none;
+    padding: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 5px;
+}
+.btn-dev-action:hover {
+    background-color: darkorange;
+}
+
+.dev-output {
+    width: 100%;
+    font-size: 10px;
+    font-family: monospace;
+    resize: vertical;
+    border: 1px solid #ccc;
+}

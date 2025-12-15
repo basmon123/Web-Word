@@ -1,0 +1,12 @@
+[
+  {
+    "nombre": "Tabla de Cronograma (Compleja)",
+    "descripcion": "Incluye celdas combinadas y colores de fase.",
+    "codigo_xml": "PEGAR_AQUI_EL_CODIGO_GIGANTE_QUE_COPIASTE_EN_EL_PASO_1"
+  },
+  {
+    "nombre": "Tabla de Firmas",
+    "descripcion": "Tabla invisible para 3 firmantes.",
+    "codigo_xml": "PEGAR_AQUI_EL_OTRO_CODIGO_GIGANTE..."
+  }
+]
