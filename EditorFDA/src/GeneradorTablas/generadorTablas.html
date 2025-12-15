@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,26 +13,27 @@
         
         <div class="fila">
             <div class="grupo">
-                <label>Filas</label>
-                <input type="number" id="txtFilas" value="3" min="1" max="50">
+                <label for="txtFilas">Filas</label>
+                <input type="number" id="txtFilas" title="Número de filas" value="3" min="1" max="50">
             </div>
             <div class="grupo">
-                <label>Columnas</label>
-                <input type="number" id="txtCols" value="3" min="1" max="15">
+                <label for="txtCols">Columnas</label>
+                <input type="number" id="txtCols" title="Número de columnas" value="3" min="1" max="15">
             </div>
         </div>
 
-        <label>Estilo</label>
-        <select id="selEstilo">
-            <option value="Grid Table 1 Light">Simple</option>
-            <option value="Grid Table 4 Accent 1">Azul Corporativo</option>
-            <option value="Grid Table 4 Accent 2">Naranja</option>
-            <option value="Grid Table 5 Dark Accent 1">Oscuro</option>
+        <label for="selEstilo">Estilo</label>
+        <select id="selEstilo" title="Seleccionar estilo de tabla">
+            <option value="Tabla con cuadrícula">Simple (Bordes)</option>
+            <option value="Tabla de cuadrícula 4 - Énfasis 1">Azul Corporativo (Claro)</option>
+            <option value="Tabla de cuadrícula 5 Oscura - Énfasis 1">Azul Corporativo (Oscuro)</option>
+            <option value="Tabla de cuadrícula 4 - Énfasis 2">Naranja</option>
+            <option value="Tabla de lista 1 Clara">Lista Limpia</option>
         </select>
 
         <div class="preview-box">
             <span class="label-preview">Vista Previa:</span>
-            <table id="tablaPreview"></table>
+            <table id="tablaPreview" role="presentation"></table>
         </div>
 
         <button id="btnInsertar" class="boton-cargar">CARGAR TABLA</button>

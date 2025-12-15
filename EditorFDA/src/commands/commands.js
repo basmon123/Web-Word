@@ -205,27 +205,51 @@ function abrirVentanaTablas(event) {
 async function procesarMensajeTabla(arg) {
     const datos = JSON.parse(arg.message);
     
+    // Cerramos la ventanita
     dialogGenerador.close();
 
     await Word.run(async (context) => {
         const seleccion = context.document.getSelection();
         
+        // 1. Crear matriz vacía
         let matriz = [];
         for(let i=0; i<datos.filas; i++) {
-            let fila = new Array(parseInt(datos.columnas)).fill(""); 
+            // Un espacio en blanco "&nbsp;" ayuda a que la celda no colapse
+            let fila = new Array(parseInt(datos.columnas)).fill(" "); 
             matriz.push(fila);
         }
 
+        // 2. Insertar la tabla
         const tabla = seleccion.insertTable(parseInt(datos.filas), parseInt(datos.columnas), "After", matriz);
-        tabla.style = datos.estilo;
         
-        // Ajuste opcional para asegurar ancho completo
-        tabla.distributeColumns(); 
-        
+        await context.sync(); // Sincronizar para que la tabla "exista" en Word
+
+        // 3. Aplicar estilo con manejo de errores (Intento Español -> Intento Inglés)
+        // Esto asegura que funcione aunque el nombre sea difícil
+        try {
+            tabla.style = datos.estilo; // Intenta el nombre que viene del HTML (Español)
+            await context.sync();
+        } catch (e) {
+            console.warn("Fallo estilo español, intentando inglés estándar...");
+            // Si falla, intentamos el equivalente inglés común como respaldo
+            try {
+                if(datos.estilo.includes("Énfasis 1")) tabla.style = "Grid Table 4 Accent 1";
+                else if(datos.estilo.includes("Oscura")) tabla.style = "Grid Table 5 Dark Accent 1";
+                else tabla.style = "Table Grid";
+                
+                await context.sync();
+            } catch (e2) {
+                console.error("No se pudo aplicar ningún estilo. Se deja el predeterminado.");
+            }
+        }
+
+        // 4. Ajustes finales estéticos
+        tabla.distributeColumns(); // Ancho uniforme
+        tabla.autofitWindow();     /// Que ocupe el ancho de la página
+
         await context.sync();
     });
 }
-
 // ==========================================
 // 5. REGISTRO OFICIAL (TODOS LOS BOTONES)
 // ==========================================
