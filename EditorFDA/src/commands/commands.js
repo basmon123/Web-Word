@@ -4,15 +4,16 @@ let dialogCatalogo;
 let dialogGenerador;
 
 Office.onReady(() => {
-  console.log("Office initialized en commands.js");
+  console.log("Commands.js listo");
 });
 
 // ==========================================
-// 1. LÓGICA DE TABLAS (CORREGIDA)
+// 1. LÓGICA DE TABLAS
 // ==========================================
 
 function abrirVentanaTablas(event) {
     const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/GeneradorTablas/generadorTablas.html"; 
+    // Asegúrate de que displayInIframe sea true para mejor comunicación
     const opciones = { height: 50, width: 30, displayInIframe: true };
 
     Office.context.ui.displayDialogAsync(url, opciones, (asyncResult) => {
@@ -31,14 +32,14 @@ async function procesarMensajeTabla(arg) {
     let datos;
     try { datos = JSON.parse(arg.message); } catch (e) { return; }
     
-    // NO cerrar si es escaneo
+    // No cerrar ventana si estamos escaneando
     if (datos.accion !== "EXTRAER_XML") {
         if (dialogGenerador) dialogGenerador.close();
     }
 
     await Word.run(async (context) => {
         
-        // CASO A: INSERTAR TABLA SIMPLE
+        // CASO A: INSERTAR MANUAL
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
             let matriz = [];
@@ -51,7 +52,7 @@ async function procesarMensajeTabla(arg) {
             await context.sync();
         } 
         
-        // CASO B: INSERTAR PLANTILLA (BIBLIOTECA)
+        // CASO B: INSERTAR DESDE BIBLIOTECA
         else if (datos.accion === "INSERTAR_XML") {
             const seleccion = context.document.getSelection();
             seleccion.insertOoxml(datos.xml, "After");
@@ -59,26 +60,39 @@ async function procesarMensajeTabla(arg) {
             await context.sync();
         }
 
-        // CASO C: ESCANEAR (PARA DESARROLLADOR)
+        // CASO C: ESCANEAR (VERSIÓN A PRUEBA DE FALLOS)
         else if (datos.accion === "EXTRAER_XML") {
             const seleccion = context.document.getSelection();
-            // 1. Obtener el ADN
+            
+            // 1. Obtenemos el código de la tabla seleccionada
             const xmlResult = seleccion.getOoxml();
             await context.sync();
             
-            // 2. RESTAURADO: Escribir el código en el documento para copiarlo
-            seleccion.insertText(xmlResult.value, "Replace");
+            // 2. EN LUGAR DE REEMPLAZAR, ESCRIBIMOS AL FINAL DEL DOCUMENTO
+            // Esto evita errores de bloqueo si la selección es compleja.
+            const body = context.document.body;
+            
+            body.insertParagraph("--- INICIO CÓDIGO XML (COPIAR DESDE AQUÍ) ---", "End");
+            
+            // Insertamos el código feo
+            body.insertParagraph(xmlResult.value, "End");
+            
+            body.insertParagraph("--- FIN CÓDIGO XML ---", "End");
+            
             await context.sync();
+            
+            console.log("Código escrito al final del documento.");
         }
 
-    }).catch(error => console.error("Error tabla:", error));
+    }).catch(error => {
+        console.error("Error crítico en tablas:", error);
+    });
 }
 
 
 // ==========================================
-// 2. LÓGICA DEL CATÁLOGO (ANTERIOR - SIN CAMBIOS)
+// 2. LÓGICA DEL CATÁLOGO (ANTERIOR)
 // ==========================================
-
 function abrirCatalogo(event) {
   const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/catalog/catalog.html?v=4";
   Office.context.ui.displayDialogAsync(url, { height: 60, width: 50 },
@@ -149,9 +163,8 @@ function getBase64FromBlob(blob) {
 }
 
 // ==========================================
-// 3. HERRAMIENTAS Y ESTILOS (ANTERIOR - SIN CAMBIOS)
+// 3. HERRAMIENTAS Y ESTILOS
 // ==========================================
-
 async function limpiarFormato(event) {
   await Word.run(async (context) => {
       const selection = context.document.getSelection();
