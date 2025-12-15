@@ -203,53 +203,38 @@ function abrirVentanaTablas(event) {
 }
 
 async function procesarMensajeTabla(arg) {
-    let datos;
-    try { datos = JSON.parse(arg.message); } catch (e) { return; }
+    const datos = JSON.parse(arg.message);
     
-    // --- CORRECCIÓN AQUÍ ---
-    // Solo cerramos la ventana si NO estamos extrayendo código.
-    // Así puedes seguir viendo la herramienta mientras trabajas.
-    if (datos.accion !== "EXTRAER_XML") {
-        if (dialogGenerador) dialogGenerador.close();
-    }
+    // Cerramos la ventanita
+    dialogGenerador.close();
 
     await Word.run(async (context) => {
+        const seleccion = context.document.getSelection();
         
-        // CASO 1: INSERTAR NUEVA (SIMPLE)
-        if (datos.accion === "INSERTAR") {
-            const seleccion = context.document.getSelection();
-            let matriz = [];
-            for(let i=0; i<parseInt(datos.filas); i++) {
-                let fila = new Array(parseInt(datos.columnas)).fill(" "); 
-                matriz.push(fila);
-            }
-            const tabla = seleccion.insertTable(parseInt(datos.filas), parseInt(datos.columnas), "After", matriz);
-            tabla.autofitWindow();
-            await context.sync();
-        } 
-        
-        // CASO 2: INSERTAR DESDE BIBLIOTECA (JSON)
-        else if (datos.accion === "INSERTAR_XML") {
-            const seleccion = context.document.getSelection();
-            seleccion.insertOoxml(datos.xml, "After");
-            seleccion.insertParagraph("", "After");
-            await context.sync();
+        // 1. Crear matriz vacía
+        let matriz = [];
+        for(let i=0; i<datos.filas; i++) {
+            // Un espacio en blanco evita que la celda se vea colapsada
+            let fila = new Array(parseInt(datos.columnas)).fill(" "); 
+            matriz.push(fila);
         }
 
-        // CASO 3: EXTRAER CÓDIGO (HERRAMIENTA DESARROLLADOR)
-        else if (datos.accion === "EXTRAER_XML") {
-            const seleccion = context.document.getSelection();
-            // 1. Obtenemos el código secreto
-            const xml = seleccion.getOoxml();
-            await context.sync();
-            
-            // 2. TRUCO: Como no podemos enviar el texto fácil a la ventanita,
-            // lo escribimos TEMPORALMENTE en tu hoja de Word para que lo copies.
-            seleccion.insertText(xml.value, "Replace");
-            await context.sync();
-        }
+        // 2. Insertar la tabla
+        const tabla = seleccion.insertTable(parseInt(datos.filas), parseInt(datos.columnas), "After", matriz);
+        
+        // 3. Aplicar el estilo (Ahora usamos el nombre técnico directo)
+        // Word intentará aplicar "Grid Table 4 Accent 1"
+        tabla.style = datos.estilo; 
 
-    }).catch(error => console.error(error));
+        // 4. Ajustes finales
+        tabla.distributeColumns(); 
+        tabla.autofitWindow();
+
+        await context.sync();
+    }).catch(error => {
+        console.warn("Error al aplicar estilo o insertar tabla:", error);
+        // Si falla el estilo específico, el usuario al menos tendrá la tabla básica creada por defecto.
+    });
 }
 
 
