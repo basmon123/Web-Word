@@ -204,55 +204,52 @@ function abrirVentanaTablas(event) {
 
 async function procesarMensajeTabla(arg) {
     let datos;
-    try {
-        datos = JSON.parse(arg.message);
-    } catch (e) {
-        console.error("Error al leer datos del diálogo", e);
-        return;
-    }
+    try { datos = JSON.parse(arg.message); } catch (e) { return; }
     
-    // Cerramos la ventanita
-    if (dialogGenerador) dialogGenerador.close();
+    // --- CORRECCIÓN AQUÍ ---
+    // Solo cerramos la ventana si NO estamos extrayendo código.
+    // Así puedes seguir viendo la herramienta mientras trabajas.
+    if (datos.accion !== "EXTRAER_XML") {
+        if (dialogGenerador) dialogGenerador.close();
+    }
 
     await Word.run(async (context) => {
-        const seleccion = context.document.getSelection();
         
-        // 1. PREPARAR DATOS
-        let matriz = [];
-        const filas = parseInt(datos.filas);
-        const columnas = parseInt(datos.columnas);
-
-        for(let i=0; i<filas; i++) {
-            // Usamos un espacio simple para evitar celdas colapsadas
-            let fila = new Array(columnas).fill(" "); 
-            matriz.push(fila);
-        }
-
-        // 2. CREAR TABLA (OPERACIÓN CRÍTICA)
-        const tabla = seleccion.insertTable(filas, columnas, "After", matriz);
-        
-        // ¡SUPER IMPORTANTE! Guardamos aquí para asegurar que la tabla se dibuje
-        // independientemente de si el estilo funciona o no.
-        await context.sync(); 
-
-        // 3. INTENTAR APLICAR ESTILO
-        // Envolvemos esto en try/catch para que un error de estilo no borre la tabla
-        try {
-            // Word es sensible. Si el estilo exacto no existe, fallará aquí.
-            tabla.style = datos.estilo;
-            
-            // Ajustes finales
-            tabla.distributeColumns(); 
+        // CASO 1: INSERTAR NUEVA (SIMPLE)
+        if (datos.accion === "INSERTAR") {
+            const seleccion = context.document.getSelection();
+            let matriz = [];
+            for(let i=0; i<parseInt(datos.filas); i++) {
+                let fila = new Array(parseInt(datos.columnas)).fill(" "); 
+                matriz.push(fila);
+            }
+            const tabla = seleccion.insertTable(parseInt(datos.filas), parseInt(datos.columnas), "After", matriz);
             tabla.autofitWindow();
-            
             await context.sync();
-        } catch (errorEstilo) {
-            console.warn("El estilo '" + datos.estilo + "' no se encontró. Se deja la tabla simple.");
-            // No hacemos nada, la tabla queda con el estilo por defecto (Grid Table)
+        } 
+        
+        // CASO 2: INSERTAR DESDE BIBLIOTECA (JSON)
+        else if (datos.accion === "INSERTAR_XML") {
+            const seleccion = context.document.getSelection();
+            seleccion.insertOoxml(datos.xml, "After");
+            seleccion.insertParagraph("", "After");
+            await context.sync();
         }
-    }).catch(errorGeneral => {
-        console.error("Error fatal creando la tabla:", errorGeneral);
-    });
+
+        // CASO 3: EXTRAER CÓDIGO (HERRAMIENTA DESARROLLADOR)
+        else if (datos.accion === "EXTRAER_XML") {
+            const seleccion = context.document.getSelection();
+            // 1. Obtenemos el código secreto
+            const xml = seleccion.getOoxml();
+            await context.sync();
+            
+            // 2. TRUCO: Como no podemos enviar el texto fácil a la ventanita,
+            // lo escribimos TEMPORALMENTE en tu hoja de Word para que lo copies.
+            seleccion.insertText(xml.value, "Replace");
+            await context.sync();
+        }
+
+    }).catch(error => console.error(error));
 }
 
 
