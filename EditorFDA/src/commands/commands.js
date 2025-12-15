@@ -214,7 +214,7 @@ async function procesarMensajeTabla(arg) {
         // 1. Crear matriz vacía
         let matriz = [];
         for(let i=0; i<datos.filas; i++) {
-            // Un espacio en blanco "&nbsp;" ayuda a que la celda no colapse
+            // Un espacio en blanco evita que la celda se vea colapsada
             let fila = new Array(parseInt(datos.columnas)).fill(" "); 
             matriz.push(fila);
         }
@@ -222,34 +222,22 @@ async function procesarMensajeTabla(arg) {
         // 2. Insertar la tabla
         const tabla = seleccion.insertTable(parseInt(datos.filas), parseInt(datos.columnas), "After", matriz);
         
-        await context.sync(); // Sincronizar para que la tabla "exista" en Word
+        // 3. Aplicar el estilo (Ahora usamos el nombre técnico directo)
+        // Word intentará aplicar "Grid Table 4 Accent 1"
+        tabla.style = datos.estilo; 
 
-        // 3. Aplicar estilo con manejo de errores (Intento Español -> Intento Inglés)
-        // Esto asegura que funcione aunque el nombre sea difícil
-        try {
-            tabla.style = datos.estilo; // Intenta el nombre que viene del HTML (Español)
-            await context.sync();
-        } catch (e) {
-            console.warn("Fallo estilo español, intentando inglés estándar...");
-            // Si falla, intentamos el equivalente inglés común como respaldo
-            try {
-                if(datos.estilo.includes("Énfasis 1")) tabla.style = "Grid Table 4 Accent 1";
-                else if(datos.estilo.includes("Oscura")) tabla.style = "Grid Table 5 Dark Accent 1";
-                else tabla.style = "Table Grid";
-                
-                await context.sync();
-            } catch (e2) {
-                console.error("No se pudo aplicar ningún estilo. Se deja el predeterminado.");
-            }
-        }
-
-        // 4. Ajustes finales estéticos
-        tabla.distributeColumns(); // Ancho uniforme
-        tabla.autofitWindow();     /// Que ocupe el ancho de la página
+        // 4. Ajustes finales
+        tabla.distributeColumns(); 
+        tabla.autofitWindow();
 
         await context.sync();
+    }).catch(error => {
+        console.warn("Error al aplicar estilo o insertar tabla:", error);
+        // Si falla el estilo específico, el usuario al menos tendrá la tabla básica creada por defecto.
     });
 }
+
+
 // ==========================================
 // 5. REGISTRO OFICIAL (TODOS LOS BOTONES)
 // ==========================================
