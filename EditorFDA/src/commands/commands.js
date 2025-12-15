@@ -1,6 +1,6 @@
 /* global Office, Word */
 
-// Variables globales para los diálogos (separadas para no mezclar)
+// Variables globales para los diálogos
 let dialogCatalogo; 
 let dialogGenerador;
 
@@ -13,7 +13,6 @@ Office.onReady(() => {
 // ==========================================
 
 function abrirCatalogo(event) {
-  // Nota: ?v=4 para asegurar que no cachee viejo
   const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/catalog/catalog.html?v=4";
 
   Office.context.ui.displayDialogAsync(url, { height: 60, width: 50 },
@@ -40,7 +39,6 @@ async function procesarMensajeCatalogo(arg) {
 }
 
 async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
-  // 1. Mapeo de archivos
   const archivos = {
       "Minuta": "Minuta.docx",
       "Informe": "Informe.docx",
@@ -54,7 +52,6 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + carpeta + "/" + nombreArchivo;
 
   try {
-      // 2. Descargar la plantilla
       const response = await fetch(urlPlantilla);
       if (!response.ok) throw new Error("No se encontró la plantilla");
       
@@ -62,10 +59,8 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
       const base64 = await getBase64FromBlob(blob);
 
       await Word.run(async (context) => {
-        // 3. Crear el documento en memoria
         const newDoc = context.application.createDocument(base64);
 
-        // 4. Rellenado de datos
         const mapaDatos = [
             { tag: "ccCliente",    valor: datosProyecto.cliente },
             { tag: "ccDivisión",   valor: datosProyecto.division },
@@ -87,7 +82,6 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
             }
         }
 
-        // 5. Abrir nuevo y cerrar anterior
         newDoc.open();
         await context.sync();
         context.document.close(Word.CloseBehavior.skipSave); 
@@ -181,11 +175,10 @@ async function aplicarEstiloProfesional(nombreEsp, nombreIng) {
 }
 
 // ==========================================
-// 4. NUEVO: GENERADOR DE TABLAS
+// 4. NUEVO: GENERADOR DE TABLAS (CORREGIDO)
 // ==========================================
 
 function abrirVentanaTablas(event) {
-    // Asegúrate de que la carpeta GeneradorTablas tenga la G mayúscula en GitHub
     const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/GeneradorTablas/generadorTablas.html"; 
 
     const opciones = { height: 45, width: 30, displayInIframe: true };
@@ -202,53 +195,76 @@ function abrirVentanaTablas(event) {
     if(event) event.completed();
 }
 
+// --- ESTA ES LA FUNCIÓN QUE ARREGLA TODO ---
 async function procesarMensajeTabla(arg) {
-    const datos = JSON.parse(arg.message);
+    let datos;
+    try { datos = JSON.parse(arg.message); } catch (e) { return; }
     
-    // Cerramos la ventanita
-    dialogGenerador.close();
+    // IMPORTANTE: Solo cerramos la ventana si NO estamos escaneando.
+    // Si estamos escaneando, queremos que la ventana siga abierta para copiar el código.
+    if (datos.accion !== "EXTRAER_XML") {
+        if (dialogGenerador) dialogGenerador.close();
+    }
 
     await Word.run(async (context) => {
-        const seleccion = context.document.getSelection();
         
-        // 1. Crear matriz vacía
-        let matriz = [];
-        for(let i=0; i<datos.filas; i++) {
-            // Un espacio en blanco evita que la celda se vea colapsada
-            let fila = new Array(parseInt(datos.columnas)).fill(" "); 
-            matriz.push(fila);
+        // CASO 1: INSERTAR TABLA SIMPLE (MANUAL)
+        if (datos.accion === "INSERTAR") {
+            const seleccion = context.document.getSelection();
+            
+            let matriz = [];
+            const filas = parseInt(datos.filas);
+            const cols = parseInt(datos.columnas);
+
+            for(let i=0; i<filas; i++) {
+                let fila = new Array(cols).fill(" "); 
+                matriz.push(fila);
+            }
+
+            const tabla = seleccion.insertTable(filas, cols, "After", matriz);
+            tabla.autofitWindow();
+            await context.sync();
+        } 
+        
+        // CASO 2: INSERTAR PLANTILLA DESDE JSON (BIBLIOTECA)
+        else if (datos.accion === "INSERTAR_XML") {
+            const seleccion = context.document.getSelection();
+            
+            // Insertamos el ADN de la tabla guardada
+            seleccion.insertOoxml(datos.xml, "After");
+            
+            // Un salto de línea para separar
+            seleccion.insertParagraph("", "After");
+            
+            await context.sync();
         }
 
-        // 2. Insertar la tabla
-        const tabla = seleccion.insertTable(parseInt(datos.filas), parseInt(datos.columnas), "After", matriz);
-        
-        // 3. Aplicar el estilo (Ahora usamos el nombre técnico directo)
-        // Word intentará aplicar "Grid Table 4 Accent 1"
-        tabla.style = datos.estilo; 
+        // CASO 3: ESCANEAR TABLA (HERRAMIENTA DESARROLLADOR)
+        else if (datos.accion === "EXTRAER_XML") {
+            const seleccion = context.document.getSelection();
+            
+            // 1. Obtenemos el código de la tabla seleccionada
+            const xml = seleccion.getOoxml();
+            await context.sync();
+            
+            // 2. Escribimos el código TEMPORALMENTE en la hoja de Word
+            // (Es la forma más rápida para que lo puedas copiar)
+            seleccion.insertText(xml.value, "Replace");
+            await context.sync();
+        }
 
-        // 4. Ajustes finales
-        tabla.distributeColumns(); 
-        tabla.autofitWindow();
-
-        await context.sync();
-    }).catch(error => {
-        console.warn("Error al aplicar estilo o insertar tabla:", error);
-        // Si falla el estilo específico, el usuario al menos tendrá la tabla básica creada por defecto.
-    });
+    }).catch(error => console.error("Error en tabla:", error));
 }
 
 
 // ==========================================
-// 5. REGISTRO OFICIAL (TODOS LOS BOTONES)
+// 5. REGISTRO OFICIAL
 // ==========================================
 
-// Funciones antiguas
 Office.actions.associate("limpiarFormato", limpiarFormato);
 Office.actions.associate("insertarFecha", insertarFecha);
 Office.actions.associate("estiloTitulo1", estiloTitulo1);
 Office.actions.associate("estiloTitulo2", estiloTitulo2);
 Office.actions.associate("estiloTitulo3", estiloTitulo3);
 Office.actions.associate("abrirCatalogo", abrirCatalogo);
-
-// ¡ESTA ES LA QUE FALTABA!
 Office.actions.associate("abrirVentanaTablas", abrirVentanaTablas);
