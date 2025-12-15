@@ -14,8 +14,13 @@
         <div class="seccion-bordeada">
             <label class="label-titulo">Nueva Tabla Simple:</label>
             <div class="fila-inputs">
-                <input type="number" id="txtFilas" placeholder="Filas" title="Número de filas" value="3">
-                <input type="number" id="txtCols" placeholder="Cols" title="Número de columnas" value="3">
+                <input type="number" id="txtFilas" placeholder="Filas" title="Número de filas" value="3" min="1" max="20">
+                <input type="number" id="txtCols" placeholder="Cols" title="Número de columnas" value="3" min="1" max="10">
+            </div>
+            
+            <div class="preview-box">
+                <span class="label-preview">Vista Previa:</span>
+                <table id="tablaPreview" role="presentation"></table>
             </div>
             <button id="btnInsertar" class="boton-cargar">Crear Manual</button>
         </div>

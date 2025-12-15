@@ -1,6 +1,5 @@
 /* global Office, Word */
 
-// Variables globales para manejar las ventanas
 let dialogCatalogo; 
 let dialogGenerador;
 
@@ -9,13 +8,11 @@ Office.onReady(() => {
 });
 
 // ==========================================
-// 1. LÓGICA DE TABLAS (LO NUEVO)
+// 1. LÓGICA DE TABLAS (CORREGIDA)
 // ==========================================
 
 function abrirVentanaTablas(event) {
-    // Asegúrate de que coincida con la carpeta 'GeneradorTablas' (Mayúscula/Minúscula)
     const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/GeneradorTablas/generadorTablas.html"; 
-
     const opciones = { height: 50, width: 30, displayInIframe: true };
 
     Office.context.ui.displayDialogAsync(url, opciones, (asyncResult) => {
@@ -34,9 +31,7 @@ async function procesarMensajeTabla(arg) {
     let datos;
     try { datos = JSON.parse(arg.message); } catch (e) { return; }
     
-    // --- LÓGICA CRÍTICA DE CIERRE ---
-    // Si estamos escaneando, NO cerramos la ventana para que puedas seguir usándola.
-    // Si estamos insertando, SÍ la cerramos.
+    // NO cerrar si es escaneo
     if (datos.accion !== "EXTRAER_XML") {
         if (dialogGenerador) dialogGenerador.close();
     }
@@ -47,7 +42,6 @@ async function procesarMensajeTabla(arg) {
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
             let matriz = [];
-            // Crear matriz vacía
             for(let i=0; i<parseInt(datos.filas); i++) {
                 let fila = new Array(parseInt(datos.columnas)).fill(" "); 
                 matriz.push(fila);
@@ -57,23 +51,22 @@ async function procesarMensajeTabla(arg) {
             await context.sync();
         } 
         
-        // CASO B: INSERTAR PLANTILLA (DESDE JSON)
+        // CASO B: INSERTAR PLANTILLA (BIBLIOTECA)
         else if (datos.accion === "INSERTAR_XML") {
             const seleccion = context.document.getSelection();
-            // Insertamos el código OOXML guardado
             seleccion.insertOoxml(datos.xml, "After");
-            seleccion.insertParagraph("", "After"); // Separador
+            seleccion.insertParagraph("", "After");
             await context.sync();
         }
 
         // CASO C: ESCANEAR (PARA DESARROLLADOR)
         else if (datos.accion === "EXTRAER_XML") {
             const seleccion = context.document.getSelection();
-            // 1. Obtenemos el código de la tabla seleccionada
+            // 1. Obtener el ADN
             const xmlResult = seleccion.getOoxml();
             await context.sync();
             
-            // 2. Reemplazamos la tabla por su código (texto) para que lo copies
+            // 2. RESTAURADO: Escribir el código en el documento para copiarlo
             seleccion.insertText(xmlResult.value, "Replace");
             await context.sync();
         }
@@ -81,17 +74,16 @@ async function procesarMensajeTabla(arg) {
     }).catch(error => console.error("Error tabla:", error));
 }
 
+
 // ==========================================
-// 2. LÓGICA DEL CATÁLOGO (ANTERIOR)
+// 2. LÓGICA DEL CATÁLOGO (ANTERIOR - SIN CAMBIOS)
 // ==========================================
 
 function abrirCatalogo(event) {
   const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/catalog/catalog.html?v=4";
-
   Office.context.ui.displayDialogAsync(url, { height: 60, width: 50 },
     function (asyncResult) {
-      if (asyncResult.status === Office.AsyncResultStatus.Failed) {
-        console.error(asyncResult.error.message);
+      if (asyncResult.status === Office.AsyncResultStatus.Failed) { console.error(asyncResult.error.message);
       } else {
         dialogCatalogo = asyncResult.value;
         dialogCatalogo.addEventHandler(Office.EventType.DialogMessageReceived, procesarMensajeCatalogo);
@@ -113,7 +105,6 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
   const archivos = { "Minuta": "Minuta.docx", "Informe": "Informe.docx", "Carta": "Carta.docx" };
   const nombreArchivo = archivos[nombrePlantilla];
   if (!nombreArchivo) return;
-
   const carpeta = datosProyecto.carpeta_plantilla || "CODELCO"; 
   const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + carpeta + "/" + nombreArchivo;
 
@@ -122,7 +113,6 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
       if (!response.ok) throw new Error("Plantilla no encontrada");
       const blob = await response.blob();
       const base64 = await getBase64FromBlob(blob);
-
       await Word.run(async (context) => {
         const newDoc = context.application.createDocument(base64);
         const mapaDatos = [
@@ -133,7 +123,6 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
             { tag: "ccAPI",        valor: datosProyecto.api },
             { tag: "ccID",         valor: datosProyecto.id }
         ];
-
         for (let item of mapaDatos) {
             if (!item.valor) continue;
             const controls = newDoc.body.contentControls.getByTag(item.tag);
@@ -160,7 +149,7 @@ function getBase64FromBlob(blob) {
 }
 
 // ==========================================
-// 3. HERRAMIENTAS Y ESTILOS (ANTERIORES)
+// 3. HERRAMIENTAS Y ESTILOS (ANTERIOR - SIN CAMBIOS)
 // ==========================================
 
 async function limpiarFormato(event) {
@@ -200,15 +189,12 @@ async function aplicarEstilo(nomEsp, nomIng) {
 }
 
 // ==========================================
-// 4. REGISTRO OFICIAL (TODO JUNTO)
+// 4. REGISTRO OFICIAL
 // ==========================================
-
 Office.actions.associate("limpiarFormato", limpiarFormato);
 Office.actions.associate("insertarFecha", insertarFecha);
 Office.actions.associate("estiloTitulo1", estiloTitulo1);
 Office.actions.associate("estiloTitulo2", estiloTitulo2);
 Office.actions.associate("estiloTitulo3", estiloTitulo3);
 Office.actions.associate("abrirCatalogo", abrirCatalogo);
-
-// Nueva función registrada
 Office.actions.associate("abrirVentanaTablas", abrirVentanaTablas);
