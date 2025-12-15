@@ -203,37 +203,55 @@ function abrirVentanaTablas(event) {
 }
 
 async function procesarMensajeTabla(arg) {
-    const datos = JSON.parse(arg.message);
+    let datos;
+    try {
+        datos = JSON.parse(arg.message);
+    } catch (e) {
+        console.error("Error al leer datos del diálogo", e);
+        return;
+    }
     
     // Cerramos la ventanita
-    dialogGenerador.close();
+    if (dialogGenerador) dialogGenerador.close();
 
     await Word.run(async (context) => {
         const seleccion = context.document.getSelection();
         
-        // 1. Crear matriz vacía
+        // 1. PREPARAR DATOS
         let matriz = [];
-        for(let i=0; i<datos.filas; i++) {
-            // Un espacio en blanco evita que la celda se vea colapsada
-            let fila = new Array(parseInt(datos.columnas)).fill(" "); 
+        const filas = parseInt(datos.filas);
+        const columnas = parseInt(datos.columnas);
+
+        for(let i=0; i<filas; i++) {
+            // Usamos un espacio simple para evitar celdas colapsadas
+            let fila = new Array(columnas).fill(" "); 
             matriz.push(fila);
         }
 
-        // 2. Insertar la tabla
-        const tabla = seleccion.insertTable(parseInt(datos.filas), parseInt(datos.columnas), "After", matriz);
+        // 2. CREAR TABLA (OPERACIÓN CRÍTICA)
+        const tabla = seleccion.insertTable(filas, columnas, "After", matriz);
         
-        // 3. Aplicar el estilo (Ahora usamos el nombre técnico directo)
-        // Word intentará aplicar "Grid Table 4 Accent 1"
-        tabla.style = datos.estilo; 
+        // ¡SUPER IMPORTANTE! Guardamos aquí para asegurar que la tabla se dibuje
+        // independientemente de si el estilo funciona o no.
+        await context.sync(); 
 
-        // 4. Ajustes finales
-        tabla.distributeColumns(); 
-        tabla.autofitWindow();
-
-        await context.sync();
-    }).catch(error => {
-        console.warn("Error al aplicar estilo o insertar tabla:", error);
-        // Si falla el estilo específico, el usuario al menos tendrá la tabla básica creada por defecto.
+        // 3. INTENTAR APLICAR ESTILO
+        // Envolvemos esto en try/catch para que un error de estilo no borre la tabla
+        try {
+            // Word es sensible. Si el estilo exacto no existe, fallará aquí.
+            tabla.style = datos.estilo;
+            
+            // Ajustes finales
+            tabla.distributeColumns(); 
+            tabla.autofitWindow();
+            
+            await context.sync();
+        } catch (errorEstilo) {
+            console.warn("El estilo '" + datos.estilo + "' no se encontró. Se deja la tabla simple.");
+            // No hacemos nada, la tabla queda con el estilo por defecto (Grid Table)
+        }
+    }).catch(errorGeneral => {
+        console.error("Error fatal creando la tabla:", errorGeneral);
     });
 }
 
