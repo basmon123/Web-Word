@@ -1,0 +1,25 @@
+body { font-family: 'Segoe UI', sans-serif; padding: 10px; background-color: #f3f2f1; }
+.contenedor { display: flex; flex-direction: column; gap: 10px; }
+h2 { margin-top: 0; color: #0078d4; font-size: 18px; }
+
+.fila { display: flex; gap: 15px; }
+.grupo { display: flex; flex-direction: column; width: 50%; }
+input, select { padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
+
+.preview-box { 
+    margin-top: 10px; background: white; padding: 10px; 
+    border: 1px dashed #999; min-height: 80px; 
+    display: flex; flex-direction: column; align-items: center;
+}
+.label-preview { font-size: 10px; color: #666; align-self: flex-start; margin-bottom: 5px;}
+
+/* Estilo visual de la preview */
+#tablaPreview { border-collapse: collapse; width: 100%; }
+#tablaPreview td { border: 1px solid #ddd; padding: 4px; background: #eee; font-size: 8px; text-align: center; }
+
+.boton-cargar {
+    background-color: #0078d4; color: white; border: none;
+    padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer;
+    margin-top: 10px;
+}
+.boton-cargar:hover { background-color: #106ebe; }

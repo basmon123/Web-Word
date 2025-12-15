@@ -201,6 +201,61 @@ async function aplicarEstiloProfesional(nombreEsp, nombreIng) {
 }
 
 
+// Variable global para guardar la referencia del diálogo
+let dialogGenerador;
+
+// 1. Función que abre la ventana (Se conecta al botón del Ribbon)
+function abrirVentanaTablas(event) {
+    // La URL debe coincidir con donde está tu archivo nuevo
+    // Si estás en local: https://localhost:3000/src/generadorTablas/generadorTablas.html
+    // Si usas la misma base del proyecto, suele ser relativo o usar window.location
+    const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/generadorTablas/generadorTablas.html"; 
+    // ^ IMPORTANTE: Ajusta esta URL a tu entorno local o GitHub
+
+    const opciones = { height: 40, width: 30, displayInIframe: true };
+
+    Office.context.ui.displayDialogAsync(url, opciones, (asyncResult) => {
+        if (asyncResult.status === Office.AsyncResultStatus.Failed) {
+            console.error("Error al abrir diálogo:", asyncResult.error.message);
+        } else {
+            dialogGenerador = asyncResult.value;
+            // Nos ponemos a escuchar mensajes desde la ventanita
+            dialogGenerador.addEventHandler(Office.EventType.DialogMessageReceived, procesarMensajeTabla);
+        }
+    });
+    
+    if(event) event.completed();
+}
+
+// 2. Función que recibe la orden y dibuja en Word
+async function procesarMensajeTabla(arg) {
+    const datos = JSON.parse(arg.message);
+    
+    // Cerramos la ventanita
+    dialogGenerador.close();
+
+    await Word.run(async (context) => {
+        const seleccion = context.document.getSelection();
+        
+        // Crear matriz vacía
+        let matriz = [];
+        for(let i=0; i<datos.filas; i++) {
+            let fila = new Array(parseInt(datos.columnas)).fill(""); 
+            matriz.push(fila);
+        }
+
+        const tabla = seleccion.insertTable(parseInt(datos.filas), parseInt(datos.columnas), "After", matriz);
+        tabla.style = datos.estilo;
+        tabla.autofitWindow();
+
+        await context.sync();
+    });
+}
+
+
+
+
+
 // 3. REGISTRO OFICIAL (LA PARTE CLAVE)
 // Aquí registramos AMBAS funciones usando el MISMO método.
 // Esto elimina la interferencia.
