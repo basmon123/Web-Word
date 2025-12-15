@@ -1,68 +1,103 @@
-body { font-family: 'Segoe UI', sans-serif; padding: 10px; background-color: #f3f2f1; }
-.contenedor { display: flex; flex-direction: column; gap: 10px; }
-h2 { margin-top: 0; color: #0078d4; font-size: 18px; }
-
-.fila { display: flex; gap: 15px; }
-.grupo { display: flex; flex-direction: column; width: 50%; }
-input, select { padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
-
-.preview-box { 
-    margin-top: 10px; background: white; padding: 10px; 
-    border: 1px dashed #999; min-height: 80px; 
-    display: flex; flex-direction: column; align-items: center;
-}
-.label-preview { font-size: 10px; color: #666; align-self: flex-start; margin-bottom: 5px;}
-
-/* Estilo visual de la preview */
-#tablaPreview { border-collapse: collapse; width: 100%; }
-#tablaPreview td { border: 1px solid #ddd; padding: 4px; background: #eee; font-size: 8px; text-align: center; }
-
-.boton-cargar {
-    background-color: #0078d4; color: white; border: none;
-    padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer;
-    margin-top: 10px;
-}
-.boton-cargar:hover { background-color: #106ebe; }
-
-
-/* --- ZONA DE DESARROLLO (SOLO PARA TI) --- */
-.dev-container {
-    margin-top: 15px;
-    border: 1px dashed #ccc;
-    padding: 5px;
-    background-color: #fff4e5; /* Fondo suave naranja */
+/* Configuración Base */
+body {
+    font-family: 'Segoe UI', sans-serif;
+    padding: 10px;
+    background-color: #f3f2f1;
 }
 
-.dev-title {
-    cursor: pointer;
+.contenedor {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.label-titulo {
     font-size: 12px;
     font-weight: bold;
+    margin-top: 5px;
+    display: block;
 }
 
-.dev-instructions {
+/* Inputs y Selects */
+input, select {
+    padding: 5px;
+    width: 95%; /* Ajuste para que no se salga */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box; /* Importante para el padding */
+}
+
+/* Botones Generales */
+.boton-cargar {
+    background-color: #0078d4;
+    color: white;
+    border: none;
+    padding: 10px;
+    width: 100%;
+    margin-top: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+.boton-cargar:hover {
+    background-color: #106ebe;
+}
+
+/* Botón específico azul oscuro */
+.boton-azul-oscuro {
+    background-color: #004e8c;
+}
+
+.boton-azul-oscuro:hover {
+    background-color: #003b6a;
+}
+
+/* Clases de Estructura (reemplazan a los styles inline) */
+.seccion-bordeada {
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 10px;
+}
+
+.seccion-margen {
+    margin-top: 10px;
+}
+
+.fila-inputs {
+    display: flex;
+    gap: 10px;
+}
+
+.fila-inputs input {
+    width: 50%;
+}
+
+/* ZONA DEVELOPER */
+.dev-box {
+    background: #fff4e5;
+    border: 1px dashed orange;
+    padding: 10px;
+    margin-top: 20px;
+    border-radius: 4px;
+}
+
+.texto-instruccion {
     font-size: 10px;
+    margin: 0 0 5px 0;
     color: #666;
-    margin: 5px 0;
 }
 
-.btn-dev-action {
-    background-color: orange;
-    color: black;
+.btn-scan {
+    background: orange;
     width: 100%;
     border: none;
     padding: 8px;
-    font-weight: bold;
     cursor: pointer;
-    margin-bottom: 5px;
-}
-.btn-dev-action:hover {
-    background-color: darkorange;
+    font-weight: bold;
+    border-radius: 4px;
+    color: #333;
 }
 
-.dev-output {
-    width: 100%;
-    font-size: 10px;
-    font-family: monospace;
-    resize: vertical;
-    border: 1px solid #ccc;
+.btn-scan:hover {
+    background-color: darkorange;
 }

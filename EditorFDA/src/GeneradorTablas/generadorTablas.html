@@ -9,50 +9,32 @@
 </head>
 <body class="ms-Fabric">
     <div class="contenedor">
-        <h2>Diseñar Tabla</h2>
-        
-        <div class="fila">
-            <div class="grupo">
-                <label for="txtFilas">Filas</label>
-                <input type="number" id="txtFilas" title="Número de filas" value="3" min="1" max="50">
+        <h2>Gestor de Tablas</h2>
+
+        <div class="seccion-bordeada">
+            <label class="label-titulo">Nueva Tabla Simple:</label>
+            <div class="fila-inputs">
+                <input type="number" id="txtFilas" placeholder="Filas" title="Número de filas" value="3">
+                <input type="number" id="txtCols" placeholder="Cols" title="Número de columnas" value="3">
             </div>
-            <div class="grupo">
-                <label for="txtCols">Columnas</label>
-                <input type="number" id="txtCols" title="Número de columnas" value="3" min="1" max="15">
-            </div>
+            <button id="btnInsertar" class="boton-cargar">Crear Manual</button>
         </div>
 
-<label for="selEstilo">Estilo</label>
-<select id="selEstilo" title="Seleccionar estilo de tabla">
-    <option value="Table Grid">Simple (Bordes Negros)</option>
-    
-    <option value="Grid Table 4 Accent 1">Azul Corporativo (Claro)</option>
-    <option value="Grid Table 5 Dark Accent 1">Azul Corporativo (Oscuro)</option>
-    
-    <option value="Grid Table 4 Accent 2">Naranja</option>
-    <option value="List Table 1 Light">Lista Limpia (Sin bordes verticales)</option>
-</select>
-
-        <div class="preview-box">
-            <span class="label-preview">Vista Previa:</span>
-            <table id="tablaPreview" role="presentation"></table>
+        <div class="seccion-margen">
+            <label class="label-titulo" for="ddlPlantillasTablas">Biblioteca de Plantillas:</label>
+            <select id="ddlPlantillasTablas" title="Seleccione una plantilla de tabla">
+                <option value="">Cargando...</option>
+            </select>
+            <button id="btnInsertarPlantilla" class="boton-cargar boton-azul-oscuro">Insertar Plantilla</button>
         </div>
 
-        <button id="btnInsertar" class="boton-cargar">CARGAR TABLA</button>
+        <div class="dev-box">
+            <label class="label-titulo">🛠️ Zona Desarrollador</label>
+            <p class="texto-instruccion">Selecciona una tabla en Word y pulsa para ver su código.</p>
+            <button id="btnExtraerCodigo" class="btn-scan">ESCANEAR TABLA</button>
+        </div>
     </div>
 
-    <script type="text/javascript" src="generadorTablas.js"></script>
+    <script src="generadorTablas.js"></script>
 </body>
 </html>
-
-
-<hr>
-<details class="dev-container">
-    <summary class="dev-title">🛠️ Zona de Desarrollo (Extraer Tabla)</summary>
-    <p class="dev-instructions">
-        Selecciona una tabla en Word y pulsa aquí. Copia el código que saldrá abajo.
-    </p>
-    <button id="btnExtraerCodigo" class="btn-dev-action">ESCANEAR TABLA SELECCIONADA</button>
-    <textarea id="txtOutputCodigo" class="dev-output" rows="5"></textarea>
-</details>
-
