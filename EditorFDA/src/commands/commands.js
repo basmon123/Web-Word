@@ -206,10 +206,7 @@ let dialogGenerador;
 
 // 1. Función que abre la ventana (Se conecta al botón del Ribbon)
 function abrirVentanaTablas(event) {
-    // La URL debe coincidir con donde está tu archivo nuevo
-    // Si estás en local: https://localhost:3000/src/generadorTablas/generadorTablas.html
-    // Si usas la misma base del proyecto, suele ser relativo o usar window.location
-    const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/generadorTablas/generadorTablas.html"; 
+    const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/GeneradorTablas/generadorTablas.html"; 
     // ^ IMPORTANTE: Ajusta esta URL a tu entorno local o GitHub
 
     const opciones = { height: 40, width: 30, displayInIframe: true };
@@ -251,10 +248,6 @@ async function procesarMensajeTabla(arg) {
         await context.sync();
     });
 }
-
-
-
-
 
 // 3. REGISTRO OFICIAL (LA PARTE CLAVE)
 // Aquí registramos AMBAS funciones usando el MISMO método.
