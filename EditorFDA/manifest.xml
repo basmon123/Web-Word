@@ -203,10 +203,10 @@
         <bt:String id="GrupoPrincipal.Label" DefaultValue="Principal"/>
         <bt:String id="GrupoUtilidades.Label" DefaultValue="Acciones Rápidas"/>
         <bt:String id="GrupoEstilos.Label" DefaultValue="Estilos FDA"/>
-        <bt:String id="TaskpaneButton.Label" DefaultValue="Generador Documentos"/>
+        <bt:String id="TaskpaneButton.Label" DefaultValue="Editor Documentos"/>
         <bt:String id="BtnLimpiar.Label" DefaultValue="Estandarizar Formato"/>
         <bt:String id="BtnFecha.Label" DefaultValue="Insertar Fecha"/>
-        <bt:String id="BtnCatalogo.Label" DefaultValue="Nuevo Documento"/>
+        <bt:String id="BtnCatalogo.Label" DefaultValue="Seleccionar Plantilla"/>
         <bt:String id="BtnEstilo1.Label" DefaultValue="Título 1.0"/>
         <bt:String id="BtnEstilo2.Label" DefaultValue="Subtítulo 1.1"/>
         <bt:String id="BtnEstilo3.Label" DefaultValue="Subtítulo 1.1.1"/>
