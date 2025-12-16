@@ -242,7 +242,7 @@ async function aplicarEstilo(nomEsp, nomIng) {
 // ==========================================
 function abrirVentanaGraficos(event) {
     // Asegúrate de la ruta correcta (Mayúsculas/Minúsculas)
-    const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/GeneradorGraficos/generadorGraficos.html"; 
+    const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/generadorGraficos/generadorGraficos.html"; 
     
     Office.context.ui.displayDialogAsync(url, { height: 50, width: 30, displayInIframe: true }, 
         (asyncResult) => {
