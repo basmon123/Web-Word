@@ -28,74 +28,95 @@ function abrirVentanaTablas(event) {
     if(event) event.completed();
 }
 
-// REEMPLAZA ESTA FUNCIÓN EN COMMANDS.JS
+/* Reemplaza TU función procesarMensajeTabla actual con ESTA */
+
 async function procesarMensajeTabla(arg) {
     let datos;
     try { datos = JSON.parse(arg.message); } catch (e) { return; }
     
-    // No cerrar ventana si estamos escaneando
+    // 1. GESTIÓN DE LA VENTANA
+    // Si es Insertar (Manual o Plantilla), cerramos la ventana para ver el resultado.
+    // Si es Escanear, LA DEJAMOS ABIERTA.
     if (datos.accion !== "EXTRAER_XML") {
         if (dialogGenerador) dialogGenerador.close();
     }
 
     await Word.run(async (context) => {
         
-        // CASO A: INSERTAR MANUAL
+        // ==========================================
+        // CASO A: INSERTAR MANUAL (SOLUCIÓN ROBUSTA)
+        // ==========================================
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
-            let matriz = [];
-            // ParseInt asegura que sean números y no texto
+            
             const filas = parseInt(datos.filas);
             const cols = parseInt(datos.columnas);
-
+            
+            // 1. Construimos la matriz de datos vacíos
+            let matriz = [];
             for(let i=0; i<filas; i++) {
+                // Llenamos con un espacio para que la celda no colapse
                 let fila = new Array(cols).fill(" "); 
                 matriz.push(fila);
             }
+
+            // 2. Insertamos la tabla (Esto es lo importante)
             const tabla = seleccion.insertTable(filas, cols, "After", matriz);
-            // Estilo por defecto básico para que se vea
-            tabla.style = "Table Grid"; 
+            
+            // 3. INTENTO DE ESTILO (A prueba de fallos)
+            // Envolvemos esto en un try/catch para que si el nombre del estilo no existe
+            // en tu idioma, la tabla SE CREE IGUAL (aunque sea fea).
+            try {
+                // Intenta estilo estándar en Inglés
+                tabla.style = "Table Grid"; 
+            } catch (errorEstilo) {
+                try {
+                    // Intento alternativo en Español
+                    tabla.style = "Tabla con cuadrícula"; 
+                } catch (e2) {
+                    // Si todo falla, no hacemos nada y dejamos la tabla sin estilo
+                    console.warn("No se pudo aplicar estilo, pero la tabla se creó.");
+                }
+            }
+
             tabla.autofitWindow();
             await context.sync();
-        }
+        } 
         
-        // CASO B: INSERTAR DESDE BIBLIOTECA (CON DIAGNÓSTICO)
+        // ==========================================
+        // CASO B: INSERTAR DESDE BIBLIOTECA (XML)
+        // ==========================================
         else if (datos.accion === "INSERTAR_XML") {
             const seleccion = context.document.getSelection();
-            
-            // INTENTO DE INSERCIÓN
             try {
-                // Insertamos el código
                 seleccion.insertOoxml(datos.xml, "After");
-                seleccion.insertParagraph("", "After");
+                seleccion.insertParagraph("", "After"); // Separador
                 await context.sync();
             } catch (errorXML) {
-                // SI FALLA, AVISAMOS AL USUARIO
-                console.error("XML Corrupto:", errorXML);
-                
-                // Escribimos el error en el documento para que lo veas
+                // Si el XML falla, escribimos el error en el documento
                 const body = context.document.body;
-                body.insertParagraph("❌ ERROR: El código XML de esta tabla está dañado o incompleto.", "Start");
-                body.insertParagraph("Detalle: " + errorXML.message, "Start");
+                body.insertParagraph("❌ ERROR: XML corrupto. " + errorXML.message, "Start");
                 await context.sync();
             }
         }
 
-        // CASO C: ESCANEAR
+        // ==========================================
+        // CASO C: ESCANEAR (HERRAMIENTA DEVELOPER)
+        // ==========================================
         else if (datos.accion === "EXTRAER_XML") {
             const seleccion = context.document.getSelection();
             const xmlResult = seleccion.getOoxml();
             await context.sync();
             
             const body = context.document.body;
-            body.insertParagraph("--- INICIO CÓDIGO XML ---", "End");
+            body.insertParagraph("--- COPY START ---", "End");
             body.insertParagraph(xmlResult.value, "End");
-            body.insertParagraph("--- FIN CÓDIGO XML ---", "End");
+            body.insertParagraph("--- COPY END ---", "End");
             await context.sync();
         }
 
     }).catch(error => {
-        console.error("Error general:", error);
+        console.error("Error crítico en Word.run:", error);
     });
 }
 
