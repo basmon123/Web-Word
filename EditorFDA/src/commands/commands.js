@@ -45,20 +45,15 @@ async function procesarMensajeTabla(arg) {
 
     await Word.run(async (context) => {
         
-     // ==========================================
-        // CASO 1: INSERTAR MANUAL (CORREGIDO)
-        // ==========================================
 // ------------------------------------------
-        // A. INSERTAR MANUAL (¡CON FORMATO DEL JEFE!)
+        // A. INSERTAR MANUAL (CORREGIDO)
         // ------------------------------------------
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
             
-            // 1. Validar números
             let f = parseInt(datos.filas) || 3;
             let c = parseInt(datos.columnas) || 3;
             
-            // 2. Crear matriz vacía
             let matriz = [];
             for(let i=0; i<f; i++) {
                 let fila = new Array(c).fill(" "); 
@@ -66,19 +61,25 @@ async function procesarMensajeTabla(arg) {
             }
 
             try {
-                // 3. Insertar la tabla
+                // 1. CREAR LA TABLA
                 const tabla = seleccion.insertTable(f, c, "After", matriz);
                 
-                // --- APLICAR ESTILO DEL JEFE ---
+                // --- PAUSA TÉCNICA CRUCIAL ---
+                // Esto obliga a Word a crear la tabla en memoria ANTES de intentar tocar sus bordes.
+                // Sin esto, el objeto "format" aún no existe y da el error "undefined".
+                await context.sync(); 
+                
+                // 2. AHORA SÍ, APLICAMOS FORMATO
                 
                 // A) Configuración General (Toda la tabla)
-                const rangoTabla = tabla.getRange();
+                // Volvemos a pedir el rango ahora que la tabla ya existe seguro
+                const rangoTabla = tabla.getRange(); 
+                
                 rangoTabla.font.name = "Arial";
                 rangoTabla.font.size = 12;
-                rangoTabla.font.color = "black"; // Color base
-                
-                // B) Bordes (Para que se vea elegante y definida)
-                // Dibujamos bordes internos y externos
+                rangoTabla.font.color = "black";
+
+                // B) Bordes (Ahora no debería fallar)
                 const bordes = rangoTabla.format.borders;
                 bordes.getItem("InsideHorizontal").style = "Single";
                 bordes.getItem("InsideVertical").style = "Single";
@@ -89,24 +90,22 @@ async function procesarMensajeTabla(arg) {
 
                 // C) Estilo de la Primera Fila (Encabezado)
                 const filaEncabezado = tabla.rows.getItem(0);
-                
-                // Color de fondo (Azul Oscuro Corporativo)
-                // Puedes cambiar este código HEX por el que prefieras
-                filaEncabezado.shading.color = "#1F4E78"; 
-                
-                // Color de letra (Blanco y Negrita)
-                filaEncabezado.font.color = "white";
-                filaEncabezado.font.bold = true;
-
-                // -------------------------------
+                filaEncabezado.shading.color = "#1F4E78"; // Azul Oscuro
+                filaEncabezado.font.color = "white";      // Letra Blanca
+                filaEncabezado.font.bold = true;          // Negrita
 
                 tabla.autofitWindow();
                 
+                // Sincronizamos los cambios visuales
+                await context.sync();
+                
             } catch (error) {
-                context.document.body.insertParagraph("❌ Error Tabla: " + error.message, "Start");
+                // Si falla, escribimos el error en el documento para que lo leas
+                context.document.body.insertParagraph("❌ Error Formato: " + error.message, "Start");
+                await context.sync();
             }
-            await context.sync();
         }
+        
         // ==========================================
         // CASO B: INSERTAR DESDE BIBLIOTECA (XML)
         // ==========================================
