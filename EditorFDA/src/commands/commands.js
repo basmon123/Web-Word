@@ -44,14 +44,20 @@ async function procesarMensajeTabla(arg) {
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
             let matriz = [];
-            for(let i=0; i<parseInt(datos.filas); i++) {
-                let fila = new Array(parseInt(datos.columnas)).fill(" "); 
+            // ParseInt asegura que sean números y no texto
+            const filas = parseInt(datos.filas);
+            const cols = parseInt(datos.columnas);
+
+            for(let i=0; i<filas; i++) {
+                let fila = new Array(cols).fill(" "); 
                 matriz.push(fila);
             }
-            const tabla = seleccion.insertTable(parseInt(datos.filas), parseInt(datos.columnas), "After", matriz);
+            const tabla = seleccion.insertTable(filas, cols, "After", matriz);
+            // Estilo por defecto básico para que se vea
+            tabla.style = "Table Grid"; 
             tabla.autofitWindow();
             await context.sync();
-        } 
+        }
         
         // CASO B: INSERTAR DESDE BIBLIOTECA (CON DIAGNÓSTICO)
         else if (datos.accion === "INSERTAR_XML") {

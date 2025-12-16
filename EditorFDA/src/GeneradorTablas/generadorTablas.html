@@ -14,14 +14,15 @@
         <div class="seccion-bordeada">
             <label class="label-titulo">Nueva Tabla Simple:</label>
             <div class="fila-inputs">
-                <input type="number" id="txtFilas" placeholder="Filas" title="Número de filas" value="3" min="1" max="20">
-                <input type="number" id="txtCols" placeholder="Cols" title="Número de columnas" value="3" min="1" max="10">
+                <input type="number" id="txtFilas" placeholder="Filas" title="Número de filas" value="3" min="1" max="20" oninput="actualizarPreview()">
+                <input type="number" id="txtCols" placeholder="Cols" title="Número de columnas" value="3" min="1" max="10" oninput="actualizarPreview()">
             </div>
             
-            <div class="preview-box">
-                <span class="label-preview">Vista Previa:</span>
-                <table id="tablaPreview" role="presentation"></table>
+            <div class="preview-container">
+                <span class="label-small">Vista Previa:</span>
+                <table id="tablaPreview" class="tabla-preview"></table>
             </div>
+
             <button id="btnInsertar" class="boton-cargar">Crear Manual</button>
         </div>
 
@@ -33,11 +34,13 @@
             <button id="btnInsertarPlantilla" class="boton-cargar boton-azul-oscuro">Insertar Plantilla</button>
         </div>
 
-        <div class="dev-box">
-            <label class="label-titulo">🛠️ Zona Desarrollador</label>
-            <p class="texto-instruccion">Selecciona una tabla en Word y pulsa para ver su código.</p>
-            <button id="btnExtraerCodigo" class="btn-scan">ESCANEAR TABLA</button>
-        </div>
+        <details class="dev-details">
+            <summary class="dev-summary">🛠️ Herramientas de Desarrollador</summary>
+            <div class="dev-content">
+                <p class="texto-instruccion">Selecciona una tabla en Word y pulsa para obtener su código XML limpio.</p>
+                <button id="btnExtraerCodigo" class="btn-scan">ESCANEAR TABLA</button>
+            </div>
+        </details>
     </div>
 
     <script src="generadorTablas.js"></script>

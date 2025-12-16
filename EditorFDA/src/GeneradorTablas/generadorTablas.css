@@ -8,31 +8,69 @@ body {
 .contenedor {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 15px;
 }
 
 .label-titulo {
     font-size: 12px;
     font-weight: bold;
-    margin-top: 5px;
+    margin-bottom: 5px;
     display: block;
 }
 
-/* Inputs y Selects */
-input, select {
-    padding: 5px;
-    width: 95%; /* Ajuste para que no se salga */
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-sizing: border-box; /* Importante para el padding */
+.label-small {
+    font-size: 10px;
+    color: #666;
+    margin-bottom: 2px;
+    display: block;
 }
 
-/* Botones Generales */
+/* Inputs */
+.fila-inputs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+input, select {
+    padding: 6px;
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+/* Vista Previa de Tabla */
+.preview-container {
+    background: white;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    min-height: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.tabla-preview {
+    border-collapse: collapse;
+    margin-top: 5px;
+}
+
+.tabla-preview td {
+    border: 1px solid #999;
+    width: 15px;
+    height: 15px;
+    background-color: #f0f0f0;
+}
+
+/* Botones */
 .boton-cargar {
     background-color: #0078d4;
     color: white;
     border: none;
-    padding: 10px;
+    padding: 8px;
     width: 100%;
     margin-top: 10px;
     cursor: pointer;
@@ -40,64 +78,51 @@ input, select {
     border-radius: 4px;
 }
 
-.boton-cargar:hover {
-    background-color: #106ebe;
-}
+.boton-cargar:hover { background-color: #106ebe; }
+.boton-azul-oscuro { background-color: #004e8c; }
+.boton-azul-oscuro:hover { background-color: #003b6a; }
 
-/* Botón específico azul oscuro */
-.boton-azul-oscuro {
-    background-color: #004e8c;
-}
-
-.boton-azul-oscuro:hover {
-    background-color: #003b6a;
-}
-
-/* Clases de Estructura (reemplazan a los styles inline) */
 .seccion-bordeada {
     border-bottom: 1px solid #ccc;
-    padding-bottom: 10px;
+    padding-bottom: 15px;
 }
 
-.seccion-margen {
-    margin-top: 10px;
-}
-
-.fila-inputs {
-    display: flex;
-    gap: 10px;
-}
-
-.fila-inputs input {
-    width: 50%;
-}
-
-/* ZONA DEVELOPER */
-.dev-box {
-    background: #fff4e5;
-    border: 1px dashed orange;
-    padding: 10px;
+/* ZONA DEVELOPER (SUTIL) */
+.dev-details {
     margin-top: 20px;
+    border-top: 1px dashed #ccc;
+    padding-top: 10px;
+}
+
+.dev-summary {
+    cursor: pointer;
+    font-size: 10px;
+    color: #888;
+    font-style: italic;
+    outline: none;
+}
+
+.dev-content {
+    background: #fff4e5;
+    padding: 10px;
+    margin-top: 5px;
     border-radius: 4px;
+    border: 1px solid orange;
 }
 
 .texto-instruccion {
     font-size: 10px;
-    margin: 0 0 5px 0;
-    color: #666;
+    margin: 0 0 8px 0;
+    color: #444;
 }
 
 .btn-scan {
     background: orange;
     width: 100%;
     border: none;
-    padding: 8px;
+    padding: 6px;
     cursor: pointer;
     font-weight: bold;
     border-radius: 4px;
-    color: #333;
-}
-
-.btn-scan:hover {
-    background-color: darkorange;
+    font-size: 11px;
 }
