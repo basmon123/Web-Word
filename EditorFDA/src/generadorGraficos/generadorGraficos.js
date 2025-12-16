@@ -1,21 +1,16 @@
 /* global Office, document, fetch */
 
-// URL DE TU NUEVO JSON DE GRÁFICOS
 const URL_GRAFICOS_JSON = "https://basmon123.github.io/Web-Word/EditorFDA/src/data/graficos.json";
 let graficosCache = [];
 
 Office.onReady(async () => {
     await cargarBiblioteca();
 
-    // Botón Estándar
-    const btnStd = document.getElementById("btnInsertarEstandar");
-    if (btnStd) btnStd.onclick = insertarEstandar;
-
-    // Botón Plantilla
+    // Solo configuramos el botón de Plantilla
     const btnPlantilla = document.getElementById("btnInsertarPlantilla");
     if (btnPlantilla) btnPlantilla.onclick = insertarPlantilla;
 
-    // Botón Escáner
+    // Y el botón de Escáner
     const btnScan = document.getElementById("btnExtraerCodigo");
     if(btnScan) {
         btnScan.onclick = function() {
@@ -27,15 +22,10 @@ Office.onReady(async () => {
     }
 });
 
-function insertarEstandar() {
-    const tipo = document.getElementById("ddlEstandar").value;
-    const config = { accion: "INSERTAR_ESTANDAR", tipoGrafico: tipo };
-    Office.context.ui.messageParent(JSON.stringify(config));
-}
-
 function insertarPlantilla() {
     const xml = document.getElementById("ddlPlantillasGraficos").value;
     if(!xml) return;
+    // Enviamos el XML al sistema
     const config = { accion: "INSERTAR_XML", xml: xml };
     Office.context.ui.messageParent(JSON.stringify(config));
 }

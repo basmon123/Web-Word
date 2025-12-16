@@ -269,35 +269,10 @@ async function procesarMensajeGrafico(arg) {
 
     await Word.run(async (context) => {
         
-// ==========================================
-        // CASO 1: INSERTAR ESTÁNDAR (TRUCO XML)
         // ==========================================
-        if (datos.accion === "INSERTAR_ESTANDAR") {
-            const seleccion = context.document.getSelection();
-            
-            // Como tu Word no tiene "insertChart", usamos el XML de un gráfico base.
-            // Esto funcionará porque tus plantillas ya funcionan.
-            try {
-                // 1. Limpiamos el XML base por seguridad
-                let xmlParaInsertar = XML_GRAFICO_BASE;
-                xmlParaInsertar = xmlParaInsertar.replace(/\\r\\n/g, ""); 
-
-                // 2. Insertamos usando la función que SÍ funciona en tu Word
-                seleccion.insertOoxml(xmlParaInsertar, "After");
-                seleccion.insertParagraph("", "After");
-                
-                await context.sync();
-                
-            } catch (error) {
-                const body = context.document.body;
-                body.insertParagraph("❌ ERROR FATAL: Ni siquiera el XML base funcionó.", "Start");
-                body.insertParagraph("Detalle: " + error.message, "Start");
-            }
-        }
+        // CASO 1: INSERTAR PLANTILLA (LAVADO DE CÓDIGO)
         // ==========================================
-        // CASO 2: INSERTAR PLANTILLA (LAVADO DE CÓDIGO)
-        // ==========================================
-        else if (datos.accion === "INSERTAR_XML") {
+      if (datos.accion === "INSERTAR_XML") {
             const seleccion = context.document.getSelection();
             
             try {
@@ -332,7 +307,7 @@ async function procesarMensajeGrafico(arg) {
         }
 
         // ==========================================
-        // CASO 3: ESCANEAR (DEVELOPER)
+        // CASO 2: ESCANEAR (DEVELOPER)
         // ==========================================
         else if (datos.accion === "EXTRAER_XML") {
             const seleccion = context.document.getSelection();
