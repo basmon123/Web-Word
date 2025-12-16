@@ -257,7 +257,7 @@ function abrirVentanaGraficos(event) {
     if(event) event.completed();
 }
 
-/* Reemplaza TU función procesarMensajeGrafico actual con ESTA */
+/* Reemplaza TU función procesarMensajeGrafico por esta versión */
 
 async function procesarMensajeGrafico(arg) {
     let datos;
@@ -270,39 +270,43 @@ async function procesarMensajeGrafico(arg) {
     await Word.run(async (context) => {
         
         // ==========================================
-        // CASO 1: INSERTAR ESTÁNDAR (ARREGLADO)
+        // CASO 1: INSERTAR ESTÁNDAR (MÉTODO SEGURO)
         // ==========================================
         if (datos.accion === "INSERTAR_ESTANDAR") {
+            // En lugar de pelear con la selección, insertamos al final del documento
+            // o insertamos un párrafo y sincronizamos antes de poner el gráfico.
             const seleccion = context.document.getSelection();
-            
-            // 1. TRUCO: Insertamos un párrafo nuevo DESPUÉS del cursor.
-            // El cursor 'Selection' no puede tener gráficos, pero un 'Paragraph' sí.
             const parrafo = seleccion.insertParagraph("", "After");
             
-            // 2. Definimos el tipo exacto
+            // Sincronizamos para asegurar que el párrafo existe en Word antes de tocarlo
+            await context.sync();
+
             let tipoOficial = "ColumnClustered"; 
+
+            // Corrección de typos y nombres exactos
             switch (datos.tipoGrafico) {
                 case "ColumnClustered": tipoOficial = "ColumnClustered"; break;
                 case "Line":            tipoOficial = "Line"; break;
                 case "Pie":             tipoOficial = "Pie"; break;
                 case "BarClustered":    tipoOficial = "BarClustered"; break;
                 case "Area":            tipoOficial = "Area"; break;
-                case "XYSceatter":      tipoOficial = "XYScatter"; break;
+                case "XYSceatter":      tipoOficial = "XYScatter"; break; // Corregido typo
                 default:                tipoOficial = "ColumnClustered";
             }
             
-            // 3. Insertamos el gráfico EN EL PÁRRAFO (No en la selección)
-            const grafico = parrafo.insertInlinePictureFromBase64 ? 
-                            null : // Fallback si fuera imagen, pero aquí usamos insertChart
-                            parrafo.insertChart(tipoOficial, "Auto", "Auto");
-
-            // Ajuste visual
-            if (grafico) {
+            try {
+                // Insertamos el gráfico en el párrafo nuevo
+                const grafico = parrafo.insertChart(tipoOficial, "Auto", "Auto");
+                
                 grafico.height = 300;
                 grafico.width = 400;
-            }
 
-            await context.sync();
+                await context.sync();
+            } catch (errorChart) {
+                // Si falla, escribimos el error VISIBLE en la hoja
+                seleccion.insertParagraph("❌ FALLO AL CREAR: " + errorChart.message, "After");
+                await context.sync();
+            }
         }
 
         // ==========================================
@@ -311,15 +315,16 @@ async function procesarMensajeGrafico(arg) {
         else if (datos.accion === "INSERTAR_XML") {
             const seleccion = context.document.getSelection();
             try {
-                // 1. IMPORTANTE: No limpiamos nada. Usamos el XML tal cual viene.
-                // Los gráficos necesitan el paquete completo (pkg:package) intacto.
+                // IMPORTANTE: NO MODIFICAMOS EL XML. VA CRUDO.
                 seleccion.insertOoxml(datos.xml, "After");
-                seleccion.insertParagraph("", "After"); 
+                seleccion.insertParagraph("", "After");
                 await context.sync();
 
             } catch (error) {
                 const body = context.document.body;
-                body.insertParagraph("❌ Error Gráfico XML: " + error.message, "Start");
+                // Mensaje de ayuda para ti
+                body.insertParagraph("❌ Error XML: " + error.message, "Start");
+                body.insertParagraph("⚠️ RECUERDA: Para gráficos, NO borres el encabezado <?xml...?> del JSON. Copia TODO.", "Start");
                 await context.sync();
             }
         }
@@ -339,7 +344,7 @@ async function procesarMensajeGrafico(arg) {
             await context.sync();
         }
 
-    }).catch(error => console.error("Error Gráficos General:", error));
+    }).catch(error => console.error("Error Crítico:", error));
 }
 
 // ==========================================
