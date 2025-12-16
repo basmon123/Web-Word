@@ -28,6 +28,7 @@ function abrirVentanaTablas(event) {
     if(event) event.completed();
 }
 
+// REEMPLAZA ESTA FUNCIÓN EN COMMANDS.JS
 async function procesarMensajeTabla(arg) {
     let datos;
     try { datos = JSON.parse(arg.message); } catch (e) { return; }
@@ -52,40 +53,43 @@ async function procesarMensajeTabla(arg) {
             await context.sync();
         } 
         
-        // CASO B: INSERTAR DESDE BIBLIOTECA
+        // CASO B: INSERTAR DESDE BIBLIOTECA (CON DIAGNÓSTICO)
         else if (datos.accion === "INSERTAR_XML") {
             const seleccion = context.document.getSelection();
-            seleccion.insertOoxml(datos.xml, "After");
-            seleccion.insertParagraph("", "After");
-            await context.sync();
+            
+            // INTENTO DE INSERCIÓN
+            try {
+                // Insertamos el código
+                seleccion.insertOoxml(datos.xml, "After");
+                seleccion.insertParagraph("", "After");
+                await context.sync();
+            } catch (errorXML) {
+                // SI FALLA, AVISAMOS AL USUARIO
+                console.error("XML Corrupto:", errorXML);
+                
+                // Escribimos el error en el documento para que lo veas
+                const body = context.document.body;
+                body.insertParagraph("❌ ERROR: El código XML de esta tabla está dañado o incompleto.", "Start");
+                body.insertParagraph("Detalle: " + errorXML.message, "Start");
+                await context.sync();
+            }
         }
 
-        // CASO C: ESCANEAR (VERSIÓN A PRUEBA DE FALLOS)
+        // CASO C: ESCANEAR
         else if (datos.accion === "EXTRAER_XML") {
             const seleccion = context.document.getSelection();
-            
-            // 1. Obtenemos el código de la tabla seleccionada
             const xmlResult = seleccion.getOoxml();
             await context.sync();
             
-            // 2. EN LUGAR DE REEMPLAZAR, ESCRIBIMOS AL FINAL DEL DOCUMENTO
-            // Esto evita errores de bloqueo si la selección es compleja.
             const body = context.document.body;
-            
-            body.insertParagraph("--- INICIO CÓDIGO XML (COPIAR DESDE AQUÍ) ---", "End");
-            
-            // Insertamos el código feo
+            body.insertParagraph("--- INICIO CÓDIGO XML ---", "End");
             body.insertParagraph(xmlResult.value, "End");
-            
             body.insertParagraph("--- FIN CÓDIGO XML ---", "End");
-            
             await context.sync();
-            
-            console.log("Código escrito al final del documento.");
         }
 
     }).catch(error => {
-        console.error("Error crítico en tablas:", error);
+        console.error("Error general:", error);
     });
 }
 
