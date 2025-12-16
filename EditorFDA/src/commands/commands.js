@@ -36,7 +36,6 @@ async function procesarMensajeTabla(arg) {
     let datos;
     try { datos = JSON.parse(arg.message); } catch (e) { return; }
     
-    // 1. CERRAR VENTANA (Si no es Escáner)
     if (datos.accion !== "EXTRAER_XML") {
         if (dialogGenerador) dialogGenerador.close();
     }
@@ -44,40 +43,28 @@ async function procesarMensajeTabla(arg) {
     await Word.run(async (context) => {
         
         // ==========================================
-        // CASO A: INSERTAR MANUAL (CON FORMATO JEFE)
+        // CASO A: INSERTAR MANUAL
         // ==========================================
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
             
-            // 1. Obtener datos
             let f = parseInt(datos.filas) || 3;
             let c = parseInt(datos.columnas) || 3;
             
-            // 2. Crear matriz vacía (necesaria para insertTable)
             let matriz = [];
-            for(let i=0; i<f; i++) {
-                let fila = new Array(c).fill(" "); 
-                matriz.push(fila);
-            }
+            for(let i=0; i<f; i++) matriz.push(new Array(c).fill(" "));
 
             try {
-                // 3. INSERTAR LA TABLA
+                // 1. Insertar Tabla
                 const tabla = seleccion.insertTable(f, c, "After", matriz);
-                
-                // ¡SINCRONIZACIÓN CRUCIAL!
-                // Obligamos a Word a crear la tabla antes de intentar pintarla.
-                await context.sync(); 
+                await context.sync(); // Pausa obligatoria para que Word la cree
 
-                // 4. APLICAR FORMATO (MÉTODO NATIVO DE WORD)
-                // No usamos .load() porque solo estamos ESCRIBIENDO propiedades.
-                
-                // A) FUENTE GENERAL (Toda la tabla)
+                // 2. Formato General (Sin .load, escribimos directo)
                 tabla.getRange().font.name = "Arial";
                 tabla.getRange().font.size = 12;
                 tabla.getRange().font.color = "black";
 
-                // B) BORDES (Se aplican directo a la tabla, no al formato)
-                // Esto dibuja la cuadrícula completa
+                // 3. Bordes (Usando API nativa de Tabla)
                 tabla.getBorder("Top").type = "Single";
                 tabla.getBorder("Bottom").type = "Single";
                 tabla.getBorder("Left").type = "Single";
@@ -85,33 +72,27 @@ async function procesarMensajeTabla(arg) {
                 tabla.getBorder("InsideHorizontal").type = "Single";
                 tabla.getBorder("InsideVertical").type = "Single";
 
-                // C) ENCABEZADO (FILA 1)
-                // Obtenemos la primera fila (índice 0)
-                const primeraFila = tabla.rows.getItem(0);
+                // 4. ENCABEZADO (EL CAMBIO ESTÁ AQUÍ)
+                // Usamos getRow(0) directo sobre la tabla.
+                const primeraFila = tabla.getRow(0); 
                 
-                // Pintamos el fondo (Azul Oscuro Corporativo)
-                primeraFila.shading.color = "#1F4E78"; 
-                
-                // Pintamos el texto (Blanco y Negrita)
-                primeraFila.font.color = "white";
-                primeraFila.font.bold = true;
+                primeraFila.shading.color = "#1F4E78"; // Azul
+                primeraFila.font.color = "white";      // Blanco
+                primeraFila.font.bold = true;          // Negrita
 
-                // 5. AJUSTAR ANCHO
+                // 5. Ajustar y Guardar
                 tabla.autofitWindow();
-                
-                // 6. FINALIZAR
                 await context.sync();
                 
             } catch (error) {
-                // Si algo falla, te avisará en el documento
                 const body = context.document.body;
-                body.insertParagraph("❌ ERROR FORMATO: " + error.message, "Start");
+                body.insertParagraph("❌ ERROR API: " + error.message, "Start");
                 await context.sync();
             }
         } 
         
         // ==========================================
-        // CASO B: INSERTAR DESDE BIBLIOTECA (XML)
+        // CASO B: INSERTAR PLANTILLA (XML)
         // ==========================================
         else if (datos.accion === "INSERTAR_XML") {
             const seleccion = context.document.getSelection();
@@ -127,7 +108,7 @@ async function procesarMensajeTabla(arg) {
         }
 
         // ==========================================
-        /// CASO C: ESCANEAR (HERRAMIENTA DEVELOPER)
+        // CASO C: ESCANEAR
         // ==========================================
         else if (datos.accion === "EXTRAER_XML") {
             const seleccion = context.document.getSelection();
@@ -142,7 +123,7 @@ async function procesarMensajeTabla(arg) {
         }
 
     }).catch(error => {
-        console.error("Error crítico en Word.run:", error);
+        console.error("Error crítico:", error);
     });
 }
 
