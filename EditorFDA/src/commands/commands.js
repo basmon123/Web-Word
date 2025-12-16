@@ -30,102 +30,83 @@ function abrirVentanaTablas(event) {
     if(event) event.completed();
 }
 
+/* Reemplaza TU función procesarMensajeTabla actual con ESTA */
+
 async function procesarMensajeTabla(arg) {
     let datos;
     try { datos = JSON.parse(arg.message); } catch (e) { return; }
     
+    // 1. GESTIÓN DE LA VENTANA
+    // Si es Insertar (Manual o Plantilla), cerramos la ventana para ver el resultado.
+    // Si es Escanear, LA DEJAMOS ABIERTA.
     if (datos.accion !== "EXTRAER_XML") {
         if (dialogGenerador) dialogGenerador.close();
     }
 
     await Word.run(async (context) => {
         
-        // ==========================================
-        // CASO A: INSERTAR MANUAL (MÉTODO CELDA A CELDA)
+     // ==========================================
+        // CASO 1: INSERTAR MANUAL (CORREGIDO)
         // ==========================================
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
-            
-            let f = parseInt(datos.filas) || 3;
-            let c = parseInt(datos.columnas) || 3;
-            
-            // Matriz vacía
+
+            // 1. Limpieza y conversión de números
+            let f = parseInt(datos.filas);
+            let c = parseInt(datos.columnas);
+            // Si vienen vacíos o inválidos, usamos 3x3 por seguridad
+            if (!f || isNaN(f)) f = 3;
+            if (!c || isNaN(c)) c = 3;
+
+            // 2. Crear matriz de datos (Array de Arrays de Strings)
+            // Es CRÍTICO que sean strings, por eso ponemos " " y no null
             let matriz = [];
-            for(let i=0; i<f; i++) matriz.push(new Array(c).fill(" "));
-
-            try {
-                // 1. CREAR LA TABLA
-                const tabla = seleccion.insertTable(f, c, "After", matriz);
-                await context.sync(); // Pausa obligatoria
-
-                // 2. FORMATO BASE (Toda la tabla Arial 12, Negro)
-                tabla.getRange().font.set({
-                    name: "Arial",
-                    size: 12,
-                    color: "black"
-                });
-
-                // 3. LA SOLUCIÓN DEFINITIVA: PINTAR CELDAS UNA A UNA
-                // Cargamos las filas
-                tabla.rows.load("items");
-                await context.sync();
-
-                if (tabla.rows.items.length > 0) {
-                    const primeraFila = tabla.rows.items[0];
-                    
-                    // Cargamos las celdas de la primera fila
-                    primeraFila.cells.load("items");
-                    await context.sync(); 
-
-                    // Recorremos cada celda y la pintamos a la fuerza
-                    // Esto salta cualquier bloqueo de estilo de tabla
-                    primeraFila.cells.items.forEach((celda) => {
-                        // Color de fondo
-                        celda.shading.color = "#1F4E78"; 
-                        // Color de letra (accediendo al cuerpo de la celda)
-                        celda.body.font.color = "white"; 
-                        celda.body.font.bold = true;     
-                    });
+            for(let i=0; i<f; i++) {
+                let fila = [];
+                for(let j=0; j<c; j++) {
+                    fila.push(" "); // Celda vacía con un espacio
                 }
-
-                // 4. BORDES (Negros finos)
-                try {
-                    const bordes = ["Top", "Bottom", "Left", "Right", "InsideHorizontal", "InsideVertical"];
-                    bordes.forEach(b => {
-                        tabla.getBorder(b).type = "Single";
-                        tabla.getBorder(b).color = "black";
-                    });
-                } catch(e) {}
-
-                // 5. FINALIZAR
-                tabla.autofitWindow();
-                await context.sync();
-                
-            } catch (error) {
-                const body = context.document.body;
-                body.insertParagraph("❌ ERROR: " + error.message, "Start");
-                await context.sync();
+                matriz.push(fila);
             }
-        } 
-        
+
+            // 3. INTENTO DE INSERTAR TABLA
+            try {
+                // Usamos "After" para que no borre lo que tengas seleccionado, sino que la ponga después
+                const tabla = seleccion.insertTable(f, c, "After", matriz);
+                
+                // Opcional: Le damos un estilo básico de Word para que se vean los bordes
+                // Si tu Word está en español, "Table Grid" podría fallar, así que lo envolvemos
+                try { tabla.style = "Table Grid"; } catch(e){} 
+
+                tabla.autofitWindow();
+                
+            } catch (errorTabla) {
+                // SI FALLA, ESCRIBIMOS EL ERROR EN EL DOCUMENTO
+                const body = context.document.body;
+                body.insertParagraph("❌ ERROR AL CREAR TABLA: " + errorTabla.message, "Start");
+            }
+            
+            await context.sync();
+        }
         // ==========================================
-        // CASO B: INSERTAR PLANTILLA (XML)
+        // CASO B: INSERTAR DESDE BIBLIOTECA (XML)
         // ==========================================
         else if (datos.accion === "INSERTAR_XML") {
             const seleccion = context.document.getSelection();
             try {
                 seleccion.insertOoxml(datos.xml, "After");
-                seleccion.insertParagraph("", "After"); 
+                seleccion.insertParagraph("", "After"); // Separador
                 await context.sync();
             } catch (errorXML) {
+                // Si el XML falla, escribimos el error en el documento
                 const body = context.document.body;
-                body.insertParagraph("❌ ERROR XML: " + errorXML.message, "Start");
+                body.insertParagraph("❌ ERROR: XML corrupto. " + errorXML.message, "Start");
                 await context.sync();
             }
         }
 
         // ==========================================
-        // CASO C: ESCANEAR
+        // CASO C: ESCANEAR (HERRAMIENTA DEVELOPER)
         // ==========================================
         else if (datos.accion === "EXTRAER_XML") {
             const seleccion = context.document.getSelection();
@@ -133,16 +114,17 @@ async function procesarMensajeTabla(arg) {
             await context.sync();
             
             const body = context.document.body;
-            body.insertParagraph("--- COPY TABLE START ---", "End");
+            body.insertParagraph("--- COPY START ---", "End");
             body.insertParagraph(xmlResult.value, "End");
-            body.insertParagraph("--- COPY TABLE END ---", "End");
+            body.insertParagraph("--- COPY END ---", "End");
             await context.sync();
         }
 
     }).catch(error => {
-        console.error("Error crítico:", error);
+        console.error("Error crítico en Word.run:", error);
     });
 }
+
 
 // ==========================================
 // 2. LÓGICA DEL CATÁLOGO (ANTERIOR)
@@ -352,8 +334,5 @@ Office.actions.associate("estiloTitulo2", estiloTitulo2);
 Office.actions.associate("estiloTitulo3", estiloTitulo3);
 Office.actions.associate("abrirCatalogo", abrirCatalogo);
 Office.actions.associate("abrirVentanaTablas", abrirVentanaTablas);
-
-// --- REGISTRO DEL BOTÓN (AGREGA ESTO AL FINAL JUNTO A LOS OTROS) ---
 Office.actions.associate("abrirVentanaGraficos", abrirVentanaGraficos);
-
 
