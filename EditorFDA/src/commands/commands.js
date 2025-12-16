@@ -48,44 +48,63 @@ async function procesarMensajeTabla(arg) {
      // ==========================================
         // CASO 1: INSERTAR MANUAL (CORREGIDO)
         // ==========================================
+// ------------------------------------------
+        // A. INSERTAR MANUAL (¡CON FORMATO DEL JEFE!)
+        // ------------------------------------------
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
-
-            // 1. Limpieza y conversión de números
-            let f = parseInt(datos.filas);
-            let c = parseInt(datos.columnas);
-            // Si vienen vacíos o inválidos, usamos 3x3 por seguridad
-            if (!f || isNaN(f)) f = 3;
-            if (!c || isNaN(c)) c = 3;
-
-            // 2. Crear matriz de datos (Array de Arrays de Strings)
-            // Es CRÍTICO que sean strings, por eso ponemos " " y no null
+            
+            // 1. Validar números
+            let f = parseInt(datos.filas) || 3;
+            let c = parseInt(datos.columnas) || 3;
+            
+            // 2. Crear matriz vacía
             let matriz = [];
             for(let i=0; i<f; i++) {
-                let fila = [];
-                for(let j=0; j<c; j++) {
-                    fila.push(" "); // Celda vacía con un espacio
-                }
+                let fila = new Array(c).fill(" "); 
                 matriz.push(fila);
             }
 
-            // 3. INTENTO DE INSERTAR TABLA
             try {
-                // Usamos "After" para que no borre lo que tengas seleccionado, sino que la ponga después
+                // 3. Insertar la tabla
                 const tabla = seleccion.insertTable(f, c, "After", matriz);
                 
-                // Opcional: Le damos un estilo básico de Word para que se vean los bordes
-                // Si tu Word está en español, "Table Grid" podría fallar, así que lo envolvemos
-                try { tabla.style = "Table Grid"; } catch(e){} 
+                // --- APLICAR ESTILO DEL JEFE ---
+                
+                // A) Configuración General (Toda la tabla)
+                const rangoTabla = tabla.getRange();
+                rangoTabla.font.name = "Arial";
+                rangoTabla.font.size = 12;
+                rangoTabla.font.color = "black"; // Color base
+                
+                // B) Bordes (Para que se vea elegante y definida)
+                // Dibujamos bordes internos y externos
+                const bordes = rangoTabla.format.borders;
+                bordes.getItem("InsideHorizontal").style = "Single";
+                bordes.getItem("InsideVertical").style = "Single";
+                bordes.getItem("EdgeBottom").style = "Single";
+                bordes.getItem("EdgeLeft").style = "Single";
+                bordes.getItem("EdgeRight").style = "Single";
+                bordes.getItem("EdgeTop").style = "Single";
+
+                // C) Estilo de la Primera Fila (Encabezado)
+                const filaEncabezado = tabla.rows.getItem(0);
+                
+                // Color de fondo (Azul Oscuro Corporativo)
+                // Puedes cambiar este código HEX por el que prefieras
+                filaEncabezado.shading.color = "#1F4E78"; 
+                
+                // Color de letra (Blanco y Negrita)
+                filaEncabezado.font.color = "white";
+                filaEncabezado.font.bold = true;
+
+                // -------------------------------
 
                 tabla.autofitWindow();
                 
-            } catch (errorTabla) {
-                // SI FALLA, ESCRIBIMOS EL ERROR EN EL DOCUMENTO
-                const body = context.document.body;
-                body.insertParagraph("❌ ERROR AL CREAR TABLA: " + errorTabla.message, "Start");
+            } catch (error) {
+                context.document.body.insertParagraph("❌ Error Tabla: " + error.message, "Start");
             }
-            
             await context.sync();
         }
         // ==========================================
