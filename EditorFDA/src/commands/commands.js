@@ -43,37 +43,46 @@ async function procesarMensajeTabla(arg) {
 
     await Word.run(async (context) => {
         
+     // ==========================================
+        // CASO 1: INSERTAR MANUAL (CORREGIDO)
         // ==========================================
-        // CASO A: INSERTAR MANUAL (SOLUCIÓN ROBUSTA)
-        // ==========================================
-       if (datos.accion === "INSERTAR") {
-            const body = context.document.body;
+        if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
 
-            // 1. Diagnóstico visual (Para saber si entra aquí)
-            // Esto escribirá un texto pequeño donde esté tu cursor.
-            // Si ves este texto, la conexión funciona.
-            seleccion.insertText("...Creando tabla...", "Replace");
-            await context.sync();
-
-            // 2. Asegurar números (Si falla, usa 3x3)
+            // 1. Limpieza y conversión de números
             let f = parseInt(datos.filas);
             let c = parseInt(datos.columnas);
-            if (isNaN(f)) f = 3; 
-            if (isNaN(c)) c = 3;
+            // Si vienen vacíos o inválidos, usamos 3x3 por seguridad
+            if (!f || isNaN(f)) f = 3;
+            if (!c || isNaN(c)) c = 3;
 
-            // 3. Crear matriz de datos vacíos
+            // 2. Crear matriz de datos (Array de Arrays de Strings)
+            // Es CRÍTICO que sean strings, por eso ponemos " " y no null
             let matriz = [];
             for(let i=0; i<f; i++) {
-                let fila = new Array(c).fill(" "); // Espacio vacío
+                let fila = [];
+                for(let j=0; j<c; j++) {
+                    fila.push(" "); // Celda vacía con un espacio
+                }
                 matriz.push(fila);
             }
 
-            // 4. Insertar la Tabla DIRECTA (Sin estilos raros)
-            const tabla = seleccion.insertTable(f, c, "After", matriz);
-            
-            // Forzamos el ajuste para que se vea bien
-            tabla.autofitWindow();
+            // 3. INTENTO DE INSERTAR TABLA
+            try {
+                // Usamos "After" para que no borre lo que tengas seleccionado, sino que la ponga después
+                const tabla = seleccion.insertTable(f, c, "After", matriz);
+                
+                // Opcional: Le damos un estilo básico de Word para que se vean los bordes
+                // Si tu Word está en español, "Table Grid" podría fallar, así que lo envolvemos
+                try { tabla.style = "Table Grid"; } catch(e){} 
+
+                tabla.autofitWindow();
+                
+            } catch (errorTabla) {
+                // SI FALLA, ESCRIBIMOS EL ERROR EN EL DOCUMENTO
+                const body = context.document.body;
+                body.insertParagraph("❌ ERROR AL CREAR TABLA: " + errorTabla.message, "Start");
+            }
             
             await context.sync();
         }
