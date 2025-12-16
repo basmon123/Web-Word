@@ -298,8 +298,8 @@ async function procesarMensajeGrafico(arg) {
 
     await Word.run(async (context) => {
         
-      // ------------------------------------------
-        /// A. INSERTAR MANUAL (VERSIÓN NATIVA WORD)
+// ------------------------------------------
+        // A. INSERTAR MANUAL (VERSIÓN DIRECTA - SIN LOADS)
         // ------------------------------------------
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
@@ -310,62 +310,49 @@ async function procesarMensajeGrafico(arg) {
             for(let i=0; i<f; i++) matriz.push(new Array(c).fill(" "));
 
             try {
-                // PASO 1: Insertar la tabla básica
+                // 1. Crear Tabla
                 const tabla = seleccion.insertTable(f, c, "After", matriz);
-                await context.sync(); // ¡Tabla creada en memoria!
-
-                // PASO 2: Cargar lo necesario para formatear
-                // En Word, NO existe 'format'. Cargamos 'font' directo del rango y 'rows' de la tabla.
-                const rangoTabla = tabla.getRange();
-                rangoTabla.load("font");
                 
-                const filas = tabla.rows;
-                filas.load("items");
-                
-                await context.sync(); // Traemos los datos
+                // ¡IMPORTANTE! Sincronizamos para que la tabla exista
+                await context.sync(); 
 
-                // PASO 3: APLICAR FORMATO (SINTAXIS CORRECTA WORD)
-                
-                // A) Fuente General (Arial 12)
-                rangoTabla.font.name = "Arial";
-                rangoTabla.font.size = 12;
-                rangoTabla.font.color = "black";
+                // 2. Aplicar formato GENERAL (Arial 12)
+                // Nota: No usamos .load() porque solo estamos escribiendo (set)
+                tabla.getRange().font.name = "Arial";
+                tabla.getRange().font.size = 12;
+                tabla.getRange().font.color = "black";
 
-                // B) Bordes (La forma correcta en Word es usando getBorder en la tabla)
-                // Tipos: 'Single', 'None', 'Double', etc.
+                // 3. Aplicar BORDES (Usando la API nativa de Word)
+                // Dibujamos bordes simples en todas las direcciones
                 tabla.getBorder("Top").type = "Single";
                 tabla.getBorder("Bottom").type = "Single";
                 tabla.getBorder("Left").type = "Single";
                 tabla.getBorder("Right").type = "Single";
                 tabla.getBorder("InsideHorizontal").type = "Single";
                 tabla.getBorder("InsideVertical").type = "Single";
-                
-                // Opcional: Asegurar color negro en bordes
-                tabla.getBorder("InsideHorizontal").color = "black"; 
-                // (Puedes repetir para los demás si es necesario)
 
-                // C) Encabezado (Fila 0) - Estilo del Jefe
+                // 4. Aplicar Encabezado (Fila 1)
+                // Aquí sí cargamos 'rows' porque necesitamos acceder al item[0]
+                const filas = tabla.rows.load("items");
+                await context.sync(); // Traemos las filas
+
                 if (filas.items.length > 0) {
                     const encabezado = filas.items[0];
-                    // Cargamos shading (fondo) y font (texto) de esa fila específica
-                    encabezado.load("shading, font"); 
-                    await context.sync();
-
+                    // Pintamos directo sin load, porque es escritura
                     encabezado.shading.color = "#1F4E78"; // Azul Oscuro
                     encabezado.font.color = "white";      // Blanco
                     encabezado.font.bold = true;          // Negrita
                 }
 
-                // Ajuste final
                 tabla.autofitWindow();
                 await context.sync();
                 
             } catch (error) {
-                context.document.body.insertParagraph("❌ Error Formato Word: " + error.message, "Start");
+                // Cambié el mensaje de error para saber si estás usando el código nuevo
+                context.document.body.insertParagraph("❌ Error V5: " + error.message, "Start");
                 await context.sync();
             }
         }
-
         // ==========================================
         // CASO 2: ESCANEAR (DEVELOPER)
         // ==========================================
