@@ -239,7 +239,7 @@ async function aplicarEstilo(nomEsp, nomIng) {
 
 // ==========================================
 // SECCIÓN NUEVA: GESTOR DE GRÁFICOS
-// ==========================================
+/// ==========================================
 function abrirVentanaGraficos(event) {
     // Asegúrate de la ruta correcta (Mayúsculas/Minúsculas)
     const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/generadorGraficos/generadorGraficos.html"; 
