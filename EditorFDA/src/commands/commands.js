@@ -41,7 +41,7 @@ async function procesarMensajeTabla(arg) {
     await Word.run(async (context) => {
         
         // ==========================================
-        // CASO A: INSERTAR MANUAL (FIX RANGO)
+        // CASO A: INSERTAR MANUAL (Especial Office 365)
         // ==========================================
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
@@ -49,50 +49,57 @@ async function procesarMensajeTabla(arg) {
             let f = parseInt(datos.filas) || 3;
             let c = parseInt(datos.columnas) || 3;
             
+            // Matriz vacía con espacios
             let matriz = [];
             for(let i=0; i<f; i++) matriz.push(new Array(c).fill(" "));
 
             try {
-                // 1. Insertar Tabla
+                // 1. CREAR LA TABLA
                 const tabla = seleccion.insertTable(f, c, "After", matriz);
-                await context.sync(); 
+                await context.sync(); // Sincronizamos para que exista
 
-                // 2. Formato General (Arial 12)
-                tabla.getRange().font.set({
-                    name: "Arial",
-                    size: 12,
-                    color: "black"
+                // 2. FORMATO BASE (Fuente Arial 12)
+                tabla.getRange().font.name = "Arial";
+                tabla.getRange().font.size = 12;
+                tabla.getRange().font.color = "black";
+
+                // 3. ENCABEZADO (La parte crítica)
+                // Cargamos la propiedad 'items' de las filas.
+                tabla.rows.load("items");
+                await context.sync(); // Traemos las filas a la memoria
+
+                // Accedemos a la primera fila como un Array normal de JavaScript
+                if (tabla.rows.items.length > 0) {
+                    const encabezado = tabla.rows.items[0];
+                    
+                    // En Office 365, estas propiedades se escriben directo
+                    encabezado.shading.color = "#1F4E78"; // Azul Oscuro
+                    encabezado.font.color = "white";      // Blanco
+                    encabezado.font.bold = true;          // Negrita
+                }
+
+                // 4. BORDES (Estilo nativo Word)
+                // En Office 365 esto funciona perfecto.
+                const bordes = [
+                    "Top", "Bottom", "Left", "Right", 
+                    "InsideHorizontal", "InsideVertical"
+                ];
+
+                // Aplicamos borde simple a todo
+                bordes.forEach(borde => {
+                    try {
+                        tabla.getBorder(borde).type = "Single";
+                        tabla.getBorder(borde).color = "black";
+                    } catch(e) {}
                 });
 
-                // 3. ENCABEZADO (EL TRUCO DEL RANGO)
-                // Obtenemos la primera fila
-                const primeraFila = tabla.rows.getFirst();
-                
-                // IMPORTANTE: Obtenemos el RANGO de esa fila.
-                // Pintar el rango SIEMPRE funciona, pintar la fila a veces falla.
-                const rangoEncabezado = primeraFila.getRange();
-                
-                rangoEncabezado.shading.color = "#1F4E78"; // Azul Oscuro
-                rangoEncabezado.font.color = "white";      // Blanco
-                rangoEncabezado.font.bold = true;          // Negrita
-
-                // 4. Bordes (Intento seguro)
-                try {
-                    tabla.getBorder("Top").type = "Single";
-                    tabla.getBorder("Bottom").type = "Single";
-                    tabla.getBorder("Left").type = "Single";
-                    tabla.getBorder("Right").type = "Single";
-                    tabla.getBorder("InsideHorizontal").type = "Single";
-                    tabla.getBorder("InsideVertical").type = "Single";
-                } catch (eBordes) {}
-
-                // 5. Finalizar
+                // 5. AJUSTAR Y GUARDAR
                 tabla.autofitWindow();
-                await context.sync();
+                await context.sync(); // Sincronización final para pintar el azul
                 
             } catch (error) {
                 const body = context.document.body;
-                body.insertParagraph("❌ ERROR: " + error.message, "Start");
+                body.insertParagraph("❌ ERROR 365: " + error.message, "Start");
                 await context.sync();
             }
         } 
