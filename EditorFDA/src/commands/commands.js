@@ -96,7 +96,7 @@ async function procesarMensajeTabla(arg) {
 
                 tabla.autofitWindow();
                 
-                // Sincronizamos los cambios visuales
+                /// Sincronizamos los cambios visuales
                 await context.sync();
                 
             } catch (error) {
@@ -105,7 +105,7 @@ async function procesarMensajeTabla(arg) {
                 await context.sync();
             }
         }
-        
+
         // ==========================================
         // CASO B: INSERTAR DESDE BIBLIOTECA (XML)
         // ==========================================
