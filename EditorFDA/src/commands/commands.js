@@ -30,8 +30,6 @@ function abrirVentanaTablas(event) {
     if(event) event.completed();
 }
 
-/* Reemplaza TU función procesarMensajeTabla actual con ESTA */
-
 async function procesarMensajeTabla(arg) {
     let datos;
     try { datos = JSON.parse(arg.message); } catch (e) { return; }
@@ -43,7 +41,7 @@ async function procesarMensajeTabla(arg) {
     await Word.run(async (context) => {
         
         // ==========================================
-        // CASO A: INSERTAR MANUAL
+        // CASO A: INSERTAR MANUAL (A PRUEBA DE BALAS)
         // ==========================================
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
@@ -55,38 +53,50 @@ async function procesarMensajeTabla(arg) {
             for(let i=0; i<f; i++) matriz.push(new Array(c).fill(" "));
 
             try {
-                // 1. Insertar Tabla
+                // 1. CREAR TABLA
                 const tabla = seleccion.insertTable(f, c, "After", matriz);
-                await context.sync(); // Pausa obligatoria para que Word la cree
+                await context.sync(); // Pausa obligatoria
 
-                // 2. Formato General (Sin .load, escribimos directo)
-                tabla.getRange().font.name = "Arial";
-                tabla.getRange().font.size = 12;
-                tabla.getRange().font.color = "black";
+                // 2. FORMATO GENERAL (Fuente)
+                // Usamos .set() que es más limpio y seguro
+                tabla.getRange().font.set({
+                    name: "Arial",
+                    size: 12,
+                    color: "black"
+                });
 
-                // 3. Bordes (Usando API nativa de Tabla)
-                tabla.getBorder("Top").type = "Single";
-                tabla.getBorder("Bottom").type = "Single";
-                tabla.getBorder("Left").type = "Single";
-                tabla.getBorder("Right").type = "Single";
-                tabla.getBorder("InsideHorizontal").type = "Single";
-                tabla.getBorder("InsideVertical").type = "Single";
-
-                // 4. ENCABEZADO (EL CAMBIO ESTÁ AQUÍ)
-                // Usamos getRow(0) directo sobre la tabla.
-                const primeraFila = tabla.getRow(0); 
+                // 3. ENCABEZADO (MÉTODO UNIVERSAL)
+                // getFirst() existe en todas las versiones de Word API
+                const primeraFila = tabla.rows.getFirst();
                 
-                primeraFila.shading.color = "#1F4E78"; // Azul
-                primeraFila.font.color = "white";      // Blanco
-                primeraFila.font.bold = true;          // Negrita
+                primeraFila.shading.color = "#1F4E78"; // Azul Oscuro
+                primeraFila.font.set({
+                    color: "white",
+                    bold: true
+                });
 
-                // 5. Ajustar y Guardar
+                // 4. BORDES (CON SEGURIDAD)
+                // Envolvemos esto en try/catch por si tu Word es muy antiguo para 'getBorder'
+                try {
+                    tabla.getBorder("Top").type = "Single";
+                    tabla.getBorder("Bottom").type = "Single";
+                    tabla.getBorder("Left").type = "Single";
+                    tabla.getBorder("Right").type = "Single";
+                    tabla.getBorder("InsideHorizontal").type = "Single";
+                    tabla.getBorder("InsideVertical").type = "Single";
+                } catch (eBordes) {
+                    // Si fallan los bordes manuales, intentamos aplicar un estilo nativo como Plan B
+                    console.log("No se pudo usar getBorder, intentando estilo...");
+                    try { tabla.style = "Table Grid"; } catch(e){}
+                }
+
+                // 5. FINALIZAR
                 tabla.autofitWindow();
                 await context.sync();
                 
             } catch (error) {
                 const body = context.document.body;
-                body.insertParagraph("❌ ERROR API: " + error.message, "Start");
+                body.insertParagraph("❌ ERROR CRÍTICO: " + error.message, "Start");
                 await context.sync();
             }
         } 
