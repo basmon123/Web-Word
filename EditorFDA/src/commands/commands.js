@@ -45,8 +45,8 @@ async function procesarMensajeTabla(arg) {
 
     await Word.run(async (context) => {
         
-// ------------------------------------------
-        // A. INSERTAR MANUAL (CORREGIDO)
+        // ------------------------------------------
+        // A. INSERTAR MANUAL (VERSIÓN CON .LOAD)
         // ------------------------------------------
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
@@ -64,22 +64,27 @@ async function procesarMensajeTabla(arg) {
                 // 1. CREAR LA TABLA
                 const tabla = seleccion.insertTable(f, c, "After", matriz);
                 
-                // --- PAUSA TÉCNICA CRUCIAL ---
-                // Esto obliga a Word a crear la tabla en memoria ANTES de intentar tocar sus bordes.
-                // Sin esto, el objeto "format" aún no existe y da el error "undefined".
-                await context.sync(); 
+                await context.sync(); // Sincronizamos para que la tabla exista
+
+                // 2. PREPARAR OBJETOS Y CARGAR PROPIEDADES (CRÍTICO)
+                const rangoTabla = tabla.getRange();
+                const filas = tabla.rows;
+
+                // AQUÍ ESTABA EL ERROR: Debemos cargar 'format' y 'rows' explícitamente
+                // Le decimos a Word: "Prepara el formato, los bordes y las filas, que los voy a usar"
+                rangoTabla.load(["format/borders", "font"]);
+                filas.load("items"); 
+
+                await context.sync(); // Traemos esa información a la memoria
+
+                // 3. AHORA SÍ, APLICAMOS FORMATO (Ya no dará undefined)
                 
-                // 2. AHORA SÍ, APLICAMOS FORMATO
-                
-                // A) Configuración General (Toda la tabla)
-                // Volvemos a pedir el rango ahora que la tabla ya existe seguro
-                const rangoTabla = tabla.getRange(); 
-                
+                // A) Fuente General
                 rangoTabla.font.name = "Arial";
                 rangoTabla.font.size = 12;
                 rangoTabla.font.color = "black";
 
-                // B) Bordes (Ahora no debería fallar)
+                // B) Bordes (Ahora rangoTabla.format ya existe gracias al load)
                 const bordes = rangoTabla.format.borders;
                 bordes.getItem("InsideHorizontal").style = "Single";
                 bordes.getItem("InsideVertical").style = "Single";
@@ -88,19 +93,20 @@ async function procesarMensajeTabla(arg) {
                 bordes.getItem("EdgeRight").style = "Single";
                 bordes.getItem("EdgeTop").style = "Single";
 
-                // C) Estilo de la Primera Fila (Encabezado)
-                const filaEncabezado = tabla.rows.getItem(0);
+                // C) Encabezado (Primera Fila)
+                // Usamos filas.items[0] porque ya cargamos los items
+                const filaEncabezado = filas.items[0];
+                
                 filaEncabezado.shading.color = "#1F4E78"; // Azul Oscuro
                 filaEncabezado.font.color = "white";      // Letra Blanca
                 filaEncabezado.font.bold = true;          // Negrita
 
+                // Ajuste final
                 tabla.autofitWindow();
                 
-                /// Sincronizamos los cambios visuales
                 await context.sync();
                 
             } catch (error) {
-                // Si falla, escribimos el error en el documento para que lo leas
                 context.document.body.insertParagraph("❌ Error Formato: " + error.message, "Start");
                 await context.sync();
             }
