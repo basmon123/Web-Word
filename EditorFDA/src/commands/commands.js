@@ -269,44 +269,44 @@ async function procesarMensajeGrafico(arg) {
 
     await Word.run(async (context) => {
         
-        // ==========================================
-        // CASO 1: INSERTAR ESTÁNDAR (MÉTODO SEGURO)
+// ==========================================
+        // CASO 1: INSERTAR ESTÁNDAR (BLINDADO)
         // ==========================================
         if (datos.accion === "INSERTAR_ESTANDAR") {
-            // En lugar de pelear con la selección, insertamos al final del documento
-            // o insertamos un párrafo y sincronizamos antes de poner el gráfico.
-            const seleccion = context.document.getSelection();
-            const parrafo = seleccion.insertParagraph("", "After");
+            const body = context.document.body;
             
-            // Sincronizamos para asegurar que el párrafo existe en Word antes de tocarlo
-            await context.sync();
-
+            // MÉTODO NUEVO: Insertamos al final del documento (Body) 
+            // Esto es mucho más seguro que usar la selección.
+            // insertChart existe en el Body en casi todas las versiones.
+            
             let tipoOficial = "ColumnClustered"; 
-
-            // Corrección de typos y nombres exactos
             switch (datos.tipoGrafico) {
                 case "ColumnClustered": tipoOficial = "ColumnClustered"; break;
                 case "Line":            tipoOficial = "Line"; break;
                 case "Pie":             tipoOficial = "Pie"; break;
                 case "BarClustered":    tipoOficial = "BarClustered"; break;
                 case "Area":            tipoOficial = "Area"; break;
-                case "XYSceatter":      tipoOficial = "XYScatter"; break; // Corregido typo
+                case "XYSceatter":      tipoOficial = "XYScatter"; break; 
                 default:                tipoOficial = "ColumnClustered";
             }
-            
+
             try {
-                // Insertamos el gráfico en el párrafo nuevo
-                const grafico = parrafo.insertChart(tipoOficial, "Auto", "Auto");
-                
+                // INTENTO 1: Directo en el Body (Más compatible)
+                const grafico = body.insertChart(tipoOficial, "Auto", "Auto");
                 grafico.height = 300;
                 grafico.width = 400;
-
-                await context.sync();
-            } catch (errorChart) {
-                // Si falla, escribimos el error VISIBLE en la hoja
-                seleccion.insertParagraph("❌ FALLO AL CREAR: " + errorChart.message, "After");
-                await context.sync();
+            } catch (e1) {
+                // INTENTO 2: Si falla, probamos con un párrafo nuevo y su RANGO
+                try {
+                    const parrafo = body.insertParagraph("", "End");
+                    // .getRange() es la clave que faltaba
+                    parrafo.getRange().insertChart(tipoOficial, "Auto", "Auto");
+                } catch (e2) {
+                    throw new Error("Tu versión de Word no soporta la API 'insertChart'.");
+                }
             }
+            
+            await context.sync();
         }
 
         // ==========================================
