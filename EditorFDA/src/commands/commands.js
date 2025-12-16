@@ -257,7 +257,7 @@ function abrirVentanaGraficos(event) {
     if(event) event.completed();
 }
 
-/* Reemplaza TU función procesarMensajeGrafico por esta versión */
+/* Reemplaza TU función procesarMensajeGrafico por esta versión final */
 
 async function procesarMensajeGrafico(arg) {
     let datos;
@@ -269,19 +269,19 @@ async function procesarMensajeGrafico(arg) {
 
     await Word.run(async (context) => {
         
-// ==========================================
-        // CASO 1: INSERTAR ESTÁNDAR (CON DIAGNÓSTICO)
+        // ==========================================
+        // CASO 1: INSERTAR ESTÁNDAR (NUEVA ESTRATEGIA)
         // ==========================================
         if (datos.accion === "INSERTAR_ESTANDAR") {
+            // Estrategia: Insertar al FINAL del documento (Body) para evitar
+            // errores de "Selection" o "Range" en versiones antiguas.
             const body = context.document.body;
             
-            // Paso 1: Avisar que empezamos
-            const parrafoLog = body.insertParagraph("...Intentando crear gráfico...", "End");
-            await context.sync();
-
+            // 1. Insertamos un párrafo limpio al final
+            const parrafo = body.insertParagraph("", "End");
+            
             let tipoOficial = "ColumnClustered"; 
-            // ... (tu switch case sigue igual aquí, no hace falta cambiarlo) ...
-             switch (datos.tipoGrafico) {
+            switch (datos.tipoGrafico) {
                 case "ColumnClustered": tipoOficial = "ColumnClustered"; break;
                 case "Line":            tipoOficial = "Line"; break;
                 case "Pie":             tipoOficial = "Pie"; break;
@@ -290,45 +290,59 @@ async function procesarMensajeGrafico(arg) {
                 case "XYSceatter":      tipoOficial = "XYScatter"; break; 
                 default:                tipoOficial = "ColumnClustered";
             }
-
+            
             try {
-                // INTENTO: Insertar Chart sin parámetros "Auto" (a veces fallan)
-                // Usamos body.insertChart directamente, que suele ser más estable
-                const grafico = body.insertInlinePictureFromBase64 ? 
-                                null : // Salto de seguridad
-                                body.insertChart(tipoOficial); // SIN "Auto", "Auto"
+                // Usamos insertChart sobre el párrafo, SIN parámetros extra.
+                // Esto fuerza a Word a usar sus valores por defecto.
+                const grafico = parrafo.insertChart(tipoOficial, "Auto", "Auto");
                 
-                // Si llegamos aquí, el comando se envió
-                parrafoLog.insertText(" [Comando Enviado]", "End");
+                grafico.height = 300;
+                grafico.width = 450;
                 
-                if (grafico) {
-                    grafico.height = 300;
-                    grafico.width = 400;
-                }
+                // Forzamos un scroll para que veas que se creó
+                parrafo.select(); 
                 
                 await context.sync();
-                parrafoLog.insertText(" [¡Éxito!]", "End");
-
-            } catch (error) {
-                parrafoLog.insertText(" [ERROR: " + error.message + "]", "End");
+            } catch (errorChart) {
+                // Si falla, escribimos el error en la hoja
+                parrafo.insertText("❌ NO SOPORTADO: Tu versión de Word no permite crear gráficos vacíos por API. Usa las plantillas.", "Replace");
+                await context.sync();
             }
         }
+
         // ==========================================
-        // CASO 2: INSERTAR PLANTILLA (XML COMPLETO)
+        // CASO 2: INSERTAR PLANTILLA (LAVADO DE CÓDIGO)
         // ==========================================
         else if (datos.accion === "INSERTAR_XML") {
             const seleccion = context.document.getSelection();
+            
             try {
-                // IMPORTANTE: NO MODIFICAMOS EL XML. VA CRUDO.
-                seleccion.insertOoxml(datos.xml, "After");
-                seleccion.insertParagraph("", "After");
+                // --- FASE DE LIMPIEZA PROFUNDA ---
+                let xmlLimpio = datos.xml;
+
+                // 1. Eliminar los "\r\n" literales que rompen el XML (EL GRAN CULPABLE)
+                // Esto convierte el texto "\r\n" en nada.
+                xmlLimpio = xmlLimpio.replace(/\\r\\n/g, "");
+                
+                // 2. Corregir URLs rotas (http:\/\/ -> http://)
+                xmlLimpio = xmlLimpio.replace(/http:\\\/\\\//g, "http://");
+                xmlLimpio = xmlLimpio.replace(/http:\\\//g, "http://");
+
+                // 3. Corregir rutas de paquetes (\/_rels -> /_rels)
+                xmlLimpio = xmlLimpio.replace(/\\\/_rels/g, "/_rels");
+                xmlLimpio = xmlLimpio.replace(/\\\/word/g, "/word");
+                
+                // ---------------------------------
+
+                // Insertamos el XML ya lavado
+                seleccion.insertOoxml(xmlLimpio, "After");
+                seleccion.insertParagraph("", "After"); 
+                
                 await context.sync();
 
             } catch (error) {
                 const body = context.document.body;
-                // Mensaje de ayuda para ti
-                body.insertParagraph("❌ Error XML: " + error.message, "Start");
-                body.insertParagraph("⚠️ RECUERDA: Para gráficos, NO borres el encabezado <?xml...?> del JSON. Copia TODO.", "Start");
+                body.insertParagraph("❌ Error XML (Aún limpiando): " + error.message, "Start");
                 await context.sync();
             }
         }
