@@ -1,7 +1,6 @@
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
   <Id>dd33ee44-5555-6666-7777-888899990000</Id>
-  <Version>1.0.3.0</Version>
-  <ProviderName>FDA Ingenieria</ProviderName>
+  <Version>1.0.4.0</Version> <ProviderName>FDA Ingenieria</ProviderName>
   <DefaultLocale>es-ES</DefaultLocale>
   <DisplayName DefaultValue="EditorFDA"/>
   <Description DefaultValue="Herramientas FDA."/>
@@ -125,7 +124,24 @@
                         <FunctionName>abrirVentanaTablas</FunctionName>
                     </Action>
                 </Control>
-                </Group>
+
+                <Control xsi:type="Button" id="BtnGraficoPersonalizado">
+                    <Label resid="NombreBotonGrafico" />
+                    <Supertip>
+                        <Title resid="TituloBotonGrafico" />
+                        <Description resid="DescBotonGrafico" />
+                    </Supertip>
+                    <Icon>
+                        <bt:Image size="16" resid="Icon.16x16" />
+                        <bt:Image size="32" resid="Icon.32x32" />
+                        <bt:Image size="80" resid="Icon.80x80" />
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                        <FunctionName>abrirVentanaGraficos</FunctionName>
+                    </Action>
+                </Control>
+
+              </Group>
 
               <Group id="GrupoEstilos">
                 <Label resid="GrupoEstilos.Label"/>
@@ -213,6 +229,10 @@
         
         <bt:String id="NombreBotonTabla" DefaultValue="Crear Tabla" />
         <bt:String id="TituloBotonTabla" DefaultValue="Insertar Tabla Personalizada" />
+
+        <bt:String id="NombreBotonGrafico" DefaultValue="Crear Gráfico" />
+        <bt:String id="TituloBotonGrafico" DefaultValue="Insertar Gráfico Personalizado" />
+
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="GetStarted.Description" DefaultValue="Complemento FDA cargado."/>
@@ -225,6 +245,8 @@
         <bt:String id="BtnEstilo3.Tooltip" DefaultValue="Aplica estilo Título 3 (1.1.1)."/>
         
         <bt:String id="DescBotonTabla" DefaultValue="Abre una ventana para diseñar tablas a medida." />
+
+        <bt:String id="DescBotonGrafico" DefaultValue="Abre gestor para insertar gráficos estándar o personalizados." />
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

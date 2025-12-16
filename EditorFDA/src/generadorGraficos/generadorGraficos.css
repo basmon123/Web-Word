@@ -1,0 +1,19 @@
+/* Estilo Base */
+body { font-family: 'Segoe UI', sans-serif; padding: 10px; background-color: #f3f2f1; }
+.contenedor { display: flex; flex-direction: column; gap: 15px; }
+.label-titulo { font-size: 12px; font-weight: bold; margin-bottom: 5px; display: block; }
+input, select { padding: 6px; width: 100%; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+
+/* Botones */
+.boton-cargar { background-color: #0078d4; color: white; border: none; padding: 8px; width: 100%; margin-top: 10px; cursor: pointer; font-weight: 600; border-radius: 4px; }
+.boton-cargar:hover { background-color: #106ebe; }
+.boton-azul-oscuro { background-color: #004e8c; }
+.boton-azul-oscuro:hover { background-color: #003b6a; }
+.seccion-bordeada { border-bottom: 1px solid #ccc; padding-bottom: 15px; }
+
+/* Zona Developer */
+.dev-details { margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 10px; }
+.dev-summary { cursor: pointer; font-size: 10px; color: #888; font-style: italic; outline: none; }
+.dev-content { background: #fff4e5; padding: 10px; margin-top: 5px; border-radius: 4px; border: 1px solid orange; }
+.texto-instruccion { font-size: 10px; margin: 0 0 8px 0; color: #444; }
+.btn-scan { background: orange; width: 100%; border: none; padding: 6px; cursor: pointer; font-weight: bold; border-radius: 4px; font-size: 11px; }

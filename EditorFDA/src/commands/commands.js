@@ -2,6 +2,8 @@
 
 let dialogCatalogo; 
 let dialogGenerador;
+let dialogGraficos; // Variable para la ventana de gráficos
+
 
 Office.onReady(() => {
   console.log("Commands.js listo");
@@ -236,6 +238,85 @@ async function aplicarEstilo(nomEsp, nomIng) {
 }
 
 // ==========================================
+// SECCIÓN NUEVA: GESTOR DE GRÁFICOS
+// ==========================================
+function abrirVentanaGraficos(event) {
+    // Asegúrate de la ruta correcta (Mayúsculas/Minúsculas)
+    const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/GeneradorGraficos/generadorGraficos.html"; 
+    
+    Office.context.ui.displayDialogAsync(url, { height: 50, width: 30, displayInIframe: true }, 
+        (asyncResult) => {
+            if (asyncResult.status === Office.AsyncResultStatus.Failed) {
+                console.error("Fallo diálogo gráficos:", asyncResult.error.message);
+            } else {
+                dialogGraficos = asyncResult.value;
+                dialogGraficos.addEventHandler(Office.EventType.DialogMessageReceived, procesarMensajeGrafico);
+            }
+        }
+    );
+    if(event) event.completed();
+}
+
+async function procesarMensajeGrafico(arg) {
+    let datos;
+    try { datos = JSON.parse(arg.message); } catch (e) { return; }
+
+    // Si no es escáner, cerramos ventana
+    if (datos.accion !== "EXTRAER_XML") {
+        if (dialogGraficos) dialogGraficos.close();
+    }
+
+    await Word.run(async (context) => {
+        
+        // CASO 1: INSERTAR ESTÁNDAR (Nativo de Word)
+        if (datos.accion === "INSERTAR_ESTANDAR") {
+            const seleccion = context.document.getSelection();
+            
+            // Convertimos el texto del dropdown al Enum de Word
+            // Ej: "Line" -> Word.ChartType.line
+            const tipo = datos.tipoGrafico; 
+            
+            // Insertamos gráfico con datos de ejemplo ("Auto")
+            const grafico = seleccion.insertChart(tipo, "Auto", "Auto");
+            
+            // Ajustes opcionales
+            grafico.height = 300; // Tamaño por defecto razonable
+            
+            await context.sync();
+        }
+
+        // CASO 2: INSERTAR PLANTILLA (XML ESCANEADO)
+        else if (datos.accion === "INSERTAR_XML") {
+            const seleccion = context.document.getSelection();
+            try {
+                seleccion.insertOoxml(datos.xml, "After");
+                seleccion.insertParagraph("", "After");
+                await context.sync();
+            } catch (error) {
+                context.document.body.insertParagraph("❌ Error al insertar gráfico: " + error.message, "Start");
+                await context.sync();
+            }
+        }
+
+        // CASO 3: ESCANEAR (DEVELOPER)
+        else if (datos.accion === "EXTRAER_XML") {
+            const seleccion = context.document.getSelection();
+            // Obtenemos el ADN (OOXML)
+            const xml = seleccion.getOoxml();
+            await context.sync();
+            
+            // Escribimos al final para copiar
+            const body = context.document.body;
+            body.insertParagraph("--- COPY CHART START ---", "End");
+            body.insertParagraph(xml.value, "End");
+            body.insertParagraph("--- COPY CHART END ---", "End");
+            await context.sync();
+        }
+
+    }).catch(error => console.error("Error Gráficos:", error));
+}
+
+// ==========================================
 // 4. REGISTRO OFICIAL
 // ==========================================
 Office.actions.associate("limpiarFormato", limpiarFormato);
@@ -245,3 +326,6 @@ Office.actions.associate("estiloTitulo2", estiloTitulo2);
 Office.actions.associate("estiloTitulo3", estiloTitulo3);
 Office.actions.associate("abrirCatalogo", abrirCatalogo);
 Office.actions.associate("abrirVentanaTablas", abrirVentanaTablas);
+
+// --- REGISTRO DEL BOTÓN (AGREGA ESTO AL FINAL JUNTO A LOS OTROS) ---
+Office.actions.associate("abrirVentanaGraficos", abrirVentanaGraficos);
