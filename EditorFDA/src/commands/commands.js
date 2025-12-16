@@ -257,7 +257,7 @@ function abrirVentanaGraficos(event) {
     if(event) event.completed();
 }
 
-/* Reemplaza solo la función procesarMensajeGrafico */
+/* Reemplaza TU función procesarMensajeGrafico actual con ESTA */
 
 async function procesarMensajeGrafico(arg) {
     let datos;
@@ -277,7 +277,7 @@ async function procesarMensajeGrafico(arg) {
             const seleccion = context.document.getSelection();
             
             // TRADUCTOR: Convertimos el texto del HTML al Tipo Oficial de Word
-            let tipoOficial = "ColumnClustered"; // Valor por defecto
+            let tipoOficial = "ColumnClustered"; 
 
             switch (datos.tipoGrafico) {
                 case "ColumnClustered": tipoOficial = "ColumnClustered"; break;
@@ -285,48 +285,63 @@ async function procesarMensajeGrafico(arg) {
                 case "Pie":             tipoOficial = "Pie"; break;
                 case "BarClustered":    tipoOficial = "BarClustered"; break;
                 case "Area":            tipoOficial = "Area"; break;
-                case "XYSceatter":      tipoOficial = "XYScatter"; break; // Corregí el typo "XYScatter"
+                case "XYSceatter":      tipoOficial = "XYScatter"; break;
                 default:                tipoOficial = "ColumnClustered";
             }
             
-            // Insertamos el gráfico
-            // Nota: "Auto" le dice a Word que invente datos de ejemplo
-            const grafico = seleccion.insertChart(tipoOficial, "Auto", "Auto");
-            
-            // Le damos un tamaño visible por si acaso
-            grafico.height = 300; 
-            grafico.width = 400;
+            try {
+                // CAMBIO IMPORTANTE: Quitamos los parámetros "Auto", "Auto".
+                // Dejamos solo el tipo, Word usará datos por defecto automáticamente.
+                const grafico = seleccion.insertChart(tipoOficial);
+                
+                // Ajustes de tamaño para asegurar visibilidad
+                grafico.height = 300; 
+                grafico.width = 400;
 
-            await context.sync();
+                await context.sync();
+            } catch (errorChart) {
+                // Si falla, escribimos el error en el documento
+                const body = context.document.body;
+                body.insertParagraph("❌ Error creando gráfico estándar: " + errorChart.message, "Start");
+                await context.sync();
+            }
         }
 
         // ==========================================
-        // CASO 2: INSERTAR PLANTILLA (XML)
+        // CASO 2: INSERTAR PLANTILLA XML (LIMPIEZA AUTOMÁTICA)
         // ==========================================
         else if (datos.accion === "INSERTAR_XML") {
             const seleccion = context.document.getSelection();
             try {
-                // Insertamos el ADN del gráfico
-                seleccion.insertOoxml(datos.xml, "After");
+                // 1. LIMPIEZA AUTOMÁTICA DE ERRORES COMUNES
+                // Corregimos el error http:\/\/ a http:// que generó tu herramienta de escape
+                let xmlLimpio = datos.xml.replace(/\\\//g, "/");
+                
+                // Insertamos el ADN del gráfico limpio
+                seleccion.insertOoxml(xmlLimpio, "After");
                 seleccion.insertParagraph("", "After"); // Separador
                 await context.sync();
+
             } catch (error) {
                 // Si falla, mostramos el error en el documento
                 const body = context.document.body;
-                body.insertParagraph("❌ Error al insertar gráfico: El código XML está sucio o dañado.", "Start");
+                body.insertParagraph("❌ Error al insertar gráfico XML.", "Start");
+                body.insertParagraph("Causa probable: El XML copiado no incluye los datos de Excel embebidos o tiene errores de sintaxis.", "Start");
                 body.insertParagraph("Detalle técnico: " + error.message, "Start");
                 await context.sync();
             }
         }
 
         // ==========================================
-        // CASO 3: ESCANEAR
+        // CASO 3: ESCANEAR (DEVELOPER)
         // ==========================================
         else if (datos.accion === "EXTRAER_XML") {
             const seleccion = context.document.getSelection();
+            // Obtenemos el ADN (OOXML)
             const xml = seleccion.getOoxml();
             await context.sync();
             
+            // Escribimos al final para copiar
             const body = context.document.body;
             body.insertParagraph("--- COPY CHART START ---", "End");
             body.insertParagraph(xml.value, "End");
@@ -334,7 +349,7 @@ async function procesarMensajeGrafico(arg) {
             await context.sync();
         }
 
-    }).catch(error => console.error("Error Gráficos:", error));
+    }).catch(error => console.error("Error Gráficos General:", error));
 }
 
 // ==========================================
