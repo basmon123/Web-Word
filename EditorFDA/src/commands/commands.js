@@ -41,7 +41,7 @@ async function procesarMensajeTabla(arg) {
     await Word.run(async (context) => {
         
         // ==========================================
-        // CASO A: INSERTAR MANUAL (Especial Office 365)
+        // CASO A: INSERTAR MANUAL (LA OPCIÓN NUCLEAR)
         // ==========================================
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
@@ -49,57 +49,62 @@ async function procesarMensajeTabla(arg) {
             let f = parseInt(datos.filas) || 3;
             let c = parseInt(datos.columnas) || 3;
             
-            // Matriz vacía con espacios
+            // Matriz vacía
             let matriz = [];
             for(let i=0; i<f; i++) matriz.push(new Array(c).fill(" "));
 
             try {
                 // 1. CREAR LA TABLA
                 const tabla = seleccion.insertTable(f, c, "After", matriz);
-                await context.sync(); // Sincronizamos para que exista
+                await context.sync(); // ¡Tabla existe!
 
-                // 2. FORMATO BASE (Fuente Arial 12)
-                tabla.getRange().font.name = "Arial";
-                tabla.getRange().font.size = 12;
-                tabla.getRange().font.color = "black";
-
-                // 3. ENCABEZADO (La parte crítica)
-                // Cargamos la propiedad 'items' de las filas.
-                tabla.rows.load("items");
-                await context.sync(); // Traemos las filas a la memoria
-
-                // Accedemos a la primera fila como un Array normal de JavaScript
-                if (tabla.rows.items.length > 0) {
-                    const encabezado = tabla.rows.items[0];
-                    
-                    // En Office 365, estas propiedades se escriben directo
-                    encabezado.shading.color = "#1F4E78"; // Azul Oscuro
-                    encabezado.font.color = "white";      // Blanco
-                    encabezado.font.bold = true;          // Negrita
-                }
-
-                // 4. BORDES (Estilo nativo Word)
-                // En Office 365 esto funciona perfecto.
-                const bordes = [
-                    "Top", "Bottom", "Left", "Right", 
-                    "InsideHorizontal", "InsideVertical"
-                ];
-
-                // Aplicamos borde simple a todo
-                bordes.forEach(borde => {
-                    try {
-                        tabla.getBorder(borde).type = "Single";
-                        tabla.getBorder(borde).color = "black";
-                    } catch(e) {}
+                // 2. FORMATO GLOBAL (Letra negra, Arial 12)
+                tabla.getRange().font.set({
+                    name: "Arial",
+                    size: 12,
+                    color: "black"
                 });
 
-                // 5. AJUSTAR Y GUARDAR
+                // 3. EL TRUCO NUCLEAR: PINTAR CELDAS UNA POR UNA
+                // Primero: Cargamos las filas
+                tabla.rows.load("items");
+                await context.sync();
+
+                if (tabla.rows.items.length > 0) {
+                    const primeraFila = tabla.rows.items[0];
+                    
+                    // Segundo: Cargamos las CELDAS de esa fila
+                    primeraFila.cells.load("items");
+                    await context.sync(); // Traemos las celdas a memoria
+
+                    // Tercero: Recorremos cada celda y la obligamos a pintarse
+                    // Esto salta cualquier bloqueo de estilo que tenga la fila
+                    primeraFila.cells.items.forEach((celda) => {
+                        celda.shading.color = "#1F4E78"; // TU AZUL OSCURO
+                        celda.body.font.color = "white"; // BLANCO
+                        celda.body.font.bold = true;     // NEGRITA
+                    });
+                }
+
+                // 4. BORDES (Sencillos)
+                try {
+                    const bordes = [
+                        "Top", "Bottom", "Left", "Right", 
+                        "InsideHorizontal", "InsideVertical"
+                    ];
+                    bordes.forEach(b => {
+                        tabla.getBorder(b).type = "Single";
+                        tabla.getBorder(b).color = "#000000"; // Negro
+                    });
+                } catch(e) {}
+
+                // 5. FINALIZAR
                 tabla.autofitWindow();
-                await context.sync(); // Sincronización final para pintar el azul
+                await context.sync();
                 
             } catch (error) {
                 const body = context.document.body;
-                body.insertParagraph("❌ ERROR 365: " + error.message, "Start");
+                body.insertParagraph("❌ ERROR: " + error.message, "Start");
                 await context.sync();
             }
         } 
@@ -139,7 +144,6 @@ async function procesarMensajeTabla(arg) {
         console.error("Error crítico:", error);
     });
 }
-
 
 // ==========================================
 // 2. LÓGICA DEL CATÁLOGO (ANTERIOR)
