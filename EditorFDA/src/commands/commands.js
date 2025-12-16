@@ -263,7 +263,6 @@ async function procesarMensajeGrafico(arg) {
     let datos;
     try { datos = JSON.parse(arg.message); } catch (e) { return; }
 
-    // Si no es escáner, cerramos ventana
     if (datos.accion !== "EXTRAER_XML") {
         if (dialogGraficos) dialogGraficos.close();
     }
@@ -271,14 +270,17 @@ async function procesarMensajeGrafico(arg) {
     await Word.run(async (context) => {
         
         // ==========================================
-        // CASO 1: INSERTAR ESTÁNDAR (CORREGIDO)
+        // CASO 1: INSERTAR ESTÁNDAR (ARREGLADO)
         // ==========================================
         if (datos.accion === "INSERTAR_ESTANDAR") {
             const seleccion = context.document.getSelection();
             
-            // TRADUCTOR: Convertimos el texto del HTML al Tipo Oficial de Word
+            // 1. TRUCO: Insertamos un párrafo nuevo DESPUÉS del cursor.
+            // El cursor 'Selection' no puede tener gráficos, pero un 'Paragraph' sí.
+            const parrafo = seleccion.insertParagraph("", "After");
+            
+            // 2. Definimos el tipo exacto
             let tipoOficial = "ColumnClustered"; 
-
             switch (datos.tipoGrafico) {
                 case "ColumnClustered": tipoOficial = "ColumnClustered"; break;
                 case "Line":            tipoOficial = "Line"; break;
@@ -289,45 +291,35 @@ async function procesarMensajeGrafico(arg) {
                 default:                tipoOficial = "ColumnClustered";
             }
             
-            try {
-                // CAMBIO IMPORTANTE: Quitamos los parámetros "Auto", "Auto".
-                // Dejamos solo el tipo, Word usará datos por defecto automáticamente.
-                const grafico = seleccion.insertChart(tipoOficial);
-                
-                // Ajustes de tamaño para asegurar visibilidad
-                grafico.height = 300; 
-                grafico.width = 400;
+            // 3. Insertamos el gráfico EN EL PÁRRAFO (No en la selección)
+            const grafico = parrafo.insertInlinePictureFromBase64 ? 
+                            null : // Fallback si fuera imagen, pero aquí usamos insertChart
+                            parrafo.insertChart(tipoOficial, "Auto", "Auto");
 
-                await context.sync();
-            } catch (errorChart) {
-                // Si falla, escribimos el error en el documento
-                const body = context.document.body;
-                body.insertParagraph("❌ Error creando gráfico estándar: " + errorChart.message, "Start");
-                await context.sync();
+            // Ajuste visual
+            if (grafico) {
+                grafico.height = 300;
+                grafico.width = 400;
             }
+
+            await context.sync();
         }
 
         // ==========================================
-        // CASO 2: INSERTAR PLANTILLA XML (LIMPIEZA AUTOMÁTICA)
+        // CASO 2: INSERTAR PLANTILLA (XML COMPLETO)
         // ==========================================
         else if (datos.accion === "INSERTAR_XML") {
             const seleccion = context.document.getSelection();
             try {
-                // 1. LIMPIEZA AUTOMÁTICA DE ERRORES COMUNES
-                // Corregimos el error http:\/\/ a http:// que generó tu herramienta de escape
-                let xmlLimpio = datos.xml.replace(/\\\//g, "/");
-                
-                // Insertamos el ADN del gráfico limpio
-                seleccion.insertOoxml(xmlLimpio, "After");
-                seleccion.insertParagraph("", "After"); // Separador
+                // 1. IMPORTANTE: No limpiamos nada. Usamos el XML tal cual viene.
+                // Los gráficos necesitan el paquete completo (pkg:package) intacto.
+                seleccion.insertOoxml(datos.xml, "After");
+                seleccion.insertParagraph("", "After"); 
                 await context.sync();
 
             } catch (error) {
-                // Si falla, mostramos el error en el documento
                 const body = context.document.body;
-                body.insertParagraph("❌ Error al insertar gráfico XML.", "Start");
-                body.insertParagraph("Causa probable: El XML copiado no incluye los datos de Excel embebidos o tiene errores de sintaxis.", "Start");
-                body.insertParagraph("Detalle técnico: " + error.message, "Start");
+                body.insertParagraph("❌ Error Gráfico XML: " + error.message, "Start");
                 await context.sync();
             }
         }
@@ -337,11 +329,9 @@ async function procesarMensajeGrafico(arg) {
         // ==========================================
         else if (datos.accion === "EXTRAER_XML") {
             const seleccion = context.document.getSelection();
-            // Obtenemos el ADN (OOXML)
             const xml = seleccion.getOoxml();
             await context.sync();
             
-            // Escribimos al final para copiar
             const body = context.document.body;
             body.insertParagraph("--- COPY CHART START ---", "End");
             body.insertParagraph(xml.value, "End");
