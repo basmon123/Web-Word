@@ -36,58 +36,80 @@ async function procesarMensajeTabla(arg) {
     let datos;
     try { datos = JSON.parse(arg.message); } catch (e) { return; }
     
-    // 1. GESTIÓN DE LA VENTANA
-    // Si es Insertar (Manual o Plantilla), cerramos la ventana para ver el resultado.
-    // Si es Escanear, LA DEJAMOS ABIERTA.
+    // 1. CERRAR VENTANA (Si no es Escáner)
     if (datos.accion !== "EXTRAER_XML") {
         if (dialogGenerador) dialogGenerador.close();
     }
 
     await Word.run(async (context) => {
         
-     // ==========================================
-        // CASO 1: INSERTAR MANUAL (CORREGIDO)
+        // ==========================================
+        // CASO A: INSERTAR MANUAL (CON FORMATO JEFE)
         // ==========================================
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
-
-            // 1. Limpieza y conversión de números
-            let f = parseInt(datos.filas);
-            let c = parseInt(datos.columnas);
-            // Si vienen vacíos o inválidos, usamos 3x3 por seguridad
-            if (!f || isNaN(f)) f = 3;
-            if (!c || isNaN(c)) c = 3;
-
-            // 2. Crear matriz de datos (Array de Arrays de Strings)
-            // Es CRÍTICO que sean strings, por eso ponemos " " y no null
+            
+            // 1. Obtener datos
+            let f = parseInt(datos.filas) || 3;
+            let c = parseInt(datos.columnas) || 3;
+            
+            // 2. Crear matriz vacía (necesaria para insertTable)
             let matriz = [];
             for(let i=0; i<f; i++) {
-                let fila = [];
-                for(let j=0; j<c; j++) {
-                    fila.push(" "); // Celda vacía con un espacio
-                }
+                let fila = new Array(c).fill(" "); 
                 matriz.push(fila);
             }
 
-            // 3. INTENTO DE INSERTAR TABLA
             try {
-                // Usamos "After" para que no borre lo que tengas seleccionado, sino que la ponga después
+                // 3. INSERTAR LA TABLA
                 const tabla = seleccion.insertTable(f, c, "After", matriz);
                 
-                // Opcional: Le damos un estilo básico de Word para que se vean los bordes
-                // Si tu Word está en español, "Table Grid" podría fallar, así que lo envolvemos
-                try { tabla.style = "Table Grid"; } catch(e){} 
+                // ¡SINCRONIZACIÓN CRUCIAL!
+                // Obligamos a Word a crear la tabla antes de intentar pintarla.
+                await context.sync(); 
 
+                // 4. APLICAR FORMATO (MÉTODO NATIVO DE WORD)
+                // No usamos .load() porque solo estamos ESCRIBIENDO propiedades.
+                
+                // A) FUENTE GENERAL (Toda la tabla)
+                tabla.getRange().font.name = "Arial";
+                tabla.getRange().font.size = 12;
+                tabla.getRange().font.color = "black";
+
+                // B) BORDES (Se aplican directo a la tabla, no al formato)
+                // Esto dibuja la cuadrícula completa
+                tabla.getBorder("Top").type = "Single";
+                tabla.getBorder("Bottom").type = "Single";
+                tabla.getBorder("Left").type = "Single";
+                tabla.getBorder("Right").type = "Single";
+                tabla.getBorder("InsideHorizontal").type = "Single";
+                tabla.getBorder("InsideVertical").type = "Single";
+
+                // C) ENCABEZADO (FILA 1)
+                // Obtenemos la primera fila (índice 0)
+                const primeraFila = tabla.rows.getItem(0);
+                
+                // Pintamos el fondo (Azul Oscuro Corporativo)
+                primeraFila.shading.color = "#1F4E78"; 
+                
+                // Pintamos el texto (Blanco y Negrita)
+                primeraFila.font.color = "white";
+                primeraFila.font.bold = true;
+
+                // 5. AJUSTAR ANCHO
                 tabla.autofitWindow();
                 
-            } catch (errorTabla) {
-                // SI FALLA, ESCRIBIMOS EL ERROR EN EL DOCUMENTO
+                // 6. FINALIZAR
+                await context.sync();
+                
+            } catch (error) {
+                // Si algo falla, te avisará en el documento
                 const body = context.document.body;
-                body.insertParagraph("❌ ERROR AL CREAR TABLA: " + errorTabla.message, "Start");
+                body.insertParagraph("❌ ERROR FORMATO: " + error.message, "Start");
+                await context.sync();
             }
-            
-            await context.sync();
-        }
+        } 
+        
         // ==========================================
         // CASO B: INSERTAR DESDE BIBLIOTECA (XML)
         // ==========================================
@@ -95,12 +117,11 @@ async function procesarMensajeTabla(arg) {
             const seleccion = context.document.getSelection();
             try {
                 seleccion.insertOoxml(datos.xml, "After");
-                seleccion.insertParagraph("", "After"); // Separador
+                seleccion.insertParagraph("", "After"); 
                 await context.sync();
             } catch (errorXML) {
-                // Si el XML falla, escribimos el error en el documento
                 const body = context.document.body;
-                body.insertParagraph("❌ ERROR: XML corrupto. " + errorXML.message, "Start");
+                body.insertParagraph("❌ ERROR XML: " + errorXML.message, "Start");
                 await context.sync();
             }
         }
@@ -114,9 +135,9 @@ async function procesarMensajeTabla(arg) {
             await context.sync();
             
             const body = context.document.body;
-            body.insertParagraph("--- COPY START ---", "End");
+            body.insertParagraph("--- COPY TABLE START ---", "End");
             body.insertParagraph(xmlResult.value, "End");
-            body.insertParagraph("--- COPY END ---", "End");
+            body.insertParagraph("--- COPY TABLE END ---", "End");
             await context.sync();
         }
 
