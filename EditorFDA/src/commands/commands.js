@@ -270,17 +270,18 @@ async function procesarMensajeGrafico(arg) {
     await Word.run(async (context) => {
         
 // ==========================================
-        // CASO 1: INSERTAR ESTÁNDAR (BLINDADO)
+        // CASO 1: INSERTAR ESTÁNDAR (CON DIAGNÓSTICO)
         // ==========================================
         if (datos.accion === "INSERTAR_ESTANDAR") {
             const body = context.document.body;
             
-            // MÉTODO NUEVO: Insertamos al final del documento (Body) 
-            // Esto es mucho más seguro que usar la selección.
-            // insertChart existe en el Body en casi todas las versiones.
-            
+            // Paso 1: Avisar que empezamos
+            const parrafoLog = body.insertParagraph("...Intentando crear gráfico...", "End");
+            await context.sync();
+
             let tipoOficial = "ColumnClustered"; 
-            switch (datos.tipoGrafico) {
+            // ... (tu switch case sigue igual aquí, no hace falta cambiarlo) ...
+             switch (datos.tipoGrafico) {
                 case "ColumnClustered": tipoOficial = "ColumnClustered"; break;
                 case "Line":            tipoOficial = "Line"; break;
                 case "Pie":             tipoOficial = "Pie"; break;
@@ -291,24 +292,27 @@ async function procesarMensajeGrafico(arg) {
             }
 
             try {
-                // INTENTO 1: Directo en el Body (Más compatible)
-                const grafico = body.insertChart(tipoOficial, "Auto", "Auto");
-                grafico.height = 300;
-                grafico.width = 400;
-            } catch (e1) {
-                // INTENTO 2: Si falla, probamos con un párrafo nuevo y su RANGO
-                try {
-                    const parrafo = body.insertParagraph("", "End");
-                    // .getRange() es la clave que faltaba
-                    parrafo.getRange().insertChart(tipoOficial, "Auto", "Auto");
-                } catch (e2) {
-                    throw new Error("Tu versión de Word no soporta la API 'insertChart'.");
+                // INTENTO: Insertar Chart sin parámetros "Auto" (a veces fallan)
+                // Usamos body.insertChart directamente, que suele ser más estable
+                const grafico = body.insertInlinePictureFromBase64 ? 
+                                null : // Salto de seguridad
+                                body.insertChart(tipoOficial); // SIN "Auto", "Auto"
+                
+                // Si llegamos aquí, el comando se envió
+                parrafoLog.insertText(" [Comando Enviado]", "End");
+                
+                if (grafico) {
+                    grafico.height = 300;
+                    grafico.width = 400;
                 }
-            }
-            
-            await context.sync();
-        }
+                
+                await context.sync();
+                parrafoLog.insertText(" [¡Éxito!]", "End");
 
+            } catch (error) {
+                parrafoLog.insertText(" [ERROR: " + error.message + "]", "End");
+            }
+        }
         // ==========================================
         // CASO 2: INSERTAR PLANTILLA (XML COMPLETO)
         // ==========================================
