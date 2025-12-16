@@ -41,7 +41,7 @@ async function procesarMensajeTabla(arg) {
     await Word.run(async (context) => {
         
         // ==========================================
-        // CASO A: INSERTAR MANUAL (LA OPCIÓN NUCLEAR)
+        // CASO A: INSERTAR MANUAL (MÉTODO CELDA A CELDA)
         // ==========================================
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
@@ -56,45 +56,44 @@ async function procesarMensajeTabla(arg) {
             try {
                 // 1. CREAR LA TABLA
                 const tabla = seleccion.insertTable(f, c, "After", matriz);
-                await context.sync(); // ¡Tabla existe!
+                await context.sync(); // Pausa obligatoria
 
-                // 2. FORMATO GLOBAL (Letra negra, Arial 12)
+                // 2. FORMATO BASE (Toda la tabla Arial 12, Negro)
                 tabla.getRange().font.set({
                     name: "Arial",
                     size: 12,
                     color: "black"
                 });
 
-                // 3. EL TRUCO NUCLEAR: PINTAR CELDAS UNA POR UNA
-                // Primero: Cargamos las filas
+                // 3. LA SOLUCIÓN DEFINITIVA: PINTAR CELDAS UNA A UNA
+                // Cargamos las filas
                 tabla.rows.load("items");
                 await context.sync();
 
                 if (tabla.rows.items.length > 0) {
                     const primeraFila = tabla.rows.items[0];
                     
-                    // Segundo: Cargamos las CELDAS de esa fila
+                    // Cargamos las celdas de la primera fila
                     primeraFila.cells.load("items");
-                    await context.sync(); // Traemos las celdas a memoria
+                    await context.sync(); 
 
-                    // Tercero: Recorremos cada celda y la obligamos a pintarse
-                    // Esto salta cualquier bloqueo de estilo que tenga la fila
+                    // Recorremos cada celda y la pintamos a la fuerza
+                    // Esto salta cualquier bloqueo de estilo de tabla
                     primeraFila.cells.items.forEach((celda) => {
-                        celda.shading.color = "#1F4E78"; // TU AZUL OSCURO
-                        celda.body.font.color = "white"; // BLANCO
-                        celda.body.font.bold = true;     // NEGRITA
+                        // Color de fondo
+                        celda.shading.color = "#1F4E78"; 
+                        // Color de letra (accediendo al cuerpo de la celda)
+                        celda.body.font.color = "white"; 
+                        celda.body.font.bold = true;     
                     });
                 }
 
-                // 4. BORDES (Sencillos)
+                // 4. BORDES (Negros finos)
                 try {
-                    const bordes = [
-                        "Top", "Bottom", "Left", "Right", 
-                        "InsideHorizontal", "InsideVertical"
-                    ];
+                    const bordes = ["Top", "Bottom", "Left", "Right", "InsideHorizontal", "InsideVertical"];
                     bordes.forEach(b => {
                         tabla.getBorder(b).type = "Single";
-                        tabla.getBorder(b).color = "#000000"; // Negro
+                        tabla.getBorder(b).color = "black";
                     });
                 } catch(e) {}
 
