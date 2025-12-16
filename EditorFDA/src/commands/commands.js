@@ -41,7 +41,7 @@ async function procesarMensajeTabla(arg) {
     await Word.run(async (context) => {
         
         // ==========================================
-        // CASO A: INSERTAR MANUAL (A PRUEBA DE BALAS)
+        // CASO A: INSERTAR MANUAL (FIX RANGO)
         // ==========================================
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
@@ -53,30 +53,30 @@ async function procesarMensajeTabla(arg) {
             for(let i=0; i<f; i++) matriz.push(new Array(c).fill(" "));
 
             try {
-                // 1. CREAR TABLA
+                // 1. Insertar Tabla
                 const tabla = seleccion.insertTable(f, c, "After", matriz);
-                await context.sync(); // Pausa obligatoria
+                await context.sync(); 
 
-                // 2. FORMATO GENERAL (Fuente)
-                // Usamos .set() que es más limpio y seguro
+                // 2. Formato General (Arial 12)
                 tabla.getRange().font.set({
                     name: "Arial",
                     size: 12,
                     color: "black"
                 });
 
-                // 3. ENCABEZADO (MÉTODO UNIVERSAL)
-                // getFirst() existe en todas las versiones de Word API
+                // 3. ENCABEZADO (EL TRUCO DEL RANGO)
+                // Obtenemos la primera fila
                 const primeraFila = tabla.rows.getFirst();
                 
-                primeraFila.shading.color = "#1F4E78"; // Azul Oscuro
-                primeraFila.font.set({
-                    color: "white",
-                    bold: true
-                });
+                // IMPORTANTE: Obtenemos el RANGO de esa fila.
+                // Pintar el rango SIEMPRE funciona, pintar la fila a veces falla.
+                const rangoEncabezado = primeraFila.getRange();
+                
+                rangoEncabezado.shading.color = "#1F4E78"; // Azul Oscuro
+                rangoEncabezado.font.color = "white";      // Blanco
+                rangoEncabezado.font.bold = true;          // Negrita
 
-                // 4. BORDES (CON SEGURIDAD)
-                // Envolvemos esto en try/catch por si tu Word es muy antiguo para 'getBorder'
+                // 4. Bordes (Intento seguro)
                 try {
                     tabla.getBorder("Top").type = "Single";
                     tabla.getBorder("Bottom").type = "Single";
@@ -84,19 +84,15 @@ async function procesarMensajeTabla(arg) {
                     tabla.getBorder("Right").type = "Single";
                     tabla.getBorder("InsideHorizontal").type = "Single";
                     tabla.getBorder("InsideVertical").type = "Single";
-                } catch (eBordes) {
-                    // Si fallan los bordes manuales, intentamos aplicar un estilo nativo como Plan B
-                    console.log("No se pudo usar getBorder, intentando estilo...");
-                    try { tabla.style = "Table Grid"; } catch(e){}
-                }
+                } catch (eBordes) {}
 
-                // 5. FINALIZAR
+                // 5. Finalizar
                 tabla.autofitWindow();
                 await context.sync();
                 
             } catch (error) {
                 const body = context.document.body;
-                body.insertParagraph("❌ ERROR CRÍTICO: " + error.message, "Start");
+                body.insertParagraph("❌ ERROR: " + error.message, "Start");
                 await context.sync();
             }
         } 
