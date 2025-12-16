@@ -257,6 +257,8 @@ function abrirVentanaGraficos(event) {
     if(event) event.completed();
 }
 
+/* Reemplaza solo la función procesarMensajeGrafico */
+
 async function procesarMensajeGrafico(arg) {
     let datos;
     try { datos = JSON.parse(arg.message); } catch (e) { return; }
@@ -268,44 +270,63 @@ async function procesarMensajeGrafico(arg) {
 
     await Word.run(async (context) => {
         
-        // CASO 1: INSERTAR ESTÁNDAR (Nativo de Word)
+        // ==========================================
+        // CASO 1: INSERTAR ESTÁNDAR (CORREGIDO)
+        // ==========================================
         if (datos.accion === "INSERTAR_ESTANDAR") {
             const seleccion = context.document.getSelection();
             
-            // Convertimos el texto del dropdown al Enum de Word
-            // Ej: "Line" -> Word.ChartType.line
-            const tipo = datos.tipoGrafico; 
+            // TRADUCTOR: Convertimos el texto del HTML al Tipo Oficial de Word
+            let tipoOficial = "ColumnClustered"; // Valor por defecto
+
+            switch (datos.tipoGrafico) {
+                case "ColumnClustered": tipoOficial = "ColumnClustered"; break;
+                case "Line":            tipoOficial = "Line"; break;
+                case "Pie":             tipoOficial = "Pie"; break;
+                case "BarClustered":    tipoOficial = "BarClustered"; break;
+                case "Area":            tipoOficial = "Area"; break;
+                case "XYSceatter":      tipoOficial = "XYScatter"; break; // Corregí el typo "XYScatter"
+                default:                tipoOficial = "ColumnClustered";
+            }
             
-            // Insertamos gráfico con datos de ejemplo ("Auto")
-            const grafico = seleccion.insertChart(tipo, "Auto", "Auto");
+            // Insertamos el gráfico
+            // Nota: "Auto" le dice a Word que invente datos de ejemplo
+            const grafico = seleccion.insertChart(tipoOficial, "Auto", "Auto");
             
-            // Ajustes opcionales
-            grafico.height = 300; // Tamaño por defecto razonable
-            
+            // Le damos un tamaño visible por si acaso
+            grafico.height = 300; 
+            grafico.width = 400;
+
             await context.sync();
         }
 
-        // CASO 2: INSERTAR PLANTILLA (XML ESCANEADO)
+        // ==========================================
+        // CASO 2: INSERTAR PLANTILLA (XML)
+        // ==========================================
         else if (datos.accion === "INSERTAR_XML") {
             const seleccion = context.document.getSelection();
             try {
+                // Insertamos el ADN del gráfico
                 seleccion.insertOoxml(datos.xml, "After");
-                seleccion.insertParagraph("", "After");
+                seleccion.insertParagraph("", "After"); // Separador
                 await context.sync();
             } catch (error) {
-                context.document.body.insertParagraph("❌ Error al insertar gráfico: " + error.message, "Start");
+                // Si falla, mostramos el error en el documento
+                const body = context.document.body;
+                body.insertParagraph("❌ Error al insertar gráfico: El código XML está sucio o dañado.", "Start");
+                body.insertParagraph("Detalle técnico: " + error.message, "Start");
                 await context.sync();
             }
         }
 
-        // CASO 3: ESCANEAR (DEVELOPER)
+        // ==========================================
+        // CASO 3: ESCANEAR
+        // ==========================================
         else if (datos.accion === "EXTRAER_XML") {
             const seleccion = context.document.getSelection();
-            // Obtenemos el ADN (OOXML)
             const xml = seleccion.getOoxml();
             await context.sync();
             
-            // Escribimos al final para copiar
             const body = context.document.body;
             body.insertParagraph("--- COPY CHART START ---", "End");
             body.insertParagraph(xml.value, "End");
