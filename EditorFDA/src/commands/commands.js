@@ -127,7 +127,7 @@ async function procesarMensajeTabla(arg) {
         }
 
         // ==========================================
-        // CASO C: ESCANEAR (HERRAMIENTA DEVELOPER)
+        /// CASO C: ESCANEAR (HERRAMIENTA DEVELOPER)
         // ==========================================
         else if (datos.accion === "EXTRAER_XML") {
             const seleccion = context.document.getSelection();
