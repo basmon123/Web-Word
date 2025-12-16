@@ -14,7 +14,7 @@ Office.onReady(() => {
 // ==========================================
 
 function abrirVentanaTablas(event) {
-    const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/GeneradorTablas/generadorTablas.html"; 
+    const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/generadorTablas/generadorTablas.html"; 
     // Asegúrate de que displayInIframe sea true para mejor comunicación
     const opciones = { height: 50, width: 30, displayInIframe: true };
 
