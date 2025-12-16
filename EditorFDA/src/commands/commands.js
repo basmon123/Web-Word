@@ -46,43 +46,37 @@ async function procesarMensajeTabla(arg) {
         // ==========================================
         // CASO A: INSERTAR MANUAL (SOLUCIÓN ROBUSTA)
         // ==========================================
-        if (datos.accion === "INSERTAR") {
+       if (datos.accion === "INSERTAR") {
+            const body = context.document.body;
             const seleccion = context.document.getSelection();
-            
-            const filas = parseInt(datos.filas);
-            const cols = parseInt(datos.columnas);
-            
-            // 1. Construimos la matriz de datos vacíos
+
+            // 1. Diagnóstico visual (Para saber si entra aquí)
+            // Esto escribirá un texto pequeño donde esté tu cursor.
+            // Si ves este texto, la conexión funciona.
+            seleccion.insertText("...Creando tabla...", "Replace");
+            await context.sync();
+
+            // 2. Asegurar números (Si falla, usa 3x3)
+            let f = parseInt(datos.filas);
+            let c = parseInt(datos.columnas);
+            if (isNaN(f)) f = 3; 
+            if (isNaN(c)) c = 3;
+
+            // 3. Crear matriz de datos vacíos
             let matriz = [];
-            for(let i=0; i<filas; i++) {
-                // Llenamos con un espacio para que la celda no colapse
-                let fila = new Array(cols).fill(" "); 
+            for(let i=0; i<f; i++) {
+                let fila = new Array(c).fill(" "); // Espacio vacío
                 matriz.push(fila);
             }
 
-            // 2. Insertamos la tabla (Esto es lo importante)
-            const tabla = seleccion.insertTable(filas, cols, "After", matriz);
+            // 4. Insertar la Tabla DIRECTA (Sin estilos raros)
+            const tabla = seleccion.insertTable(f, c, "After", matriz);
             
-            // 3. INTENTO DE ESTILO (A prueba de fallos)
-            // Envolvemos esto en un try/catch para que si el nombre del estilo no existe
-            // en tu idioma, la tabla SE CREE IGUAL (aunque sea fea).
-            try {
-                // Intenta estilo estándar en Inglés
-                tabla.style = "Table Grid"; 
-            } catch (errorEstilo) {
-                try {
-                    // Intento alternativo en Español
-                    tabla.style = "Tabla con cuadrícula"; 
-                } catch (e2) {
-                    // Si todo falla, no hacemos nada y dejamos la tabla sin estilo
-                    console.warn("No se pudo aplicar estilo, pero la tabla se creó.");
-                }
-            }
-
+            // Forzamos el ajuste para que se vea bien
             tabla.autofitWindow();
+            
             await context.sync();
-        } 
-        
+        }
         // ==========================================
         // CASO B: INSERTAR DESDE BIBLIOTECA (XML)
         // ==========================================
