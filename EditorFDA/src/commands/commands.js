@@ -298,7 +298,7 @@ async function procesarMensajeGrafico(arg) {
 
     await Word.run(async (context) => {
         
-      / ------------------------------------------
+      // ------------------------------------------
         // A. INSERTAR MANUAL (VERSIÓN NATIVA WORD)
         // ------------------------------------------
         if (datos.accion === "INSERTAR") {
