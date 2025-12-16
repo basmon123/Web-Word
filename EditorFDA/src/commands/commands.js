@@ -45,47 +45,51 @@ async function procesarMensajeTabla(arg) {
 
     await Word.run(async (context) => {
         
-        // ------------------------------------------
-        // A. INSERTAR MANUAL (VERSIÓN CON .LOAD)
+    // ------------------------------------------
+        // A. INSERTAR MANUAL (VERSIÓN PASO A PASO BLINDADA)
         // ------------------------------------------
         if (datos.accion === "INSERTAR") {
             const seleccion = context.document.getSelection();
             
             let f = parseInt(datos.filas) || 3;
             let c = parseInt(datos.columnas) || 3;
-            
             let matriz = [];
-            for(let i=0; i<f; i++) {
-                let fila = new Array(c).fill(" "); 
-                matriz.push(fila);
-            }
+            for(let i=0; i<f; i++) matriz.push(new Array(c).fill(" "));
 
             try {
-                // 1. CREAR LA TABLA
+                // PASO 1: Insertar la tabla básica
                 const tabla = seleccion.insertTable(f, c, "After", matriz);
-                
-                await context.sync(); // Sincronizamos para que la tabla exista
+                await context.sync(); // ¡Tabla creada!
 
-                // 2. PREPARAR OBJETOS Y CARGAR PROPIEDADES (CRÍTICO)
+                // PASO 2: Obtener el Rango y cargar SOLO el objeto 'format'
+                // No intentamos cargar bordes todavía.
                 const rangoTabla = tabla.getRange();
+                rangoTabla.load("format"); 
+                
+                // También cargamos las filas para el encabezado
                 const filas = tabla.rows;
+                filas.load("items");
+                
+                await context.sync(); // ¡Objeto Format cargado!
 
-                // AQUÍ ESTABA EL ERROR: Debemos cargar 'format' y 'rows' explícitamente
-                // Le decimos a Word: "Prepara el formato, los bordes y las filas, que los voy a usar"
-                rangoTabla.load(["format/borders", "font"]);
-                filas.load("items"); 
+                // PASO 3: Ahora que 'format' existe seguro, cargamos 'borders' y 'font'
+                // Ya no dará undefined porque format ya está en memoria
+                rangoTabla.format.load("borders");
+                rangoTabla.font.load("name, size, color");
+                
+                await context.sync(); // ¡Bordes cargados!
 
-                await context.sync(); // Traemos esa información a la memoria
-
-                // 3. AHORA SÍ, APLICAMOS FORMATO (Ya no dará undefined)
+                // PASO 4: APLICAR FORMATO
                 
                 // A) Fuente General
                 rangoTabla.font.name = "Arial";
                 rangoTabla.font.size = 12;
                 rangoTabla.font.color = "black";
 
-                // B) Bordes (Ahora rangoTabla.format ya existe gracias al load)
+                // B) Bordes (Ahora es seguro acceder)
                 const bordes = rangoTabla.format.borders;
+                
+                // Aplicamos uno por uno para asegurar
                 bordes.getItem("InsideHorizontal").style = "Single";
                 bordes.getItem("InsideVertical").style = "Single";
                 bordes.getItem("EdgeBottom").style = "Single";
@@ -93,21 +97,22 @@ async function procesarMensajeTabla(arg) {
                 bordes.getItem("EdgeRight").style = "Single";
                 bordes.getItem("EdgeTop").style = "Single";
 
-                // C) Encabezado (Primera Fila)
-                // Usamos filas.items[0] porque ya cargamos los items
-                const filaEncabezado = filas.items[0];
-                
-                filaEncabezado.shading.color = "#1F4E78"; // Azul Oscuro
-                filaEncabezado.font.color = "white";      // Letra Blanca
-                filaEncabezado.font.bold = true;          // Negrita
+                // C) Encabezado (Fila 0)
+                if (filas.items.length > 0) {
+                    const encabezado = filas.items[0];
+                    encabezado.load("shading, font"); // Cargamos propiedades del encabezado
+                    await context.sync(); // Pequeña pausa para asegurar
 
-                // Ajuste final
+                    encabezado.shading.color = "#1F4E78"; // Azul Oscuro
+                    encabezado.font.color = "white";      // Blanco
+                    encabezado.font.bold = true;          // Negrita
+                }
+
                 tabla.autofitWindow();
-                
                 await context.sync();
                 
             } catch (error) {
-                context.document.body.insertParagraph("❌ Error Formato: " + error.message, "Start");
+                context.document.body.insertParagraph("❌ Error Formato Detallado: " + error.message, "Start");
                 await context.sync();
             }
         }
