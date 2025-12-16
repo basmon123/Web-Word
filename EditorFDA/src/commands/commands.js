@@ -269,17 +269,17 @@ async function procesarMensajeGrafico(arg) {
 
     await Word.run(async (context) => {
         
-        // ==========================================
-        // CASO 1: INSERTAR ESTÁNDAR (NUEVA ESTRATEGIA)
+     // ==========================================
+        // CASO 1: INSERTAR ESTÁNDAR (VERSIÓN "MINIMALISTA")
         // ==========================================
         if (datos.accion === "INSERTAR_ESTANDAR") {
-            // Estrategia: Insertar al FINAL del documento (Body) para evitar
-            // errores de "Selection" o "Range" en versiones antiguas.
-            const body = context.document.body;
+            const seleccion = context.document.getSelection();
             
-            // 1. Insertamos un párrafo limpio al final
-            const parrafo = body.insertParagraph("", "End");
+            // 1. Insertamos un párrafo nuevo justo donde estás escribiendo.
+            // (Usamos "After" para no borrar lo que tengas seleccionado)
+            const parrafo = seleccion.insertParagraph("", "After");
             
+            // 2. Definimos el tipo
             let tipoOficial = "ColumnClustered"; 
             switch (datos.tipoGrafico) {
                 case "ColumnClustered": tipoOficial = "ColumnClustered"; break;
@@ -292,24 +292,32 @@ async function procesarMensajeGrafico(arg) {
             }
             
             try {
-                // Usamos insertChart sobre el párrafo, SIN parámetros extra.
-                // Esto fuerza a Word a usar sus valores por defecto.
-                const grafico = parrafo.insertChart(tipoOficial, "Auto", "Auto");
+                // EL CAMBIO CLAVE:
+                // Quitamos ("Auto", "Auto"). Dejamos solo el tipo.
+                // Word detectará que no hay datos y generará el ejemplo él solo.
+                const grafico = parrafo.insertChart(tipoOficial);
                 
+                // Le damos dimensiones para asegurar que no nazca invisible
                 grafico.height = 300;
                 grafico.width = 450;
                 
-                // Forzamos un scroll para que veas que se creó
-                parrafo.select(); 
+                // Sincronizamos para que ocurra la magia
+                await context.sync();
                 
-                await context.sync();
             } catch (errorChart) {
-                // Si falla, escribimos el error en la hoja
-                parrafo.insertText("❌ NO SOPORTADO: Tu versión de Word no permite crear gráficos vacíos por API. Usa las plantillas.", "Replace");
-                await context.sync();
+                // Si falla aquí, es porque tu Word necesita que usemos el Body en vez del Párrafo
+                // INTENTO DE RESPALDO (Plan B automático):
+                try {
+                    const body = context.document.body;
+                    const graficoB = body.insertChart(tipoOficial);
+                    graficoB.height = 300;
+                    graficoB.width = 450;
+                    await context.sync();
+                } catch (errorB) {
+                    parrafo.insertText("❌ Error: Tu Word no deja crear gráficos vacíos. " + errorB.message, "Replace");
+                }
             }
         }
-
         // ==========================================
         // CASO 2: INSERTAR PLANTILLA (LAVADO DE CÓDIGO)
         // ==========================================
