@@ -127,10 +127,11 @@ async function procesarMensajeTabla(arg) {
 
 
 // ==========================================
-// 2. LÓGICA DEL CATÁLOGO (ANTERIOR)
+// 2. LÓGICA DEL CATÁLOGO (ACTUALIZADA)
 // ==========================================
 function abrirCatalogo(event) {
-  const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/catalog/catalog.html?v=4";
+  // Asegúrate de actualizar la versión (?v=5) para forzar recarga de cache
+  const url = "https://basmon123.github.io/Web-Word/EditorFDA/src/catalog/catalog.html?v=5";
   Office.context.ui.displayDialogAsync(url, { height: 60, width: 50 },
     function (asyncResult) {
       if (asyncResult.status === Office.AsyncResultStatus.Failed) { console.error(asyncResult.error.message);
@@ -146,25 +147,30 @@ function abrirCatalogo(event) {
 async function procesarMensajeCatalogo(arg) {
   dialogCatalogo.close(); 
   const mensaje = JSON.parse(arg.message); 
-  if (mensaje.accion === "CREAR_DOCUMENTO") {
-      await crearDocumentoNuevo(mensaje.plantilla, mensaje.datos);
+  
+  // AHORA RECIBIMOS 'plantillaUrl' EN LUGAR DE 'plantilla'
+  if (mensaje.accion === "CREAR_DOCUMENTO" && mensaje.plantillaUrl) {
+      await crearDocumentoNuevo(mensaje.plantillaUrl, mensaje.datos);
+  } else {
+      console.error("Mensaje incompleto o sin URL de plantilla");
   }
 }
 
-async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
-  const archivos = { "Minuta": "Minuta.docx", "Informe": "Informe.docx", "Carta": "Carta.docx" };
-  const nombreArchivo = archivos[nombrePlantilla];
-  if (!nombreArchivo) return;
-  const carpeta = datosProyecto.carpeta_plantilla || "CODELCO"; 
-  const urlPlantilla = "https://basmon123.github.io/Web-Word/EditorFDA/src/templates/" + carpeta + "/" + nombreArchivo;
-
+// 🔴 FUNCIÓN SIMPLIFICADA: YA NO ADIVINA RUTAS, USA LA URL DIRECTA
+async function crearDocumentoNuevo(urlDirecta, datosProyecto) {
   try {
-      const response = await fetch(urlPlantilla);
-      if (!response.ok) throw new Error("Plantilla no encontrada");
+      console.log("Descargando plantilla desde:", urlDirecta);
+      
+      const response = await fetch(urlDirecta);
+      if (!response.ok) throw new Error("No se pudo descargar la plantilla desde la URL provista.");
+      
       const blob = await response.blob();
       const base64 = await getBase64FromBlob(blob);
+      
       await Word.run(async (context) => {
         const newDoc = context.application.createDocument(base64);
+        
+        // Mapeo de Control de Contenido
         const mapaDatos = [
             { tag: "ccCliente",    valor: datosProyecto.cliente },
             { tag: "ccDivisión",   valor: datosProyecto.division },
@@ -173,20 +179,29 @@ async function crearDocumentoNuevo(nombrePlantilla, datosProyecto) {
             { tag: "ccAPI",        valor: datosProyecto.api },
             { tag: "ccID",         valor: datosProyecto.id }
         ];
+        
         for (let item of mapaDatos) {
             if (!item.valor) continue;
+            // Busca por etiqueta (Tag)
             const controls = newDoc.body.contentControls.getByTag(item.tag);
             controls.load("items");
             await context.sync();
+            
             if (controls.items.length > 0) {
+                // Reemplaza texto en todos los controles encontrados
                 controls.items.forEach((control) => control.insertText(String(item.valor), "Replace"));
             }
         }
+        
         newDoc.open();
         await context.sync();
-        context.document.close(Word.CloseBehavior.skipSave); 
+        // Cierra el documento temporal en memoria (opcional)
+        // context.document.close(Word.CloseBehavior.skipSave); 
       });
-  } catch (error) { console.error(error); }
+
+  } catch (error) { 
+      console.error("Error al crear documento:", error); 
+  }
 }
 
 function getBase64FromBlob(blob) {

@@ -1,23 +1,25 @@
 /* global Office */
 
 let baseDatosCompleta = [];
+let listaPlantillas = []; // <--- NUEVA VARIABLE PARA PLANTILLAS
 let proyectoActual = null;
 
 // ==========================================
 // 1. CONFIGURACIÓN
 // ==========================================
 
-// URL DE TU ARCHIVO JSON EN GITHUB
+// URL DE PROYECTOS (GitHub)
 const urlFuenteDatos = "https://basmon123.github.io/Web-Word/EditorFDA/src/data/proyectos.json";
 
+// 🔴 URL DE PLANTILLAS (GitHub) - ¡ACTUALIZA ESTO!
+const urlFuentePlantillas = "https://basmon123.github.io/Web-Word/EditorFDA/src/data/plantillas.json";
+
 // DICCIONARIO DE REGLAS
-// El código buscará estas palabras clave. Si las encuentra, asigna el Cliente Global.
 const CONFIG_CLIENTES = {
     "CODELCO CHILE": [
         "Codelco", "Chuquicamata", "Gabriela Mistral", "Ministro Hales", 
         "Teniente", "Ventanas", "Vicepresidencia", "Distrito Norte", "Casa Matriz", 
-        "Salvador", "Radomiro Tomic", "Andina", 
-        "Proyectos Distrital" // <--- AHORA ES PARTE DE CODELCO
+        "Salvador", "Radomiro Tomic", "Andina", "Proyectos Distrital"
     ],
     "AMSA": [
         "Centinela", "Pelambres", "Antofagasta Minerals", "AMSA", "Antucoya", "Zaldivar"
@@ -55,7 +57,7 @@ Office.onReady(async () => {
 });
 
 // ==========================================
-// 3. LÓGICA INTELIGENTE (PROCESAMIENTO)
+// 3. LÓGICA DE DATOS
 // ==========================================
 
 function procesarCliente(nombreRaw) {
@@ -63,82 +65,72 @@ function procesarCliente(nombreRaw) {
 
     const nombreMayus = nombreRaw.toUpperCase();
 
-    // 1. Buscar coincidencia en el diccionario
     for (const [clienteGlobal, palabrasClave] of Object.entries(CONFIG_CLIENTES)) {
         const encontrado = palabrasClave.some(palabra => nombreMayus.includes(palabra.toUpperCase()));
         
         if (encontrado) {
-            // ¡ENCONTRADO! Ahora limpiamos el nombre de la división
             let divisionLimpia = nombreRaw;
 
-            // Lógica especial para CODELCO: Quitamos la palabra "Codelco" y "División" del nombre
             if (clienteGlobal === "CODELCO CHILE") {
-                // El regex /Codelco/gi busca la palabra ignorando mayúsculas/minúsculas y la borra
                 divisionLimpia = divisionLimpia.replace(/Codelco/gi, "").replace(/División/gi, "").trim();
-                
-                // Si al limpiar queda vacío (ej: el input era solo "Codelco"), ponemos algo genérico
                 if (divisionLimpia === "" || divisionLimpia === "-") divisionLimpia = "General";
-                
-                // Quitamos caracteres raros iniciales si quedaron (ej: "- Casa Matriz")
                 if (divisionLimpia.startsWith("-")) divisionLimpia = divisionLimpia.substring(1).trim();
             }
 
             return { 
                 global: clienteGlobal, 
-                division: divisionLimpia.toUpperCase() // 🔴 TODO A MAYÚSCULAS
+                division: divisionLimpia.toUpperCase()
             };
         }
     }
-
-    // 2. Si no está en la lista, se va a "OTROS" o usa su propio nombre
     return { global: nombreRaw.toUpperCase(), division: "---" };
 }
 
 async function cargarDatosIniciales() {
     try {
-        const response = await fetch(urlFuenteDatos + "?t=" + new Date().getTime(), {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        });
+        const timestamp = new Date().getTime();
 
-        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+        // 1. Cargar Proyectos
+        const resProyectos = await fetch(urlFuenteDatos + "?t=" + timestamp);
+        const dataProyectos = await resProyectos.json();
 
-        const data = await response.json();
+        // 2. Cargar Plantillas (NUEVO)
+        try {
+            const resPlantillas = await fetch(urlFuentePlantillas + "?t=" + timestamp);
+            if(resPlantillas.ok) {
+                listaPlantillas = await resPlantillas.json();
+                console.log("Plantillas cargadas:", listaPlantillas.length);
+            }
+        } catch(e) {
+            console.warn("No se pudo cargar plantillas.json", e);
+        }
         
-        // Normalizar estructura
+        // Normalizar estructura proyectos
         let lista = [];
-        if (Array.isArray(data)) lista = data;
-        else if (data.body && Array.isArray(data.body)) lista = data.body;
-        else if (data.value && Array.isArray(data.value)) lista = data.value;
+        if (Array.isArray(dataProyectos)) lista = dataProyectos;
+        else if (dataProyectos.body && Array.isArray(dataProyectos.body)) lista = dataProyectos.body;
+        else if (dataProyectos.value && Array.isArray(dataProyectos.value)) lista = dataProyectos.value;
 
-        // MAPEO Y TRANSFORMACIÓN A MAYÚSCULAS
+        // Mapeo
         baseDatosCompleta = lista.map(item => {
             const rawCliente = item.cliente || "";
-            // Aquí ocurre la magia de la limpieza y agrupación
             const infoCliente = procesarCliente(rawCliente);
 
             return {
                 id: item.id,
-                
-                // 🔴 NOMBRE PROYECTO A MAYÚSCULAS
                 nombre: (item.nombre || "").toUpperCase(),
-                
                 cliente: infoCliente.global,     
-                division: infoCliente.division,  // Ya viene en mayúsculas
-                
-                // 🔴 CONTRATO A MAYÚSCULAS
+                division: infoCliente.division, 
                 contrato: (item.contrato || "").toUpperCase(),
-                
-                carpeta_plantilla: item.carpeta_plantilla,
+                carpeta_plantilla: item.carpeta_plantilla, // Ya no se usa tanto, pero se deja por compatibilidad
                 api: item.api || ""
             };
         });
 
-        // Llenar Dropdown Clientes
+        // Llenar Dropdown
         const ddlClientes = document.getElementById("ddlClientes");
         ddlClientes.innerHTML = '<option value="">-- SELECCIONE CLIENTE --</option>';
         
-        // Obtenemos clientes únicos ordenados
         const clientesUnicos = [...new Set(baseDatosCompleta.map(p => p.cliente))].sort();
         
         clientesUnicos.forEach(c => {
@@ -157,7 +149,57 @@ async function cargarDatosIniciales() {
 }
 
 // ==========================================
-// 4. LÓGICA DE INTERFAZ
+// 4. EL BUSCADOR INTELIGENTE (NUEVO)
+// ==========================================
+
+function buscarUrlPlantilla(tipoDocumento, proyecto) {
+    if (!listaPlantillas || listaPlantillas.length === 0) return null;
+
+    console.log(`Buscando ${tipoDocumento} para:`, proyecto);
+
+    // Normalizamos para comparar (todo a mayúsculas)
+    const pContrato = (proyecto.contrato || "").toUpperCase();
+    const pDivision = (proyecto.division || "").toUpperCase();
+    const pCliente = (proyecto.cliente || "").toUpperCase();
+    const tipoReq = tipoDocumento.toUpperCase();
+
+    // 1. PRIORIDAD: CONTRATO
+    let encontrada = listaPlantillas.find(p => 
+        p.tipo && p.tipo.toUpperCase() === tipoReq && 
+        p.contrato && p.contrato.toUpperCase() === pContrato && pContrato !== "-"
+    );
+
+    // 2. PRIORIDAD: DIVISIÓN
+    if (!encontrada) {
+        encontrada = listaPlantillas.find(p => 
+            p.tipo && p.tipo.toUpperCase() === tipoReq && 
+            p.division && p.division.toUpperCase() === pDivision && pDivision !== "---"
+        );
+    }
+
+    // 3. PRIORIDAD: CLIENTE GLOBAL (Sin división específica)
+    if (!encontrada) {
+        encontrada = listaPlantillas.find(p => 
+            p.tipo && p.tipo.toUpperCase() === tipoReq && 
+            p.cliente && p.cliente.toUpperCase() === pCliente && 
+            (!p.division || p.division === "---" || p.division === null) &&
+            (!p.contrato || p.contrato === "-" || p.contrato === null)
+        );
+    }
+
+    // 4. PRIORIDAD: GENERAL
+    if (!encontrada) {
+        encontrada = listaPlantillas.find(p => 
+            p.tipo && p.tipo.toUpperCase() === tipoReq && 
+            p.cliente && p.cliente.toUpperCase() === "GENERAL"
+        );
+    }
+
+    return encontrada ? encontrada.url : null;
+}
+
+// ==========================================
+// 5. LÓGICA DE INTERFAZ
 // ==========================================
 
 function filtrarProyectos() {
@@ -174,7 +216,6 @@ function filtrarProyectos() {
 
     const filtrados = baseDatosCompleta.filter(p => p.cliente === clienteSel);
 
-    // Ordenar los proyectos numéricamente
     filtrados.sort((a, b) => {
         const numA = parseInt(a.id, 10);
         const numB = parseInt(b.id, 10);
@@ -200,7 +241,6 @@ function seleccionarProyecto() {
         return;
     }
 
-    // Buscar proyecto seleccionado
     proyectoActual = baseDatosCompleta.find(p => String(p.id) === String(idProyecto));
 
     if (proyectoActual) {
@@ -226,14 +266,28 @@ function setText(id, text) {
     if (el) el.textContent = text || "---";
 }
 
+// 🔴 FUNCIÓN ACTUALIZADA: ENVÍA URL EN LUGAR DE TIPO
 window.seleccionarPlantilla = function(tipo) {
     if(!proyectoActual) return;
+
+    // 1. Buscamos la URL inteligente
+    const urlFinal = buscarUrlPlantilla(tipo, proyectoActual);
+
+    if (!urlFinal) {
+        // Fallback visual si no hay plantilla
+        console.error("No se encontró plantilla para", tipo);
+        // Opcional: Mostrar alerta al usuario
+        return; 
+    }
+
     localStorage.setItem("FDA_ProyectoActual", JSON.stringify(proyectoActual));
+    
     const mensaje = {
         accion: "CREAR_DOCUMENTO",
-        plantilla: tipo,
+        plantillaUrl: urlFinal, // <--- Enviamos la URL directa
         datos: proyectoActual
     };
+    
     if (Office.context.ui.messageParent) {
         Office.context.ui.messageParent(JSON.stringify(mensaje));
     }
