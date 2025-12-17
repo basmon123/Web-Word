@@ -149,55 +149,106 @@ async function cargarDatosIniciales() {
 }
 
 // ==========================================
-// 4. EL BUSCADOR INTELIGENTE (NUEVO)
+// 4. EL BUSCADOR INTELIGENTE (VERSIÓN ROBUSTA)
 // ==========================================
 
+// Función auxiliar para estandarizar textos antes de comparar
+function normalizar(texto) {
+    if (!texto) return ""; // Si es null o undefined, devuelve vacío
+    const t = String(texto).trim().toUpperCase(); // Todo a mayúsculas y sin espacios extra
+    if (t === "-" || t === "---" || t === "null") return ""; // Tratar guiones como vacío
+    return t;
+}
+
 function buscarUrlPlantilla(tipoDocumento, proyecto) {
-    if (!listaPlantillas || listaPlantillas.length === 0) return null;
-
-    console.log(`Buscando ${tipoDocumento} para:`, proyecto);
-
-    // Normalizamos para comparar (todo a mayúsculas)
-    const pContrato = (proyecto.contrato || "").toUpperCase();
-    const pDivision = (proyecto.division || "").toUpperCase();
-    const pCliente = (proyecto.cliente || "").toUpperCase();
-    const tipoReq = tipoDocumento.toUpperCase();
-
-    // 1. PRIORIDAD: CONTRATO
-    let encontrada = listaPlantillas.find(p => 
-        p.tipo && p.tipo.toUpperCase() === tipoReq && 
-        p.contrato && p.contrato.toUpperCase() === pContrato && pContrato !== "-"
-    );
-
-    // 2. PRIORIDAD: DIVISIÓN
-    if (!encontrada) {
-        encontrada = listaPlantillas.find(p => 
-            p.tipo && p.tipo.toUpperCase() === tipoReq && 
-            p.division && p.division.toUpperCase() === pDivision && pDivision !== "---"
-        );
+    if (!listaPlantillas || listaPlantillas.length === 0) {
+        console.error("❌ Error: La lista de plantillas está vacía o no cargó.");
+        return null;
     }
 
-    // 3. PRIORIDAD: CLIENTE GLOBAL (Sin división específica)
-    if (!encontrada) {
-        encontrada = listaPlantillas.find(p => 
-            p.tipo && p.tipo.toUpperCase() === tipoReq && 
-            p.cliente && p.cliente.toUpperCase() === pCliente && 
-            (!p.division || p.division === "---" || p.division === null) &&
-            (!p.contrato || p.contrato === "-" || p.contrato === null)
-        );
+    // 1. Preparamos los datos del PROYECTO (Lo que buscamos)
+    const tipoReq = normalizar(tipoDocumento);
+    const pContrato = normalizar(proyecto.contrato);
+    const pDivision = normalizar(proyecto.division);
+    const pCliente = normalizar(proyecto.cliente);
+
+    console.log(`🔍 BUSCANDO PLANTILLA: [${tipoReq}]`);
+    console.log(`   Datos Proyecto -> Cliente: ${pCliente} | División: ${pDivision} | Contrato: ${pContrato}`);
+
+    let encontrada = null;
+
+    // ---------------------------------------------------------
+    // 🥇 PRIORIDAD 1: CONTRATO (Solo si el proyecto tiene contrato)
+    // ---------------------------------------------------------
+    if (pContrato !== "") {
+        encontrada = listaPlantillas.find(p => {
+            const tTipo = normalizar(p.tipo);
+            const tContrato = normalizar(p.contrato);
+            // Coincide Tipo Y Coincide Contrato
+            return tTipo === tipoReq && tContrato === pContrato;
+        });
+
+        if (encontrada) console.log("✅ Encontrada por CONTRATO:", encontrada.nombre);
     }
 
-    // 4. PRIORIDAD: GENERAL
+    // ---------------------------------------------------------
+    // 🥈 PRIORIDAD 2: DIVISIÓN (Solo si el proyecto tiene división)
+    // ---------------------------------------------------------
+    if (!encontrada && pDivision !== "") {
+        encontrada = listaPlantillas.find(p => {
+            const tTipo = normalizar(p.tipo);
+            const tDivision = normalizar(p.division);
+            // Coincide Tipo Y Coincide División
+            return tTipo === tipoReq && tDivision === pDivision;
+        });
+
+        if (encontrada) console.log("✅ Encontrada por DIVISIÓN:", encontrada.nombre);
+    }
+
+    // ---------------------------------------------------------
+    // 🥉 PRIORIDAD 3: CLIENTE GLOBAL
+    // (Buscamos que coincida el cliente y que la plantilla NO sea específica de otra cosa)
+    // ---------------------------------------------------------
     if (!encontrada) {
-        encontrada = listaPlantillas.find(p => 
-            p.tipo && p.tipo.toUpperCase() === tipoReq && 
-            p.cliente && p.cliente.toUpperCase() === "GENERAL"
-        );
+        encontrada = listaPlantillas.find(p => {
+            const tTipo = normalizar(p.tipo);
+            const tCliente = normalizar(p.cliente);
+            const tDivision = normalizar(p.division);
+            const tContrato = normalizar(p.contrato);
+
+            // Coincide Tipo Y Coincide Cliente Y (Division vacía) Y (Contrato vacío)
+            return tTipo === tipoReq && 
+                   tCliente === pCliente && 
+                   tDivision === "" && 
+                   tContrato === "";
+        });
+
+        if (encontrada) console.log("✅ Encontrada por CLIENTE GLOBAL:", encontrada.nombre);
+    }
+
+    // ---------------------------------------------------------
+    // 🛡️ PRIORIDAD 4: GENERAL (Fallback)
+    // ---------------------------------------------------------
+    if (!encontrada) {
+        encontrada = listaPlantillas.find(p => {
+            const tTipo = normalizar(p.tipo);
+            const tCliente = normalizar(p.cliente);
+            
+            return tTipo === tipoReq && tCliente === "GENERAL";
+        });
+
+        if (encontrada) console.log("✅ Encontrada por GENERAL:", encontrada.nombre);
+    }
+
+    // Resultado final
+    if (!encontrada) {
+        console.warn("⚠️ NO SE ENCONTRÓ NINGUNA PLANTILLA COMPATIBLE.");
+        console.log("   --> Revisa tu archivo plantillas.json en GitHub.");
+        console.log("   --> Asegúrate de que las columnas coincidan.");
     }
 
     return encontrada ? encontrada.url : null;
 }
-
 // ==========================================
 // 5. LÓGICA DE INTERFAZ
 // ==========================================
