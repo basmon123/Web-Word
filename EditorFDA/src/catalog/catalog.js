@@ -7,7 +7,7 @@ let proyectoActual = null;
 // 1. CONFIGURACIÓN
 // ==========================================
 // 🔴 RECUERDA PONER AQUÍ TU URL DE SHAREPOINT
-const urlFuenteDatos = "PON_AQUI_LA_URL_DE_TU_JSON_EN_SHAREPOINT"; 
+const urlFuenteDatos = "https://basmon123.github.io/Web-Word/EditorFDA/src/data/proyectos.json"; 
 
 // DICCIONARIO DE REGLAS
 // El código buscará estas palabras clave. Si las encuentra, asigna el Cliente Global.
