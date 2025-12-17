@@ -6,18 +6,21 @@ let proyectoActual = null;
 // ==========================================
 // 1. CONFIGURACIÓN
 // ==========================================
-// 🔴 RECUERDA PONER AQUÍ TU URL DE SHAREPOINT
-const urlFuenteDatos = "https://basmon123.github.io/Web-Word/EditorFDA/src/data/proyectos.json"; 
+
+// URL DE TU ARCHIVO JSON EN GITHUB
+const urlFuenteDatos = "https://basmon123.github.io/Web-Word/EditorFDA/src/data/proyectos.json";
 
 // DICCIONARIO DE REGLAS
 // El código buscará estas palabras clave. Si las encuentra, asigna el Cliente Global.
 const CONFIG_CLIENTES = {
     "CODELCO CHILE": [
         "Codelco", "Chuquicamata", "Gabriela Mistral", "Ministro Hales", 
-        "Teniente", "Ventanas", "Vicepresidencia", "Distrito Norte", "Casa Matriz"
+        "Teniente", "Ventanas", "Vicepresidencia", "Distrito Norte", "Casa Matriz", 
+        "Salvador", "Radomiro Tomic", "Andina", 
+        "Proyectos Distrital" // <--- AHORA ES PARTE DE CODELCO
     ],
     "AMSA": [
-        "Centinela", "Pelambres", "Antofagasta Minerals", "AMSA"
+        "Centinela", "Pelambres", "Antofagasta Minerals", "AMSA", "Antucoya", "Zaldivar"
     ],
     "AGUAS ANDINAS": ["Aguas Andina"],
     "COMPAÑÍA INDUSTRIAL VOLCÁN S.A.": ["Volcan", "Volcán"],
@@ -26,7 +29,6 @@ const CONFIG_CLIENTES = {
     "CORPORACIÓN ABB": ["ABB"],
     "ENAMI": ["ENAMI", "Empresa Nacional de Minería"],
     "ESMAX": ["Esmax"],
-    "GERENCIA DE PROYECTOS DISTRITAL": ["Proyectos Distrital"],
     "GESVIAL": ["Gesvial", "Gestión Vial"],
     "INPPA": ["INPPA"],
     "KAPSCH TRAFFICCOM": ["Kapsch"],
@@ -34,7 +36,8 @@ const CONFIG_CLIENTES = {
     "ROBERT BOSCH CHILE S.A.": ["Bosch"],
     "SOCIEDAD PUNTA DEL COBRE S.A.": ["Punta del Cobre"],
     "STATKRAFT": ["Statkraft"],
-    "TRANSELEC": ["Transelec"]
+    "TRANSELEC": ["Transelec"],
+    "BHP BILLITON": ["Escondida", "Spence", "Cerro Colorado", "BHP"]
 };
 
 // ==========================================
@@ -76,19 +79,19 @@ function procesarCliente(nombreRaw) {
                 // Si al limpiar queda vacío (ej: el input era solo "Codelco"), ponemos algo genérico
                 if (divisionLimpia === "" || divisionLimpia === "-") divisionLimpia = "General";
                 
-                // Capitalizar primera letra (Estética: "casa matriz" -> "Casa Matriz")
-                divisionLimpia = divisionLimpia.charAt(0).toUpperCase() + divisionLimpia.slice(1);
+                // Quitamos caracteres raros iniciales si quedaron (ej: "- Casa Matriz")
+                if (divisionLimpia.startsWith("-")) divisionLimpia = divisionLimpia.substring(1).trim();
             }
 
             return { 
                 global: clienteGlobal, 
-                division: divisionLimpia 
+                division: divisionLimpia.toUpperCase() // 🔴 TODO A MAYÚSCULAS
             };
         }
     }
 
     // 2. Si no está en la lista, se va a "OTROS" o usa su propio nombre
-    return { global: nombreRaw, division: "---" };
+    return { global: nombreRaw.toUpperCase(), division: "---" };
 }
 
 async function cargarDatosIniciales() {
@@ -102,23 +105,30 @@ async function cargarDatosIniciales() {
 
         const data = await response.json();
         
+        // Normalizar estructura
         let lista = [];
         if (Array.isArray(data)) lista = data;
         else if (data.body && Array.isArray(data.body)) lista = data.body;
         else if (data.value && Array.isArray(data.value)) lista = data.value;
 
-        // MAPEO
+        // MAPEO Y TRANSFORMACIÓN A MAYÚSCULAS
         baseDatosCompleta = lista.map(item => {
             const rawCliente = item.cliente || "";
-            // Aquí ocurre la magia de la limpieza
+            // Aquí ocurre la magia de la limpieza y agrupación
             const infoCliente = procesarCliente(rawCliente);
 
             return {
                 id: item.id,
-                nombre: item.nombre,
-                cliente: infoCliente.global,     // Ej: CODELCO CHILE
-                division: infoCliente.division,  // Ej: Casa Matriz (sin "Codelco" antes)
-                contrato: item.contrato,
+                
+                // 🔴 NOMBRE PROYECTO A MAYÚSCULAS
+                nombre: (item.nombre || "").toUpperCase(),
+                
+                cliente: infoCliente.global,     
+                division: infoCliente.division,  // Ya viene en mayúsculas
+                
+                // 🔴 CONTRATO A MAYÚSCULAS
+                contrato: (item.contrato || "").toUpperCase(),
+                
                 carpeta_plantilla: item.carpeta_plantilla,
                 api: item.api || ""
             };
@@ -126,12 +136,13 @@ async function cargarDatosIniciales() {
 
         // Llenar Dropdown Clientes
         const ddlClientes = document.getElementById("ddlClientes");
-        ddlClientes.innerHTML = '<option value="">-- Seleccione Cliente --</option>';
+        ddlClientes.innerHTML = '<option value="">-- SELECCIONE CLIENTE --</option>';
         
+        // Obtenemos clientes únicos ordenados
         const clientesUnicos = [...new Set(baseDatosCompleta.map(p => p.cliente))].sort();
         
         clientesUnicos.forEach(c => {
-            if(c && c !== "OTROS") { // Opcional: Ocultar "Otros" o dejarlo al final
+            if(c && c !== "OTROS") { 
                 let opt = document.createElement("option");
                 opt.value = c;
                 opt.textContent = c;
@@ -141,19 +152,19 @@ async function cargarDatosIniciales() {
 
     } catch (error) {
         console.error("Error cargando datos:", error);
-        document.getElementById("ddlClientes").innerHTML = '<option>Error al cargar datos</option>';
+        document.getElementById("ddlClientes").innerHTML = '<option>ERROR AL CARGAR DATOS</option>';
     }
 }
 
 // ==========================================
-// 4. LÓGICA DE INTERFAZ (IGUAL QUE ANTES)
+// 4. LÓGICA DE INTERFAZ
 // ==========================================
 
 function filtrarProyectos() {
     const clienteSel = document.getElementById("ddlClientes").value;
     const ddlProyectos = document.getElementById("ddlProyectos");
     
-    ddlProyectos.innerHTML = '<option value="">-- Seleccione N° --</option>';
+    ddlProyectos.innerHTML = '<option value="">-- SELECCIONE N° --</option>';
     ocultarDetalles();
 
     if (!clienteSel) {
@@ -163,8 +174,13 @@ function filtrarProyectos() {
 
     const filtrados = baseDatosCompleta.filter(p => p.cliente === clienteSel);
 
-    // Ordenar los proyectos numéricamente si son números
-    filtrados.sort((a, b) => a.id - b.id);
+    // Ordenar los proyectos numéricamente
+    filtrados.sort((a, b) => {
+        const numA = parseInt(a.id, 10);
+        const numB = parseInt(b.id, 10);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return a.id.localeCompare(b.id);
+    });
 
     filtrados.forEach(p => {
         let opt = document.createElement("option");
@@ -184,12 +200,13 @@ function seleccionarProyecto() {
         return;
     }
 
+    // Buscar proyecto seleccionado
     proyectoActual = baseDatosCompleta.find(p => String(p.id) === String(idProyecto));
 
     if (proyectoActual) {
         setText("lblNombre", proyectoActual.nombre);
         setText("lblCliente", proyectoActual.cliente);
-        setText("lblDivision", proyectoActual.division); // Ahora saldrá limpio
+        setText("lblDivision", proyectoActual.division);
         setText("lblContrato", proyectoActual.contrato);
         setText("lblAPI", proyectoActual.api);
 
