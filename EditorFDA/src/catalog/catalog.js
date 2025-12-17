@@ -56,7 +56,7 @@ Office.onReady(async () => {
     if(ddlProyectos) ddlProyectos.onchange = seleccionarProyecto;
 });
 
-// ==========================================
+/// ==========================================
 // 3. LÓGICA DE DATOS
 // ==========================================
 
