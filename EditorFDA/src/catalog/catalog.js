@@ -94,11 +94,22 @@ async function cargarDatosIniciales() {
         const resProyectos = await fetch(urlFuenteDatos + "?t=" + timestamp);
         const dataProyectos = await resProyectos.json();
 
-        // 2. Cargar Plantillas (NUEVO)
+        // 2. Cargar Plantillas (CON PROTECCIÓN CONTRA EL ERROR QUE TE SALIÓ)
         try {
             const resPlantillas = await fetch(urlFuentePlantillas + "?t=" + timestamp);
             if(resPlantillas.ok) {
-                listaPlantillas = await resPlantillas.json();
+                const rawPlantillas = await resPlantillas.json();
+                
+                // 🛡️ AQUÍ ESTÁ EL ARREGLO:
+                // Si viene como lista [...], lo usamos.
+                if (Array.isArray(rawPlantillas)) {
+                    listaPlantillas = rawPlantillas;
+                } 
+                // Si viene como objeto único {...}, lo metemos en una lista.
+                else if (typeof rawPlantillas === 'object' && rawPlantillas !== null) {
+                    listaPlantillas = [rawPlantillas];
+                }
+                
                 console.log("Plantillas cargadas:", listaPlantillas.length);
             }
         } catch(e) {
@@ -122,7 +133,7 @@ async function cargarDatosIniciales() {
                 cliente: infoCliente.global,     
                 division: infoCliente.division, 
                 contrato: (item.contrato || "").toUpperCase(),
-                carpeta_plantilla: item.carpeta_plantilla, // Ya no se usa tanto, pero se deja por compatibilidad
+                carpeta_plantilla: item.carpeta_plantilla, 
                 api: item.api || ""
             };
         });
