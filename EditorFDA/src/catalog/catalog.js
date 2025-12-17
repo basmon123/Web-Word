@@ -94,23 +94,24 @@ async function cargarDatosIniciales() {
         const resProyectos = await fetch(urlFuenteDatos + "?t=" + timestamp);
         const dataProyectos = await resProyectos.json();
 
-        // 2. Cargar Plantillas (CON PROTECCIÓN CONTRA EL ERROR QUE TE SALIÓ)
+// 2. Cargar Plantillas (CON CORRECCIÓN DE DOBLE CORCHETE)
         try {
             const resPlantillas = await fetch(urlFuentePlantillas + "?t=" + timestamp);
             if(resPlantillas.ok) {
-                const rawPlantillas = await resPlantillas.json();
+                let rawPlantillas = await resPlantillas.json();
                 
-                // 🛡️ AQUÍ ESTÁ EL ARREGLO:
-                // Si viene como lista [...], lo usamos.
-                if (Array.isArray(rawPlantillas)) {
-                    listaPlantillas = rawPlantillas;
-                } 
-                // Si viene como objeto único {...}, lo metemos en una lista.
-                else if (typeof rawPlantillas === 'object' && rawPlantillas !== null) {
-                    listaPlantillas = [rawPlantillas];
+                // 🛡️ AQUÍ ESTÁ LA MAGIA NUEVA:
+                // Si viene como lista única {...}, la convertimos en array.
+                if (!Array.isArray(rawPlantillas)) {
+                    rawPlantillas = [rawPlantillas];
                 }
+
+                // 🛡️ SI VIENE COMO LISTA ANIDADA [[{...}]], LA APLANAMOS
+                // .flat() elimina los corchetes dobles
+                listaPlantillas = rawPlantillas.flat();
                 
-                console.log("Plantillas cargadas:", listaPlantillas.length);
+                console.log("Plantillas cargadas y corregidas:", listaPlantillas.length);
+                console.log("Ejemplo de plantilla 1:", listaPlantillas[0]); // Para ver si ahora lee bien
             }
         } catch(e) {
             console.warn("No se pudo cargar plantillas.json", e);
