@@ -8,55 +8,95 @@
     <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js" type="text/javascript"></script>
     <link href="taskpane.css" rel="stylesheet" type="text/css" />
 </head>
+
 <body class="ms-font-m ms-welcome ms-Fabric">
 
     <div class="padding">
         
         <div class="grupo-dato-lectura">
-            <h3>DATOS GENERALES DEL PROYECTO</h3>
-            
+            <h3>DATOS GENERALES</h3>
             <div class="fila-dato"><span class="etiqueta">Cliente:</span><span id="lblCliente" class="valor">--</span></div>
             <div class="fila-dato"><span class="etiqueta">División:</span><span id="lblDivision" class="valor">--</span></div>
-            <div class="fila-dato"><span class="etiqueta">N° Contrato:</span><span id="lblContrato" class="valor">--</span></div>
-            <div class="fila-dato"><span class="etiqueta">Nombre del Proyecto:</span><span id="lblProyecto" class="valor">--</span></div>
+            <div class="fila-dato"><span class="etiqueta">Contrato:</span><span id="lblContrato" class="valor">--</span></div>
+            <div class="fila-dato"><span class="etiqueta">Proyecto:</span><span id="lblProyecto" class="valor">--</span></div>
         </div>
 
         <hr class="separador">
 
-      <div class="grupo-input">
-    <h3>SELECCIÓN DE DOCUMENTO</h3>
-    
-    <label class="ms-Label" for="ddlDocumentos">Documento del Proyecto:</label>
-    <select id="ddlDocumentos" class="caja-input" title="Seleccione un documento para autocompletar">
-        <option value="">-- Cargando datos... --</option>
-    </select>
-    
-    <p class="nota-ayuda">
-        *Al seleccionar, se insertará el Nombre y Código Cliente automáticamente.
-    </p>
-</div>
+        <div class="grupo-input">
+            <h3>SELECCIÓN DOCUMENTO</h3>
+            <label class="ms-Label" for="ddlDocumentos">Documento del Proyecto:</label>
+            <select id="ddlDocumentos" class="caja-input" title="Seleccione el documento">
+                <option value="">-- Cargando datos... --</option>
+            </select>
+            <p class="nota-ayuda">*Se insertarán datos automáticos.</p>
+        </div>
 
         <hr class="separador">
 
         <div class="grupo-input">
             <h3>DATOS DE LA REVISIÓN</h3>
             
-            <label class="ms-Label" for="ddlEmitidoPara">Emitido Para:</label>
-            <select id="ddlEmitidoPara" class="caja-input" title="Seleccionar motivo de emisión">
-                <option value="Interna">Revisión Interna Empresa de Ingeniería</option>
-                <option value="Codelco">Revisión de Codelco</option>
-                <option value="Fase">Siguiente Fase</option>
+            <label class="ms-Label" for="ddlEstandar">Estándar de Textos:</label>
+            <select id="ddlEstandar" class="caja-input" title="Seleccione el estándar del cliente">
+                <option value="CODELCO">Codelco (Rev Codelco)</option>
+                <option value="AMSA">AMSA / Genérico (Rev Cliente)</option>
+                <option value="CUSTOM">Manual</option>
             </select>
-        
-            <label class="ms-Label" for="ddlRevision">Revisión:</label>
-            <select id="ddlRevision" class="caja-input" title="Seleccionar letra de revisión">
-                </select>
-        
-            <label class="ms-Label" for="txtFecha">Fecha de Emisión:</label>
-            <input type="text" id="txtFecha" class="caja-input input-bloqueado" readonly title="Fecha actual generada automáticamente">
-        
-            <button id="btnActualizarRevision" class="boton">
-                <span class="ms-Button-label">Actualizar Datos de Revisión</span>
+
+            <label class="ms-Label">Historial a Insertar:</label>
+            <table class="tabla-revisiones">
+                <thead>
+                    <tr>
+                        <th class="col-ancho-chico" align="left">Rev</th>
+                        <th class="col-ancho-medio" align="left">Fecha</th>
+                        <th align="left">Emitido para</th>
+                        <th class="col-ancho-mini"></th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyRevisiones">
+                    </tbody>
+            </table>
+
+            <div class="area-edicion">
+                <label class="ms-Label">Agregar Nueva Revisión:</label>
+
+                <div class="fila-contenedor">
+                    <div class="columna-pequena">
+                        <label class="ms-Label" for="txtRevLetra">Letra</label>
+                        <input type="text" id="txtRevLetra" class="caja-input" placeholder="A" title="Letra de Revisión">
+                    </div>
+                    <div class="columna-grande">
+                        <label class="ms-Label" for="txtRevFecha">Fecha</label>
+                        <input type="text" id="txtRevFecha" class="caja-input" placeholder="dd/mm/aaaa" title="Fecha de Revisión">
+                    </div>
+                </div>
+
+                <label class="ms-Label" for="txtRevDesc">Descripción (Emitido Para)</label>
+                <input type="text" id="txtRevDesc" class="caja-input" placeholder="Descripción" title="Motivo de la emisión">
+
+                <div class="fila-contenedor">
+                    <div class="columna-mitad pad-der">
+                        <button type="button" id="btnIterar" class="btn-logica" title="Aumentar una letra">
+                            +1 Iteración
+                        </button>
+                    </div>
+                    <div class="columna-mitad pad-izq">
+                        <button type="button" id="btnFase" class="btn-logica" title="Saltar a fase P">
+                            Siguiente Fase
+                        </button>
+                    </div>
+                </div>
+
+                <button id="btnAgregarAlista" class="boton boton-gris" title="Añadir a la tabla superior">
+                    <span class="ms-Button-label">Insertar en Lista Arriba</span>
+                </button>
+            </div>
+
+            <br>
+            
+            <button id="btnActualizarWord" class="boton ms-Button--primary" title="Escribir datos en Word">
+                <span class="ms-Button-label">Actualizar Tabla en Documento</span>
             </button>
         </div>
 

@@ -1,156 +1,194 @@
-/* Estilos Generales */
-body { 
-    font-family: 'Segoe UI', sans-serif; 
-    padding: 15px; 
-    background-color: #f3f2f1; 
-    color: #323130;
+/* taskpane.css */
+
+body {
+    font-family: "Segoe UI", "Helvetica Neue", "Helvetica", sans-serif;
+    margin: 0;
+    padding: 0;
 }
 
-h2 { 
-    color: #0078d4; 
-    border-bottom: 2px solid #0078d4; 
-    padding-bottom: 5px; 
-    margin-top: 0; 
+.padding {
+    padding: 15px;
 }
 
-h3 {
-    font-size: 14px;
-    margin-top: 0;
-    margin-bottom: 10px;
-    color: #0078d4;
-    text-transform: uppercase;
-    font-weight: 700;
-}
-
-/* Clases Utilitarias */
-.subtitulo {
-    color: #666;
-    margin-top: 0;
+/* --- Bloques Generales --- */
+.grupo-dato-lectura, .grupo-input {
     margin-bottom: 15px;
 }
 
-.mensaje-estado {
-    color: gray; 
-    font-size: 12px; 
-    margin-top: 10px;
-    min-height: 20px; 
+h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #333;
+    font-weight: 600;
 }
 
-.separador {
-    border: 0;
-    border-top: 1px solid #c8c6c4;
-    margin: 20px 0;
-}
-
-/* --- SECCIÓN 1: ESTILOS DE LECTURA (SharePoint Data) --- */
-.grupo-dato-lectura {
-    background: white; 
-    padding: 15px; 
-    margin-bottom: 10px; 
-    border: 1px solid #e1dfdd; 
-    border-radius: 4px;
-    box-shadow: 0 1.6px 3.6px 0 rgba(0,0,0,0.132), 0 0.3px 0.9px 0 rgba(0,0,0,0.108);
-}
-
+/* --- Filas de Datos --- */
 .fila-dato {
-    display: flex;
-    justify-content: space-between; /* Separa etiqueta y valor a los extremos */
-    margin-bottom: 8px;
-    font-size: 13px;
-    border-bottom: 1px solid #f3f2f1;
-    padding-bottom: 4px;
-}
-
-.fila-dato:last-child {
-    border-bottom: none;
+    margin-bottom: 5px;
+    font-size: 12px;
 }
 
 .etiqueta {
     font-weight: 600;
-    color: #605e5c;
-    width: 40%;
+    margin-right: 5px;
+    color: #666;
 }
 
 .valor {
-    color: #201f1e;
-    width: 60%;
-    text-align: right; /* Alinea los valores a la derecha para orden */
-    word-break: break-word; /* Si el texto es muy largo, baja de línea */
+    color: #333;
 }
 
-/* --- SECCIÓN 2: ESTILOS DE EDICIÓN (Inputs) --- */
-.grupo-input { 
-    background: white; 
-    padding: 15px; 
-    margin-bottom: 10px; 
-    border: 1px solid #e1dfdd; 
-    border-radius: 4px;
+.separador {
+    border: 0;
+    border-top: 1px solid #eaeaea;
+    margin: 15px 0;
 }
 
-.caja-input { 
-    width: 100%; 
-    padding: 8px; 
-    margin-bottom: 12px; 
-    border: 1px solid #605e5c; 
-    box-sizing: border-box; 
-    border-radius: 2px;
-}
-
-.caja-input:focus {
-    border-color: #0078d4;
-    outline: 2px solid #c7e0f4; /* Un focus ring estilo Office */
-}
-
-.ms-Label { 
-    font-weight: 600; 
-    font-size: 12px; 
-    color: #323130; 
-    display: block; 
+/* --- Inputs y Labels --- */
+.ms-Label {
+    display: block;
     margin-bottom: 4px;
+    font-size: 12px;
+    color: #333;
 }
 
-/* Botón */
-.boton { 
-    background-color: #0078d4; 
-    color: white; 
-    padding: 10px; 
-    width: 100%; 
-    border: none; 
-    cursor: pointer; 
-    font-weight: bold; 
-    border-radius: 2px;
-    transition: background-color 0.2s;
+.caja-input {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #a6a6a6;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 12px;
 }
-
-.boton:hover { 
-    background-color: #106ebe; 
-}
-
-.boton:active {
-    background-color: #005a9e;
-}
-
-/* ... resto de tu CSS ... */
-
-/* Estilo para inputs bloqueados/readonly */
-.input-bloqueado {
-    background-color: #f3f2f1;
-    color: #666;
-    cursor: not-allowed;
-}
-
-/* Agrega esto al final de taskpane.css */
 
 .nota-ayuda {
-    font-size: 11px;
-    color: #666666;
-    margin-top: 5px;
+    font-size: 10px;
+    color: #666;
+    margin-top: -5px;
+    margin-bottom: 10px;
     font-style: italic;
 }
 
-/* Aprovechamos de asegurar que el select se vea bien */
-.caja-input {
+/* --- Botones --- */
+.boton {
+    display: block;
     width: 100%;
-    box-sizing: border-box; /* Esto evita que se salga del contenedor */
+    padding: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: 12px;
+    background-color: #f4f4f4;
+    color: #333;
+    margin-top: 5px;
+    /* align quitado para evitar error */
+}
+
+.boton:hover {
+    background-color: #eaeaea;
+}
+
+.ms-Button--primary {
+    background-color: #0078d4;
+    color: white;
+}
+
+.ms-Button--primary:hover {
+    background-color: #106ebe;
+}
+
+.boton-gris {
+    background-color: #eaeaea;
+    border: 1px solid #999;
+}
+
+.mensaje-estado {
+    margin-top: 10px;
+    font-size: 11px;
+    color: #0078d4;
+    min-height: 15px;
+}
+
+/* --- TABLA (Sin aligns) --- */
+.tabla-revisiones {
+    width: 100%;
+    border-collapse: collapse;
     margin-bottom: 10px;
+    font-size: 11px;
+    border: 1px solid #e1dfdd;
+    table-layout: fixed;
+}
+
+.tabla-revisiones th {
+    background-color: #f3f2f1;
+    padding: 5px;
+    border-bottom: 1px solid #c8c6c4;
+    /* align quitado */
+}
+
+.tabla-revisiones td {
+    padding: 5px;
+    border-bottom: 1px solid #e1dfdd;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Anchos de columnas */
+.col-ancho-chico { width: 20%; }
+.col-ancho-medio { width: 30%; }
+.col-ancho-mini  { width: 10%; }
+
+/* --- GRILLA COMPATIBLE (Display Table) --- */
+.area-edicion {
+    background-color: #f8f9fa;
+    border: 1px solid #e1dfdd;
+    padding: 10px;
+}
+
+.fila-contenedor {
+    display: table;
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.columna-pequena {
+    display: table-cell;
+    width: 25%;
+    padding-right: 5px;
+    vertical-align: top;
+}
+
+.columna-grande {
+    display: table-cell;
+    width: 75%;
+    padding-left: 5px;
+    vertical-align: top;
+}
+
+.columna-mitad {
+    display: table-cell;
+    width: 50%;
+    vertical-align: top;
+}
+
+/* Paddings para separación en celdas */
+.pad-der { padding-right: 3px; }
+.pad-izq { padding-left: 3px; }
+
+/* Botones Pequeños */
+.btn-logica {
+    width: 100%;
+    padding: 5px;
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid #0078d4;
+    background-color: white;
+    color: #0078d4;
+    /* align quitado */
+}
+
+.btn-logica:hover {
+    background-color: #deecf9;
 }
