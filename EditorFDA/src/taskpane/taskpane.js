@@ -235,34 +235,59 @@ async function escribirTablaEnWord() {
             }
         }
 
- // 5. CREAR FILAS NUEVAS SI ES NECESARIO (ESTRATEGIA SEGURA)
+ // 5. CREAR FILAS NUEVAS (SOLUCIÓN "CLONAR ESTRUCTURA")
         if (filasNuevasParaCrear.length > 0) {
-            console.log(`Creando ${filasNuevasParaCrear.length} filas vacías primero...`);
+            console.log(`Creando ${filasNuevasParaCrear.length} filas nuevas...`);
 
-            // PASO 1: Crear filas VACÍAS. 
-            // Al no pasarle los datos (el tercer argumento), Word rellena con celdas vacías 
-            // respetando automáticamente el número de columnas que tenga la tabla.
-            // "Start" las pone al principio.
-            let nuevasFilasObj = tablaWord.addRows("Start", filasNuevasParaCrear.length);
+            // PASO A: DETECTAR LA ESTRUCTURA EXACTA (Las 7 columnas de tu imagen)
+            // Usamos la primera fila visible (items[0]) como molde.
+            if (filasWord.items.length === 0) {
+                 mostrarMensaje("❌ Error crítico: La tabla está vacía, no puedo clonar estructura.", "red");
+                 return;
+            }
 
-            // Importante: Para escribir en ellas, primero tenemos que cargarlas
-            nuevasFilasObj.load("items/cells/items/body");
-            await context.sync(); // Sincronizamos para que las filas existan realmente
+            const primeraFila = filasWord.items[0];
+            const numColumnasReales = primeraFila.cells.items.length; // Esto detectará 7 (o las que sean)
+            console.log(`Estructura detectada: ${numColumnasReales} columnas.`);
 
-            console.log("Filas creadas. Escribiendo datos celda por celda...");
+            // PASO B: GENERAR UNA MATRIZ DE "HUECOS VACÍOS"
+            // Creamos un array que tenga exactamente el mismo ancho que la tabla.
+            // Ejemplo: ["", "", "", "", "", "", ""]
+            const filaVaciaPlantilla = new Array(numColumnasReales).fill("");
 
-            // PASO 2: Escribir los datos celda por celda (Igual que el reciclaje)
-            // Como las insertamos en "Start", el orden en nuevasFilasObj coincide con filasNuevasParaCrear
+            // PASO C: INSERTAR USANDO insertRow (Más estable que addRows)
+            // Esto inserta filas vacías respetando el formato de la tabla existente.
+            const nuevasFilasInsertadas = [];
+            
             for (let i = 0; i < filasNuevasParaCrear.length; i++) {
-                let datos = filasNuevasParaCrear[i]; // ["D", "Fecha", "Desc"]
-                let filaWord = nuevasFilasObj.items[i];
+                // "Before" inserta ENCIMA de la primera fila (Efecto Stack Up)
+                // Le pasamos 'filaVaciaPlantilla' para que Word no se queje del número de argumentos.
+                let nuevaFila = primeraFila.insertRow("Before", [filaVaciaPlantilla]);
+                nuevasFilasInsertadas.push(nuevaFila);
+            }
 
-                // Verificamos que existan las celdas antes de escribir (seguridad extra)
-                if (filaWord.cells.items.length >= 3) {
-                    filaWord.cells.items[0].body.insertText(datos[0], "Replace"); // Letra
-                    filaWord.cells.items[1].body.insertText(datos[1], "Replace"); // Fecha
-                    filaWord.cells.items[2].body.insertText(datos[2], "Replace"); // Descripción
-                }
+            // Cargamos las nuevas filas para poder escribir en ellas
+            // (Es necesario porque insertRow devuelve un objeto, pero necesitamos cargar sus celdas)
+            context.load(nuevasFilasInsertadas, "cells/items/body");
+            await context.sync();
+
+            console.log("Filas estructurales creadas. Escribiendo datos...");
+
+            // PASO D: ESCRIBIR TUS DATOS (A, Fecha, Desc)
+            // Las filas nuevas se insertaron ARRIBA, así que iteramos en orden.
+            // Nota: Al insertar "Before" repetidamente sobre la fila 0, el orden se invierte visualmente
+            // si no tenemos cuidado, pero para 1 sola fila (caso D) da igual.
+            
+            for (let i = 0; i < filasNuevasParaCrear.length; i++) {
+                // Como insertamos una por una "Before" el índice 0, la última insertada queda arriba del todo.
+                // Tomamos la referencia directa del objeto que creamos.
+                let filaWord = nuevasFilasInsertadas[i]; 
+                let datos = filasNuevasParaCrear[i]; // ["D", "Fecha", "Desc"]
+
+                // Escribimos solo en las 3 primeras columnas, dejando las otras 4 intactas (vacías)
+                filaWord.cells.items[0].body.insertText(datos[0], "Replace");
+                filaWord.cells.items[1].body.insertText(datos[1], "Replace");
+                filaWord.cells.items[2].body.insertText(datos[2], "Replace");
             }
         }
 
