@@ -146,15 +146,27 @@ async function escribirTablaEnWord() {
     await Word.run(async (context) => {
         // 1. Obtener la tabla
         const contentControls = context.document.contentControls.getByTag("ccTablaRevisiones");
-        contentControls.load("items");
+        
+        // CORRECCIÓN: Cargamos explícitamente los controles Y sus tablas internas
+        contentControls.load("items/tables/items");
+        
         await context.sync();
 
-        if (contentControls.items.length === 0 || contentControls.items[0].tables.items.length === 0) {
-            mostrarMensaje("❌ No encontré la tabla con tag 'ccTablaRevisiones'.", "red");
+        // Ahora es seguro leer .tables.items porque ya hicimos el sync arriba
+        if (contentControls.items.length === 0) {
+            mostrarMensaje("❌ No encontré el control con tag 'ccTablaRevisiones'.", "red");
             return;
         }
 
-        const tablaWord = contentControls.items[0].tables.items[0];
+        const control = contentControls.items[0];
+
+        // Verificamos si el control tiene tablas cargadas
+        if (control.tables.items.length === 0) {
+            mostrarMensaje("❌ El control 'ccTablaRevisiones' no contiene ninguna tabla dentro.", "red");
+            return;
+        }
+
+        const tablaWord = control.tables.items[0];
         
         // 2. Cargar TODAS las filas y sus celdas para leerlas
         const filasWord = tablaWord.rows;
@@ -162,35 +174,32 @@ async function escribirTablaEnWord() {
         await context.sync();
 
         // Creamos un mapa de nuestras revisiones nuevas para búsqueda rápida
-        // Clave: Letra, Valor: Objeto completo {letra, fecha, desc}
         let mapaRevisionesNuevas = new Map();
         revisions.forEach(r => mapaRevisionesNuevas.set(r.letra, r));
 
         let filasActualizadas = 0;
 
         // 3. ITERAR FILAS EXISTENTES DE WORD (Buscando coincidencias)
-        // Importante: Asumimos que la última fila es el ENCABEZADO (según tu imagen).
-        // Iteramos hasta items.length - 1 para no tocar el encabezado.
+        // Iteramos hasta items.length - 1 para no tocar el encabezado del final
         for (let i = 0; i < filasWord.items.length - 1; i++) {
             let filaActual = filasWord.items[i];
             
-            // Asegurar que la fila tenga al menos 3 celdas (Letra, Fecha, Desc)
+            // Asegurar que la fila tenga al menos 3 celdas
             if (filaActual.cells.items.length < 3) continue;
 
             // Leer la letra de la primera celda (Columna 0)
-            let letraEnWord = filaActual.cells.items[0].value.trim().toUpperCase();
+            let valorCelda = filaActual.cells.items[0].value;
+            // Protección contra celdas vacías o nulas
+            let letraEnWord = valorCelda ? valorCelda.trim().toUpperCase() : "";
 
             // ¿Existe esta letra en nuestra lista nueva?
-            if (mapaRevisionesNuevas.has(letraEnWord)) {
-                // ¡SÍ EXISTE! Actualizamos esta fila.
+            if (letraEnWord && mapaRevisionesNuevas.has(letraEnWord)) {
                 let datosNuevos = mapaRevisionesNuevas.get(letraEnWord);
                 
-                // Consola para depurar
                 console.log(`Actualizando fila existente: ${letraEnWord}`);
 
-                // Sobrescribir Fecha (Columna 1)
+                // Sobrescribir Fecha (Columna 1) y Descripción (Columna 2)
                 filaActual.cells.items[1].insertText(datosNuevos.fecha, "Replace");
-                // Sobrescribir Descripción (Columna 2)
                 filaActual.cells.items[2].insertText(datosNuevos.desc, "Replace");
                 
                 // Marcamos como "ya procesada" borrándola del mapa
@@ -200,17 +209,10 @@ async function escribirTablaEnWord() {
         }
 
         // 4. INSERTAR LAS SOBRANTES (Las que no existían en Word)
-        // Si queda algo en 'mapaRevisionesNuevas', son filas nuevas (ej: C).
-        // Debemos insertarlas ARRIBA ("Start").
-
         let nuevasFilasParaInsertar = [];
-
-        // IMPORTANTE: El mapa no tiene orden garantizado.
-        // Debemos recorrer nuestro array original 'revisions' (que está ordenado A,B,C)
-        // en orden INVERSO (C, B, A) para que se apilen correctamente al usar "Start".
         
+        // Recorremos en inverso para que al insertar con "Start" queden en orden correcto
         [...revisions].reverse().forEach(rev => {
-            // Si todavía está en el mapa, es que no se encontró en Word.
             if (mapaRevisionesNuevas.has(rev.letra)) {
                  nuevasFilasParaInsertar.push([rev.letra, rev.fecha, rev.desc]);
             }
@@ -218,21 +220,19 @@ async function escribirTablaEnWord() {
 
         if (nuevasFilasParaInsertar.length > 0) {
             console.log(`Insertando ${nuevasFilasParaInsertar.length} filas nuevas arriba.`);
-            // Insertar al inicio (Start) empuja todo lo demás hacia abajo
             tablaWord.addRows("Start", nuevasFilasParaInsertar.length, nuevasFilasParaInsertar);
         }
         
         await context.sync();
         
-        let mensaje = `✅ Proceso terminado. Actualizadas: ${filasActualizadas}. Insertadas: ${nuevasFilasParaInsertar.length}.`;
+        let mensaje = `✅ Listo. Actualizadas: ${filasActualizadas} | Nuevas: ${nuevasFilasParaInsertar.length}`;
         mostrarMensaje(mensaje, "green");
 
     }).catch(error => {
         console.error("Error Word:", error);
-        mostrarMensaje("❌ Error crítico: " + error.message, "red");
+        mostrarMensaje("❌ Error: " + error.message, "red");
     });
 }
-
 // ---------------------------------------------
 // 4. LÓGICA DE AZURE Y DATOS PROYECTO (ORIGINAL)
 // ---------------------------------------------
