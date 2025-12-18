@@ -236,11 +236,32 @@ async function escribirTablaEnWord() {
         }
 
         // 5. CREAR FILAS NUEVAS SI ES NECESARIO
-        if (filasNuevasParaCrear.length > 0) {
+     if (filasNuevasParaCrear.length > 0) {
             console.log(`Creando ${filasNuevasParaCrear.length} filas nuevas arriba.`);
-            /// 'Start' las inserta al principio de la tabla (fila 0), empujando el resto hacia abajo.
-            // Como las filas protegidas (headers) están abajo, no se ven afectadas.
-            tablaWord.addRows("Start", filasNuevasParaCrear);
+            
+            // PASO CRÍTICO: Averiguar cuántas columnas tiene la tabla realmente
+            // Usamos la primera fila que cargamos antes como referencia
+            // (Si no hubiera filas, asumimos 3, pero tu código ya valida que hay tabla)
+            let numColumnasReales = 3; 
+            if (filasWord.items.length > 0) {
+                 numColumnasReales = filasWord.items[0].cells.items.length;
+            }
+
+            console.log(`La tabla tiene ${numColumnasReales} columnas. Ajustando datos...`);
+
+            // Rellenamos cada fila nueva con "" hasta completar el número de columnas
+            const filasAjustadas = filasNuevasParaCrear.map(filaDatos => {
+                while (filaDatos.length < numColumnasReales) {
+                    filaDatos.push(""); // Agrega celda vacía para evitar el error
+                }
+                return filaDatos;
+            });
+
+            // AHORA SÍ: Usamos la sintaxis correcta de 3 argumentos
+            // Ubicación: "Start"
+            // Cantidad: filasAjustadas.length
+            // Datos: filasAjustadas (que ahora coinciden exactamente con la tabla)
+            tablaWord.addRows("Start", filasAjustadas.length, filasAjustadas);
         }
 
         await context.sync();
