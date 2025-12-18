@@ -157,97 +157,76 @@ window.deleteRev = function(index) {
 // 3. ESCRITURA EN WORD (TABLA)
 // ---------------------------------------------
 
+// ---------------------------------------------
+// 3. ESCRITURA EN WORD (TABLA) - CORREGIDO
+// ---------------------------------------------
+
 async function escribirTablaEnWord() {
     mostrarMensaje("⏳ Escribiendo en Word...", "blue");
 
+    // Verificar si hay datos que escribir
+    if (revisions.length === 0) {
+        mostrarMensaje("⚠️ La lista de revisiones está vacía. Agrega una primero.", "orange");
+        return;
+    }
+
+    // Tomamos la ÚLTIMA revisión de la lista (la más reciente)
+    const ultimaRev = revisions[revisions.length - 1];
+
     await Word.run(async (context) => {
-        // Estrategia: Buscamos Content Controls dentro de la tabla de revisiones del Word.
-        // Asumimos que la tabla tiene 3 columnas con tags: ccTablaRev, ccTablaFecha, ccTablaDesc
-        
-        // OJO: Si tu Word no tiene una tabla repetitiva automática, la forma más segura
-        // es buscar los controles individuales (Rev A, Fecha A...) si son fijos.
-        // Pero como describiste un sistema dinámico (filas que crecen hacia arriba),
-        // Lo ideal es tener UNA tabla y agregar filas.
-        
-        // AQUÍ INTENTAREMOS LLENAR UNA TABLA EXISTENTE SI TIENE TAGS "ccRevRow"
-        // Si no tienes tags de tabla, avísame y cambiamos a inserción simple.
-        
-        // MODO SIMPLE: Asumimos que tienes controles sueltos para la ÚLTIMA revisión
-        // o MODO TABLA: Insertar filas. Usaremos MODO TABLA INVERSA (Insertar al inicio).
+        // 1. OBTENER REFERENCIAS A LOS CONTROLES POR SU TAG
+        // Asegúrate que en tu Word los controles tengan estos Tags exactos:
+        const ccRevs = context.document.contentControls.getByTag("ccRevision");
+        const ccFechas = context.document.contentControls.getByTag("ccFecha");
+        const ccEmisiones = context.document.contentControls.getByTag("ccEmision"); // O ccEmitidoPara
 
-        // Vamos a buscar la tabla que contiene el control "ccRevision" (o uno nuevo "ccTablaAnchor")
-        const controls = context.document.contentControls.getByTag("ccRevision"); // Usamos uno que ya tenías como ancla
-        controls.load("parentTable");
-        
+        // 2. CARGAR LA PROPIEDAD 'items' (¡Esto es lo que faltaba!)
+        // Sin esto, Word no sabe cuántos controles hay ni cuáles son.
+        ccRevs.load("items");
+        ccFechas.load("items");
+        ccEmisiones.load("items");
+
+        // 3. SINCRONIZAR (Traer los objetos de Word a la memoria de JS)
         await context.sync();
 
-        if (controls.items.length === 0) {
-            mostrarMensaje("⚠️ No encontré el control 'ccRevision' en el documento para ubicar la tabla.", "red");
+        // 4. ESCRIBIR DATOS (Ahora sí es seguro leer .items)
+        let controlesEncontrados = false;
+
+        // Escribir Letra Revisión
+        if (ccRevs.items.length > 0) {
+            ccRevs.items.forEach(cc => cc.insertText(ultimaRev.letra, "Replace"));
+            controlesEncontrados = true;
+        }
+
+        // Escribir Fecha
+        if (ccFechas.items.length > 0) {
+            ccFechas.items.forEach(cc => cc.insertText(ultimaRev.fecha, "Replace"));
+            controlesEncontrados = true;
+        }
+
+        // Escribir Descripción
+        if (ccEmisiones.items.length > 0) {
+            ccEmisiones.items.forEach(cc => cc.insertText(ultimaRev.desc, "Replace"));
+            controlesEncontrados = true;
+        }
+
+        if (!controlesEncontrados) {
+            mostrarMensaje("⚠️ No encontré los controles (tags: ccRevision, ccFecha, ccEmision) en el Word.", "orange");
             return;
         }
 
-        const table = controls.items[0].parentTable;
-        table.load("rows");
+        // 5. SINCRONIZAR FINAL (Enviar los textos nuevos a Word)
         await context.sync();
-
-        // Limpiar filas de datos antiguas (opcional, si quieres reescribir todo)
-        // O simplemente agregar las nuevas. 
-        // Para este ejemplo, vamos a ASUMIR que escribimos las revisiones que están en la lista
-        // en las filas disponibles, o creamos nuevas.
-
-        // Invertimos revisions para escribir de abajo hacia arriba (A abajo, P arriba)
-        // O según tu formato visual. Tu imagen muestra:
-        // P (Arriba)
-        // B (Medio)
-        // A (Abajo)
-        // Encabezados
         
-        // Entonces debemos escribir en ese orden visual en la tabla de Word.
-        
-        // Validamos si la tabla existe
-        if (!table) {
-            mostrarMensaje("❌ El control no está dentro de una tabla.", "red");
-            return;
-        }
-
-        // --- LÓGICA DE ESCRITURA EN TABLA WORD ---
-        // 1. Borramos contenido de datos (dejamos encabezado y footer si existen)
-        // Esto es complejo si no sabemos índices exactos.
-        // MEJOR ESTRATEGIA: Insertar datos en controles específicos si existen.
-        
-        // Plan B (Más seguro para tu caso):
-        // Escribir SOLO la última revisión en los controles "ccRevision", "ccFecha", "ccEmision"
-        // que ya tenías, para que al menos funcione lo básico.
-        
-        if (revisions.length > 0) {
-            const ultimaRev = revisions[revisions.length - 1]; // La más nueva (ej: B)
-            
-            // Llenamos los controles individuales que ya tenías configurados en tu Word
-            fillCc(context, "ccRevision", ultimaRev.letra);
-            fillCc(context, "ccFecha", ultimaRev.fecha);
-            fillCc(context, "ccEmision", ultimaRev.desc); // O ccEmitidoPara
-            
-            mostrarMensaje("✅ Última revisión (Rev " + ultimaRev.letra + ") actualizada.", "green");
-        } else {
-             mostrarMensaje("⚠️ Lista vacía. Agrega revisiones.", "orange");
-        }
+        mostrarMensaje(`✅ Revisión ${ultimaRev.letra} actualizada en el documento.`, "green");
 
     }).catch(error => {
         console.error("Error:", error);
-        mostrarMensaje("❌ Error escribiendo tabla: " + error.message, "red");
+        mostrarMensaje("❌ Error: " + error.message, "red");
     });
 }
 
-// Helper para llenar controles simples
-function fillCc(context, tagName, value) {
-    const ccs = context.document.contentControls.getByTag(tagName);
-    // No hacemos await sync aquí para velocidad, se hace en el batch
-    context.sync().then(() => {
-        if (ccs.items.length > 0) {
-            ccs.items.forEach(cc => cc.insertText(value, "Replace"));
-        }
-    });
-}
+
 
 
 // ---------------------------------------------
