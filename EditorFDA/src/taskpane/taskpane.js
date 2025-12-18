@@ -154,78 +154,65 @@ window.deleteRev = function(index) {
 };
 
 // ---------------------------------------------
-// 3. ESCRITURA EN WORD (TABLA)
-// ---------------------------------------------
-
-// ---------------------------------------------
-// 3. ESCRITURA EN WORD (TABLA) - CORREGIDO
+// 3. ESCRITURA EN WORD (MODO VIÑETA: CRECE HACIA ARRIBA)
 // ---------------------------------------------
 
 async function escribirTablaEnWord() {
-    mostrarMensaje("⏳ Escribiendo en Word...", "blue");
+    mostrarMensaje("⏳ Insertando fila superior...", "blue");
 
-    // Verificar si hay datos que escribir
     if (revisions.length === 0) {
-        mostrarMensaje("⚠️ La lista de revisiones está vacía. Agrega una primero.", "orange");
+        mostrarMensaje("⚠️ Lista vacía. Agrega revisiones primero.", "orange");
         return;
     }
 
-    // Tomamos la ÚLTIMA revisión de la lista (la más reciente)
-    const ultimaRev = revisions[revisions.length - 1];
+    // Tomamos la ÚLTIMA revisión agregada (la más nueva)
+    const nuevaRev = revisions[revisions.length - 1];
 
     await Word.run(async (context) => {
-        // 1. OBTENER REFERENCIAS A LOS CONTROLES POR SU TAG
-        // Asegúrate que en tu Word los controles tengan estos Tags exactos:
-        const ccRevs = context.document.contentControls.getByTag("ccRevision");
-        const ccFechas = context.document.contentControls.getByTag("ccFecha");
-        const ccEmisiones = context.document.contentControls.getByTag("ccEmision"); // O ccEmitidoPara
-
-        // 2. CARGAR LA PROPIEDAD 'items' (¡Esto es lo que faltaba!)
-        // Sin esto, Word no sabe cuántos controles hay ni cuáles son.
-        ccRevs.load("items");
-        ccFechas.load("items");
-        ccEmisiones.load("items");
-
-        // 3. SINCRONIZAR (Traer los objetos de Word a la memoria de JS)
+        // 1. Buscamos la tabla por su etiqueta "ccTablaRevisiones"
+        // IMPORTANTE: En el Word, este control debe envolver la zona donde van las letras (A, B, P...)
+        const contentControls = context.document.contentControls.getByTag("ccTablaRevisiones");
+        contentControls.load("items");
+        
         await context.sync();
 
-        // 4. ESCRIBIR DATOS (Ahora sí es seguro leer .items)
-        let controlesEncontrados = false;
-
-        // Escribir Letra Revisión
-        if (ccRevs.items.length > 0) {
-            ccRevs.items.forEach(cc => cc.insertText(ultimaRev.letra, "Replace"));
-            controlesEncontrados = true;
-        }
-
-        // Escribir Fecha
-        if (ccFechas.items.length > 0) {
-            ccFechas.items.forEach(cc => cc.insertText(ultimaRev.fecha, "Replace"));
-            controlesEncontrados = true;
-        }
-
-        // Escribir Descripción
-        if (ccEmisiones.items.length > 0) {
-            ccEmisiones.items.forEach(cc => cc.insertText(ultimaRev.desc, "Replace"));
-            controlesEncontrados = true;
-        }
-
-        if (!controlesEncontrados) {
-            mostrarMensaje("⚠️ No encontré los controles (tags: ccRevision, ccFecha, ccEmision) en el Word.", "orange");
+        if (contentControls.items.length === 0) {
+            mostrarMensaje("❌ No encontré el control 'ccTablaRevisiones'.", "red");
             return;
         }
 
-        // 5. SINCRONIZAR FINAL (Enviar los textos nuevos a Word)
+        // 2. Obtenemos la tabla
+        const controlTabla = contentControls.items[0];
+        const tablas = controlTabla.tables;
+        tablas.load("items");
+        
+        await context.sync();
+
+        if (tablas.items.length === 0) {
+            mostrarMensaje("❌ El control no contiene una tabla válida.", "red");
+            return;
+        }
+
+        const tablaWord = tablas.items[0];
+
+        // 3. INSERTAR LA FILA AL INICIO (ARRIBA DE TODO)
+        // Usamos "Start" para que sea la Fila 0 (la más alta visualmente).
+        // Esto empujará las filas viejas (A, B) hacia abajo, acercándolas al encabezado.
+        
+        const valoresFila = [[ nuevaRev.letra, nuevaRev.fecha, nuevaRev.desc ]];
+
+        // "Start" = Insertar en el índice 0 absoluto.
+        tablaWord.addRows("Start", 1, valoresFila); 
+        
         await context.sync();
         
-        mostrarMensaje(`✅ Revisión ${ultimaRev.letra} actualizada en el documento.`, "green");
+        mostrarMensaje(`✅ Fila ${nuevaRev.letra} insertada arriba de todo.`, "green");
 
     }).catch(error => {
-        console.error("Error:", error);
-        mostrarMensaje("❌ Error: " + error.message, "red");
+        console.error("Error tabla:", error);
+        mostrarMensaje("❌ Error al insertar: " + error.message, "red");
     });
 }
-
 
 
 
