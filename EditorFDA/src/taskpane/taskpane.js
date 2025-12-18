@@ -235,60 +235,34 @@ async function escribirTablaEnWord() {
             }
         }
 
- // 5. CREAR FILAS NUEVAS (SOLUCIÓN "CLONAR ESTRUCTURA")
+ // 5. CREAR FILAS NUEVAS (SOLUCIÓN DEFINITIVA: RELLENO DE 7 COLUMNAS)
         if (filasNuevasParaCrear.length > 0) {
-            console.log(`Creando ${filasNuevasParaCrear.length} filas nuevas...`);
+            console.log(`Preparando para crear ${filasNuevasParaCrear.length} filas...`);
 
-            // PASO A: DETECTAR LA ESTRUCTURA EXACTA (Las 7 columnas de tu imagen)
-            // Usamos la primera fila visible (items[0]) como molde.
-            if (filasWord.items.length === 0) {
-                 mostrarMensaje("❌ Error crítico: La tabla está vacía, no puedo clonar estructura.", "red");
-                 return;
+            // PASO A: DETECTAR EL NÚMERO DE COLUMNAS (Ya sabemos que es 7, pero dejamos que el código lo lea)
+            let numColumnasReales = 0;
+            if (filasWord.items.length > 0) {
+                numColumnasReales = filasWord.items[0].cells.items.length;
+            } else {
+                numColumnasReales = 7; // Valor de seguridad si la tabla estuviera vacía
             }
+            console.log(`Ajustando datos para tabla de ${numColumnasReales} columnas.`);
 
-            const primeraFila = filasWord.items[0];
-            const numColumnasReales = primeraFila.cells.items.length; // Esto detectará 7 (o las que sean)
-            console.log(`Estructura detectada: ${numColumnasReales} columnas.`);
+            // PASO B: RELLENAR LOS DATOS PARA QUE TENGAN 7 COLUMNAS
+            // Transformamos ["D", "Fecha", "Desc"] en ["D", "Fecha", "Desc", "", "", "", ""]
+            const datosAjustados = filasNuevasParaCrear.map(filaOriginal => {
+                let filaRellena = [...filaOriginal]; // Copiamos para no romper nada
+                while (filaRellena.length < numColumnasReales) {
+                    filaRellena.push(""); // Agregamos celdas vacías hasta llegar a 7
+                }
+                return filaRellena;
+            });
 
-            // PASO B: GENERAR UNA MATRIZ DE "HUECOS VACÍOS"
-            // Creamos un array que tenga exactamente el mismo ancho que la tabla.
-            // Ejemplo: ["", "", "", "", "", "", ""]
-            const filaVaciaPlantilla = new Array(numColumnasReales).fill("");
-
-            // PASO C: INSERTAR USANDO insertRow (Más estable que addRows)
-            // Esto inserta filas vacías respetando el formato de la tabla existente.
-            const nuevasFilasInsertadas = [];
-            
-            for (let i = 0; i < filasNuevasParaCrear.length; i++) {
-                // "Before" inserta ENCIMA de la primera fila (Efecto Stack Up)
-                // Le pasamos 'filaVaciaPlantilla' para que Word no se queje del número de argumentos.
-                let nuevaFila = primeraFila.insertRow("Before", [filaVaciaPlantilla]);
-                nuevasFilasInsertadas.push(nuevaFila);
-            }
-
-            // Cargamos las nuevas filas para poder escribir en ellas
-            // (Es necesario porque insertRow devuelve un objeto, pero necesitamos cargar sus celdas)
-            context.load(nuevasFilasInsertadas, "cells/items/body");
-            await context.sync();
-
-            console.log("Filas estructurales creadas. Escribiendo datos...");
-
-            // PASO D: ESCRIBIR TUS DATOS (A, Fecha, Desc)
-            // Las filas nuevas se insertaron ARRIBA, así que iteramos en orden.
-            // Nota: Al insertar "Before" repetidamente sobre la fila 0, el orden se invierte visualmente
-            // si no tenemos cuidado, pero para 1 sola fila (caso D) da igual.
-            
-            for (let i = 0; i < filasNuevasParaCrear.length; i++) {
-                // Como insertamos una por una "Before" el índice 0, la última insertada queda arriba del todo.
-                // Tomamos la referencia directa del objeto que creamos.
-                let filaWord = nuevasFilasInsertadas[i]; 
-                let datos = filasNuevasParaCrear[i]; // ["D", "Fecha", "Desc"]
-
-                // Escribimos solo en las 3 primeras columnas, dejando las otras 4 intactas (vacías)
-                filaWord.cells.items[0].body.insertText(datos[0], "Replace");
-                filaWord.cells.items[1].body.insertText(datos[1], "Replace");
-                filaWord.cells.items[2].body.insertText(datos[2], "Replace");
-            }
+            // PASO C: INSERTAR USANDO addRows
+            // Ahora addRows NO fallará porque le estamos pasando arrays de longitud 7 a una tabla de 7 columnas.
+            // Argumento 1: "Start" (Al principio)
+            // Argumento 2: La matriz de datos (NO le pases el length en medio)
+            tablaWord.addRows("Start", datosAjustados);
         }
 
         await context.sync();
