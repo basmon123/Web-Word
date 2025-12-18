@@ -1,6 +1,9 @@
 /* taskpane.css */
 
-body {
+/* 1. FORZAR FONDO BLANCO Y TEXTO OSCURO (Crucial para arreglar tu foto) */
+body, .ms-Fabric {
+    background-color: #ffffff !important;
+    color: #333333 !important;
     font-family: "Segoe UI", "Helvetica Neue", "Helvetica", sans-serif;
     margin: 0;
     padding: 0;
@@ -10,38 +13,35 @@ body {
     padding: 15px;
 }
 
-/* --- Bloques Generales --- */
-.grupo-dato-lectura, .grupo-input {
-    margin-bottom: 15px;
-}
-
+/* --- Títulos --- */
 h3 {
     margin-top: 0;
     margin-bottom: 10px;
     font-size: 14px;
-    color: #333;
+    color: #005a9e; /* Azul Microsoft para que destaque */
     font-weight: 600;
+    text-transform: uppercase;
 }
 
-/* --- Filas de Datos --- */
+/* --- Filas de Datos (Lectura) --- */
 .fila-dato {
-    margin-bottom: 5px;
+    margin-bottom: 6px;
     font-size: 12px;
 }
 
 .etiqueta {
-    font-weight: 600;
+    font-weight: 700;
     margin-right: 5px;
-    color: #666;
+    color: #555555;
 }
 
 .valor {
-    color: #333;
+    color: #000000;
 }
 
 .separador {
     border: 0;
-    border-top: 1px solid #eaeaea;
+    border-top: 1px solid #c8c8c8;
     margin: 15px 0;
 }
 
@@ -50,22 +50,25 @@ h3 {
     display: block;
     margin-bottom: 4px;
     font-size: 12px;
-    color: #333;
+    color: #333333;
+    font-weight: 600;
 }
 
 .caja-input {
     width: 100%;
     padding: 6px;
-    border: 1px solid #a6a6a6;
+    border: 1px solid #8a8886; /* Borde más oscuro para que se vea */
     margin-bottom: 10px;
     box-sizing: border-box;
     font-family: inherit;
     font-size: 12px;
+    background-color: #ffffff; /* Fondo blanco forzado */
+    color: #000000; /* Texto negro forzado */
 }
 
 .nota-ayuda {
-    font-size: 10px;
-    color: #666;
+    font-size: 11px;
+    color: #666666;
     margin-top: -5px;
     margin-bottom: 10px;
     font-style: italic;
@@ -76,22 +79,24 @@ h3 {
     display: block;
     width: 100%;
     padding: 8px;
-    border: 1px solid transparent;
+    border: 1px solid #8a8886;
     cursor: pointer;
     font-size: 12px;
-    background-color: #f4f4f4;
-    color: #333;
+    background-color: #f3f2f1;
+    color: #201f1e;
     margin-top: 5px;
-    /* align quitado para evitar error */
+    text-decoration: none;
 }
 
 .boton:hover {
-    background-color: #eaeaea;
+    background-color: #edebe9;
+    border-color: #000;
 }
 
 .ms-Button--primary {
     background-color: #0078d4;
-    color: white;
+    color: #ffffff;
+    border: 1px solid #0078d4;
 }
 
 .ms-Button--primary:hover {
@@ -105,31 +110,36 @@ h3 {
 
 .mensaje-estado {
     margin-top: 10px;
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: bold;
     color: #0078d4;
     min-height: 15px;
 }
 
-/* --- TABLA (Sin aligns) --- */
+/* --- TABLA DE REVISIONES --- */
 .tabla-revisiones {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 10px;
     font-size: 11px;
-    border: 1px solid #e1dfdd;
+    border: 1px solid #8a8886;
+    background-color: #ffffff;
     table-layout: fixed;
 }
 
 .tabla-revisiones th {
-    background-color: #f3f2f1;
-    padding: 5px;
-    border-bottom: 1px solid #c8c6c4;
-    /* align quitado */
+    background-color: #f3f2f1; /* Gris claro */
+    color: #333333; /* Texto oscuro */
+    padding: 6px;
+    border-bottom: 1px solid #8a8886;
+    font-weight: 700;
+    /* align lo maneja el HTML */
 }
 
 .tabla-revisiones td {
-    padding: 5px;
+    padding: 6px;
     border-bottom: 1px solid #e1dfdd;
+    color: #000000;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -140,13 +150,15 @@ h3 {
 .col-ancho-medio { width: 30%; }
 .col-ancho-mini  { width: 10%; }
 
-/* --- GRILLA COMPATIBLE (Display Table) --- */
+/* --- AREA DE EDICIÓN (Caja gris/blanca abajo) --- */
 .area-edicion {
-    background-color: #f8f9fa;
-    border: 1px solid #e1dfdd;
+    background-color: #f8f9fa; /* Gris muy claro */
+    border: 1px solid #d2d0ce;
     padding: 10px;
+    color: #333;
 }
 
+/* --- ESTRUCTURA TIPO TABLA (Reemplazo de Flex/Gap) --- */
 .fila-contenedor {
     display: table;
     width: 100%;
@@ -173,20 +185,19 @@ h3 {
     vertical-align: top;
 }
 
-/* Paddings para separación en celdas */
 .pad-der { padding-right: 3px; }
 .pad-izq { padding-left: 3px; }
 
-/* Botones Pequeños */
+/* Botones Pequeños de Lógica */
 .btn-logica {
     width: 100%;
-    padding: 5px;
+    padding: 6px;
     font-size: 11px;
     cursor: pointer;
     border: 1px solid #0078d4;
-    background-color: white;
+    background-color: #ffffff;
     color: #0078d4;
-    /* align quitado */
+    font-weight: 600;
 }
 
 .btn-logica:hover {
