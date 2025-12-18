@@ -1,10 +1,10 @@
-/* global document, Office, Word, fetch, localStorage */
+/* global document, Office, Word, fetch, localStorage, window */
 
 // 1. CONFIGURACIÓN (Global)
 // -----------------------------------------------------------------------------
 const URL_POWER_AUTOMATE = "https://defaultef8b3c00d87343e58b66d56c25f2bd.fe.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d88cc5b40d1b48bfa41f130960371fe1/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=QAwT8H-2RLeYuIvy4ISgzt0sXfcBX0JGvjjR_3l1V_Y"; 
 
-// Variable global para almacenar las revisiones
+// Variable global para almacenar el historial de revisiones
 let revisions = [];
 
 Office.onReady((info) => {
@@ -14,69 +14,69 @@ Office.onReady((info) => {
         asignarEventos();
         cargarDatosDeMemoria();
         
-        // Inicializar fecha actual en el input de revisión
+        // Inicializar fecha actual en el input
         establecerFechaHoyInput();
         
-        // Inicializar lógica de revisión (sugerir A)
+        // Inicializar lógica (sugerir Rev A)
         setNextLogic('INIT');
     }
 });
 
 function asignarEventos() {
-    // Dropdown Documentos
+    // Evento Dropdown Documentos (Azure)
     const ddlDocs = document.getElementById("ddlDocumentos");
     if (ddlDocs) ddlDocs.onchange = insertarDocumentoSeleccionado;
 
-    // EVENTOS NUEVA GESTIÓN DE REVISIONES
+    // --- EVENTOS DE REVISIONES ---
     
-    // 1. Botones Lógicos
+    // 1. Botones de Lógica (Iterar / Fase)
     document.getElementById("btnIterar").onclick = () => setNextLogic('ITERATE');
     document.getElementById("btnFase").onclick = () => setNextLogic('PHASE');
     
-    // 2. Cambio de Estándar (Codelco vs AMSA)
+    // 2. Cambio de Estándar (Codelco vs AMSA) actualiza textos sugeridos
     document.getElementById("ddlEstandar").onchange = () => setNextLogic('UPDATE_TEXT');
 
-    // 3. Agregar a la lista visual (Tabla HTML)
+    // 3. Botón "Insertar en Lista Arriba" (Panel visual)
     document.getElementById("btnAgregarAlista").onclick = addRevisionRow;
 
-    // 4. Botón Final (Escribir en Word)
+    // 4. Botón "Actualizar Tabla en Documento" (Escribir en Word)
     document.getElementById("btnActualizarWord").onclick = escribirTablaEnWord;
 }
 
 // ---------------------------------------------
-// 2. LÓGICA DE REVISIONES (NUEVO)
+// 2. LÓGICA DE REVISIONES (UI & VALIDACIÓN)
 // ---------------------------------------------
 
-// Función para calcular la siguiente letra y descripción
+// Función para calcular automáticamente la siguiente letra y descripción
 function setNextLogic(type) {
+    // Obtenemos la última letra agregada para saber qué sigue
     const lastRev = revisions.length > 0 ? revisions[revisions.length - 1].letra : null;
     let nextLetra = 'A';
     let nextDesc = '';
     const clientStd = document.getElementById('ddlEstandar').value;
 
     if (!lastRev) {
-        // Primera revisión siempre A
+        // Si la lista está vacía, partimos con A
         nextLetra = 'A';
         nextDesc = 'Revisión Interna Empresa de Ingeniería';
     } else {
         if (type === 'ITERATE' || type === 'UPDATE_TEXT') {
-            // Si solo actualizamos texto, mantenemos la letra que el usuario haya puesto o calculamos la siguiente
+            // Si es actualizar texto, mantenemos la letra actual del input si existe
             if (type === 'UPDATE_TEXT') {
-                 // Si es update text, intentamos leer lo que ya hay, si está vacío calculamos
                  const currentInput = document.getElementById('txtRevLetra').value;
                  nextLetra = currentInput || String.fromCharCode(lastRev.charCodeAt(0) + 1);
             } else {
-                // Cálculo: A->B, B->C...
+                // Cálculo matemático: A->B, B->C...
                 nextLetra = String.fromCharCode(lastRev.charCodeAt(0) + 1);
             }
 
-            // Lógica de textos según cliente
+            // Lógica de Textos según cliente
             if (nextLetra === 'A') {
                 nextDesc = 'Revisión Interna Empresa de Ingeniería';
             } else if (nextLetra === 'B') {
                 nextDesc = (clientStd === 'CODELCO') ? 'Revisión de Codelco' : 'Revisión Cliente';
             } else {
-                // C, D, E...
+                // Para C, D, E...
                 nextDesc = (clientStd === 'CODELCO') ? 'Revisión de Codelco' : 'Revisión Cliente';
             }
 
@@ -93,48 +93,63 @@ function setNextLogic(type) {
         }
     }
 
-    // Rellenar inputs
+    // Rellenar inputs visuales
     document.getElementById('txtRevLetra').value = nextLetra;
     document.getElementById('txtRevDesc').value = nextDesc;
     
-    // Actualizar fecha a hoy siempre que se calcula nuevo
+    // Actualizar fecha a hoy
     establecerFechaHoyInput();
 }
 
+// Agregar fila a la lista visual del Taskpane
 function addRevisionRow() {
-    const letra = document.getElementById('txtRevLetra').value.toUpperCase();
+    const letra = document.getElementById('txtRevLetra').value.toUpperCase().trim();
     const fecha = document.getElementById('txtRevFecha').value;
-    const desc = document.getElementById('txtRevDesc').value;
+    const desc = document.getElementById('txtRevDesc').value.trim();
 
+    // 1. VALIDACIÓN BÁSICA
     if (!letra || !fecha) {
-        mostrarMensaje("⚠️ Falta letra o fecha", "red");
+        mostrarMensaje("⚠️ Falta letra o fecha.", "orange");
         return;
     }
 
-    // Agregar al array global
+    // 2. VALIDACIÓN DE DUPLICADOS (Evita dos 'B' o dos 'A')
+    const existe = revisions.some(r => r.letra === letra);
+    if (existe) {
+        mostrarMensaje(`⛔ Error: La revisión "${letra}" ya existe en la lista.`, "red");
+        return;
+    }
+
+    // 3. AGREGAR Y ORDENAR
     revisions.push({ letra, fecha, desc });
     
-    // Renderizar tabla HTML
-    renderTable();
+    // Ordenamos siempre alfabéticamente (A, B, C... P) para mantener consistencia
+    revisions.sort((a, b) => {
+        if (a.letra === b.letra) return 0;
+        return a.letra > b.letra ? 1 : -1;
+    });
+
+    renderTable(); // Dibujar tabla HTML
     
-    // Calcular siguiente paso automáticamente para agilizar
+    // Calcular siguiente paso automáticamente
     setNextLogic('ITERATE');
     mostrarMensaje("");
 }
 
+// Dibujar la tabla HTML en el panel lateral
 function renderTable() {
     const tbody = document.getElementById('tbodyRevisiones');
     tbody.innerHTML = '';
 
-    // Invertimos para mostrar la más reciente arriba (stacking up)
-    // OJO: Copiamos el array con [...revisions] para no invertir el original
+    // Invertimos para mostrar la más reciente ARRIBA (Pila visual: C sobre B sobre A)
     const displayRevisions = [...revisions].reverse(); 
 
     displayRevisions.forEach((rev, index) => {
-        // Índice real en el array original (para poder borrar)
+        // Calculamos el índice real para poder borrar correctamente
         const realIndex = revisions.length - 1 - index;
         
         const tr = document.createElement('tr');
+        // Usamos estilos inline básicos compatibles o clases si prefieres
         tr.innerHTML = `
             <td><b>${rev.letra}</b></td>
             <td>${rev.fecha}</td>
@@ -147,43 +162,40 @@ function renderTable() {
     });
 }
 
-// Necesitamos exponer esta función al contexto global para que el onclick del HTML funcione
+// Función global para borrar filas del panel
 window.deleteRev = function(index) {
     revisions.splice(index, 1);
     renderTable();
 };
 
 // ---------------------------------------------
-// 3. ESCRITURA EN WORD (MODO VIÑETA: CRECE HACIA ARRIBA)
+// 3. ESCRITURA EN WORD (MODO PILA COMPLETA)
 // ---------------------------------------------
 
 async function escribirTablaEnWord() {
-    mostrarMensaje("⏳ Insertando fila superior...", "blue");
+    mostrarMensaje("⏳ Insertando historial en Word...", "blue");
 
     if (revisions.length === 0) {
-        mostrarMensaje("⚠️ Lista vacía. Agrega revisiones primero.", "orange");
+        mostrarMensaje("⚠️ Lista vacía. Agrega revisiones en el panel primero.", "orange");
         return;
     }
 
-    // Tomamos la ÚLTIMA revisión agregada (la más nueva)
-    const nuevaRev = revisions[revisions.length - 1];
-
     await Word.run(async (context) => {
-        // 1. Buscamos la tabla por su etiqueta "ccTablaRevisiones"
-        // IMPORTANTE: En el Word, este control debe envolver la zona donde van las letras (A, B, P...)
+        // 1. Buscamos el control contenedor de la tabla
+        // IMPORTANTE: El tag "ccTablaRevisiones" debe estar en la FILA DE DATOS (la vacía sobre el encabezado)
         const contentControls = context.document.contentControls.getByTag("ccTablaRevisiones");
         contentControls.load("items");
         
         await context.sync();
 
         if (contentControls.items.length === 0) {
-            mostrarMensaje("❌ No encontré el control 'ccTablaRevisiones'.", "red");
+            mostrarMensaje("❌ No encontré el tag 'ccTablaRevisiones'. Verifica tu Word.", "red");
             return;
         }
 
-        // 2. Obtenemos la tabla
-        const controlTabla = contentControls.items[0];
-        const tablas = controlTabla.tables;
+        // 2. Obtenemos la tabla dentro del control
+        const control = contentControls.items[0];
+        const tablas = control.tables;
         tablas.load("items");
         
         await context.sync();
@@ -195,29 +207,38 @@ async function escribirTablaEnWord() {
 
         const tablaWord = tablas.items[0];
 
-        // 3. INSERTAR LA FILA AL INICIO (ARRIBA DE TODO)
-        // Usamos "Start" para que sea la Fila 0 (la más alta visualmente).
-        // Esto empujará las filas viejas (A, B) hacia abajo, acercándolas al encabezado.
+        // 3. PREPARAR DATOS (INVERTIDOS)
+        // Queremos que en el Word quede:
+        // C (Arriba)
+        // B
+        // A (Abajo)
+        // Encabezado (Fijo)
+        // Por lo tanto, invertimos el array y mandamos el bloque completo.
         
-        const valoresFila = [[ nuevaRev.letra, nuevaRev.fecha, nuevaRev.desc ]];
+        const datosParaWord = [...revisions].reverse().map(rev => {
+            return [rev.letra, rev.fecha, rev.desc];
+        });
 
-        // "Start" = Insertar en el índice 0 absoluto.
-        tablaWord.addRows("Start", 1, valoresFila); 
+        // 4. INSERTAR BLOQUE COMPLETO AL INICIO ('Start')
+        // Esto empujará lo que ya exista hacia abajo.
+        // Si tenías filas viejas o vacías, quedarán debajo de las nuevas.
+        // El usuario solo debe borrar las sobrantes manualmente si es necesario.
+        
+        tablaWord.addRows("Start", datosParaWord.length, datosParaWord);
         
         await context.sync();
         
-        mostrarMensaje(`✅ Fila ${nuevaRev.letra} insertada arriba de todo.`, "green");
+        mostrarMensaje(`✅ Se insertaron ${datosParaWord.length} revisiones correctamente.`, "green");
 
     }).catch(error => {
-        console.error("Error tabla:", error);
-        mostrarMensaje("❌ Error al insertar: " + error.message, "red");
+        console.error("Error Word:", error);
+        mostrarMensaje("❌ Error al escribir: " + error.message, "red");
     });
 }
 
 
-
 // ---------------------------------------------
-// 4. LÓGICA DE AZURE Y DATOS PROYECTO (TU CÓDIGO VIEJO)
+// 4. LÓGICA DE AZURE Y DATOS PROYECTO (ORIGINAL)
 // ---------------------------------------------
 
 async function cargarDocumentosDesdeAzure(idProyecto) {
@@ -371,6 +392,7 @@ function establecerFechaHoyInput() {
         const dia = String(hoy.getDate()).padStart(2, '0');
         const mes = String(hoy.getMonth() + 1).padStart(2, '0');
         const anio = hoy.getFullYear();
+        // Usamos formato texto dd/mm/aaaa
         txtFecha.value = `${dia}/${mes}/${anio}`;
     }
 }
