@@ -17,7 +17,7 @@ Office.onReady((info) => {
         asignarEventos();
         establecerFechaHoy();
         actualizarListaRevisiones();
-        cargarDatosDeMemoria();
+       // cargarDatosDeMemoria();
     }
 });
 
@@ -179,9 +179,9 @@ async function cargarDatosDeMemoria() {
             setText("lblCliente",   datos.cliente);
             setText("lblDivision",  datos.division);
             setText("lblContrato",  datos.contrato);
-            setText("lblApi",       datos.api);
+           // setText("lblApi",       datos.api);
             setText("lblProyecto",  datos.nombre);
-            setText("lblServicio",  datos.servicio || datos.TipoServicio);
+            //setText("lblServicio",  datos.servicio || datos.TipoServicio);
 
             escribirDatosBaseEnWord(datos).catch(e => console.warn(e));
 
@@ -210,9 +210,9 @@ async function escribirDatosBaseEnWord(datos) {
         const tagsMapa = [
             { t: "ccCliente",              v: datos.cliente },
             { t: "ccDivisión",             v: datos.division },
-            { t: "ccServicios",            v: datos.servicio },
+           // { t: "ccServicios",            v: datos.servicio },
             { t: "ccContrato",             v: datos.contrato },
-            { t: "ccAPI",                  v: datos.api },
+           // { t: "ccAPI",                  v: datos.api },
             { t: "ccProyecto",             v: datos.nombre },
             { t: "ccCliente_encabezado",   v: datos.cliente },
             { t: "ccNProyecto_Encabezado", v: datos.nombre }
