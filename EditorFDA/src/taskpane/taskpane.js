@@ -136,7 +136,7 @@ window.deleteRev = function(index) {
 // ---------------------------------------------
 
 async function escribirTablaEnWord() {
-    mostrarMensaje("⏳ Analizando, reciclando y escribiendo...", "blue");
+    mostrarMensaje("⏳ Actualizando con Protección de Encabezados...", "blue");
 
     if (revisions.length === 0) {
         mostrarMensaje("⚠️ Lista vacía. Agrega revisiones primero.", "orange");
@@ -157,50 +157,57 @@ async function escribirTablaEnWord() {
         const tablaWord = contentControls.items[0].tables.items[0];
         const filasWord = tablaWord.rows;
         
-        // Cargamos valores para leer y body para escribir
+        // Cargamos valores y bodies
         filasWord.load("items/cells/items/value, items/cells/items/body");
         await context.sync();
 
-        // 2. PREPARACIÓN DE MAPAS
-        // Mapa de lo que QUEREMOS tener (Tu lista del panel)
+        // 2. PREPARACIÓN
         let mapaDeseado = new Map();
         revisions.forEach(r => mapaDeseado.set(r.letra, r));
-
-        // Array para guardar los índices de filas que podemos REUTILIZAR (Vacías u Obsoletas)
         let slotsDisponibles = [];
 
-        // 3. PRIMERA PASADA: ACTUALIZAR COINCIDENCIAS Y ENCONTRAR HUECOS
-        // Iteramos filas (menos el encabezado final)
-        for (let i = 0; i < filasWord.items.length - 1; i++) {
+        // PALABRAS CLAVE PARA PROTEGER FILAS (Si la celda contiene esto, NO SE TOCA)
+        const palabrasProtegidas = ["REVISIÓN", "REVISION", "FECHA", "EMITIDO", "PROYECTO", "7609", "FDA", "APROBÓ", "REV."];
+
+        // 3. PRIMERA PASADA: PROCESAR FILAS
+        // Iteramos TODAS las filas que haya en el control
+        for (let i = 0; i < filasWord.items.length; i++) {
             let fila = filasWord.items[i];
             
-            // Protección contra filas rotas
+            // Si la fila tiene menos de 3 celdas, probablemente es footer complejo o error. Saltamos.
             if (fila.cells.items.length < 3) continue;
 
             let valorCelda = fila.cells.items[0].value;
-            let letraEnWord = valorCelda ? valorCelda.trim().toUpperCase() : "";
+            // Limpiamos el texto para comparar mejor
+            let textoCelda = valorCelda ? valorCelda.trim().toUpperCase() : "";
 
-            if (letraEnWord === "") {
-                // CASO 1: LA FILA ESTÁ VACÍA -> Es un slot disponible
+            // --- FILTRO DE PROTECCIÓN (NUEVO) ---
+            // Si la celda contiene palabras del sistema, LA IGNORAMOS COMPLETAMENTE
+            let esFilaSistema = palabrasProtegidas.some(palabra => textoCelda.includes(palabra));
+            if (esFilaSistema) {
+                console.log(`🔒 Fila protegida ignorada: ${textoCelda}`);
+                continue; // Saltamos a la siguiente iteración sin tocar nada
+            }
+
+            // --- LÓGICA NORMAL ---
+            if (textoCelda === "") {
+                // Fila vacía real -> Slot disponible
                 slotsDisponibles.push(fila);
             } 
-            else if (mapaDeseado.has(letraEnWord)) {
-                // CASO 2: COINCIDENCIA (Ej: A=A) -> Actualizamos datos ahí mismo
-                let datos = mapaDeseado.get(letraEnWord);
-                console.log(`Actualizando fila existente: ${letraEnWord}`);
-                
+            else if (mapaDeseado.has(textoCelda)) {
+                // Coincidencia (A=A) -> Actualizar
+                let datos = mapaDeseado.get(textoCelda);
+                console.log(`Actualizando: ${textoCelda}`);
                 fila.cells.items[1].body.insertText(datos.fecha, "Replace");
                 fila.cells.items[2].body.insertText(datos.desc, "Replace");
-                
-                // Quitamos del mapa porque ya está lista
-                mapaDeseado.delete(letraEnWord);
+                mapaDeseado.delete(textoCelda);
             } 
             else {
-                // CASO 3: OBSOLETA (Ej: P, o una C vieja que ya no queremos) 
-                // -> La limpiamos y la marcamos como disponible para usarla después
-                console.log(`Reciclando fila obsoleta: ${letraEnWord}`);
+                // Obsoleta (P) que NO es sistema -> Reciclar
+                // OJO: Solo si estamos seguros que no es una fila importante que se nos pasó
+                // Como ya filtramos "Revisión" y "7609", esto debería ser seguro para "P".
+                console.log(`Reciclando obsoleta: ${textoCelda}`);
                 
-                // Borramos contenido visualmente
                 fila.cells.items[0].body.insertText("", "Replace");
                 fila.cells.items[1].body.insertText("", "Replace");
                 fila.cells.items[2].body.insertText("", "Replace");
@@ -209,59 +216,41 @@ async function escribirTablaEnWord() {
             }
         }
 
-        // 4. SEGUNDA PASADA: LLENAR SLOTS VACÍOS CON LAS NUEVAS (Ej: C, D)
-        // Lo que quedó en 'mapaDeseado' son las revisiones nuevas que no estaban en Word.
-        // Debemos insertarlas. Primero intentamos usar los slots vacíos.
-
-        // Convertimos el mapa a array y lo INVERTIMOS para priorizar las más nuevas arriba (Stack)
-        // Revisions original: [A, B, C, D]
-        // Si A y B ya se actualizaron, en el mapa quedan C y D.
-        // Queremos escribir D arriba y C abajo (si hubiera espacio).
-        
-        // Para respetar el orden de pila (Start), las procesamos desde la más nueva (D) hacia atrás.
+        // 4. LLENAR SLOTS CON LAS NUEVAS
+        // Invertimos para priorizar las más nuevas (D, C) en los slots superiores
         let pendientes = [...revisions].reverse().filter(r => mapaDeseado.has(r.letra));
-
-        // Slots disponibles suelen estar de arriba a abajo (índice 0, 1...).
-        // Si tenemos slots en fila 0 y fila 1.
-        // Y tenemos pendientes D y C.
-        // D debería ir en fila 0. C en fila 1.
-        // Así que simplemente iteramos los slots en orden.
-
         let filasNuevasParaCrear = [];
 
         for (let rev of pendientes) {
             if (slotsDisponibles.length > 0) {
-                // --- USAR SLOT RECICLADO ---
-                // Tomamos el primer slot disponible (el de más arriba visualmente)
-                let slot = slotsDisponibles.shift(); // Saca el primero del array
-                
+                // Usar slot reciclado
+                let slot = slotsDisponibles.shift(); 
                 console.log(`Escribiendo ${rev.letra} en slot reciclado.`);
                 slot.cells.items[0].body.insertText(rev.letra, "Replace");
                 slot.cells.items[1].body.insertText(rev.fecha, "Replace");
                 slot.cells.items[2].body.insertText(rev.desc, "Replace");
             } else {
-                // --- NO HAY SLOTS -> AGREGAR A LA COLA DE CREACIÓN ---
-                // Si se acabaron los huecos, guardamos para crear fila nueva al final
+                // No hay slots -> Crear nueva
                 filasNuevasParaCrear.push([rev.letra, rev.fecha, rev.desc]);
             }
         }
 
-        // 5. TERCERA PASADA: CREAR FILAS SI FALTARON SLOTS
+        // 5. CREAR FILAS NUEVAS SI ES NECESARIO
         if (filasNuevasParaCrear.length > 0) {
-            console.log(`Creando ${filasNuevasParaCrear.length} filas nuevas reales.`);
-            // 'Start' las pone arriba del todo
+            console.log(`Creando ${filasNuevasParaCrear.length} filas nuevas arriba.`);
+            // 'Start' las inserta al principio de la tabla (fila 0), empujando el resto hacia abajo.
+            // Como las filas protegidas (headers) están abajo, no se ven afectadas.
             tablaWord.addRows("Start", filasNuevasParaCrear.length, filasNuevasParaCrear);
         }
 
         await context.sync();
-        mostrarMensaje("✅ Tabla actualizada correctamente.", "green");
+        mostrarMensaje("✅ Tabla actualizada (Encabezados protegidos).", "green");
 
     }).catch(error => {
         console.error("Error Word:", error);
         mostrarMensaje("❌ Error: " + error.message, "red");
     });
 }
-
 
 // ---------------------------------------------
 // 4. LÓGICA DE AZURE Y DATOS PROYECTO (ORIGINAL)
