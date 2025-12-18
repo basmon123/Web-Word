@@ -235,33 +235,35 @@ async function escribirTablaEnWord() {
             }
         }
 
-        // 5. CREAR FILAS NUEVAS SI ES NECESARIO
-     if (filasNuevasParaCrear.length > 0) {
-            console.log(`Creando ${filasNuevasParaCrear.length} filas nuevas arriba.`);
-            
-            // PASO CRÍTICO: Averiguar cuántas columnas tiene la tabla realmente
-            // Usamos la primera fila que cargamos antes como referencia
-            // (Si no hubiera filas, asumimos 3, pero tu código ya valida que hay tabla)
-            let numColumnasReales = 3; 
-            if (filasWord.items.length > 0) {
-                 numColumnasReales = filasWord.items[0].cells.items.length;
-            }
+ // 5. CREAR FILAS NUEVAS SI ES NECESARIO (ESTRATEGIA SEGURA)
+        if (filasNuevasParaCrear.length > 0) {
+            console.log(`Creando ${filasNuevasParaCrear.length} filas vacías primero...`);
 
-            console.log(`La tabla tiene ${numColumnasReales} columnas. Ajustando datos...`);
+            // PASO 1: Crear filas VACÍAS. 
+            // Al no pasarle los datos (el tercer argumento), Word rellena con celdas vacías 
+            // respetando automáticamente el número de columnas que tenga la tabla.
+            // "Start" las pone al principio.
+            let nuevasFilasObj = tablaWord.addRows("Start", filasNuevasParaCrear.length);
 
-            // Rellenamos cada fila nueva con "" hasta completar el número de columnas
-            const filasAjustadas = filasNuevasParaCrear.map(filaDatos => {
-                while (filaDatos.length < numColumnasReales) {
-                    filaDatos.push(""); // Agrega celda vacía para evitar el error
+            // Importante: Para escribir en ellas, primero tenemos que cargarlas
+            nuevasFilasObj.load("items/cells/items/body");
+            await context.sync(); // Sincronizamos para que las filas existan realmente
+
+            console.log("Filas creadas. Escribiendo datos celda por celda...");
+
+            // PASO 2: Escribir los datos celda por celda (Igual que el reciclaje)
+            // Como las insertamos en "Start", el orden en nuevasFilasObj coincide con filasNuevasParaCrear
+            for (let i = 0; i < filasNuevasParaCrear.length; i++) {
+                let datos = filasNuevasParaCrear[i]; // ["D", "Fecha", "Desc"]
+                let filaWord = nuevasFilasObj.items[i];
+
+                // Verificamos que existan las celdas antes de escribir (seguridad extra)
+                if (filaWord.cells.items.length >= 3) {
+                    filaWord.cells.items[0].body.insertText(datos[0], "Replace"); // Letra
+                    filaWord.cells.items[1].body.insertText(datos[1], "Replace"); // Fecha
+                    filaWord.cells.items[2].body.insertText(datos[2], "Replace"); // Descripción
                 }
-                return filaDatos;
-            });
-
-            // AHORA SÍ: Usamos la sintaxis correcta de 3 argumentos
-            // Ubicación: "Start"
-            // Cantidad: filasAjustadas.length
-            // Datos: filasAjustadas (que ahora coinciden exactamente con la tabla)
-            tablaWord.addRows("Start", filasAjustadas.length, filasAjustadas);
+            }
         }
 
         await context.sync();
