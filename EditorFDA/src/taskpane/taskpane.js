@@ -392,7 +392,7 @@ function establecerFechaHoyInput() {
         const dia = String(hoy.getDate()).padStart(2, '0');
         const mes = String(hoy.getMonth() + 1).padStart(2, '0');
         const anio = hoy.getFullYear();
-        // Usamos formato texto dd/mm/aaaa
+        //// Usamos formato texto dd/mm/aaaa
         txtFecha.value = `${dia}/${mes}/${anio}`;
     }
 }
