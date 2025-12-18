@@ -4,42 +4,30 @@
 // -----------------------------------------------------------------------------
 const URL_POWER_AUTOMATE = "https://defaultef8b3c00d87343e58b66d56c25f2bd.fe.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d88cc5b40d1b48bfa41f130960371fe1/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=QAwT8H-2RLeYuIvy4ISgzt0sXfcBX0JGvjjR_3l1V_Y"; 
 
-// Variable global para almacenar el historial de revisiones
+// Variable global para almacenar el historial de revisiones (A, B, C...)
 let revisions = [];
 
 Office.onReady((info) => {
     if (info.host === Office.HostType.Word) {
         console.log("Office.js listo. Iniciando Taskpane...");
-
         asignarEventos();
         cargarDatosDeMemoria();
-        
-        // Inicializar fecha actual en el input
         establecerFechaHoyInput();
-        
-        // Inicializar lógica (sugerir Rev A)
         setNextLogic('INIT');
     }
 });
 
 function asignarEventos() {
-    // Evento Dropdown Documentos (Azure)
     const ddlDocs = document.getElementById("ddlDocumentos");
     if (ddlDocs) ddlDocs.onchange = insertarDocumentoSeleccionado;
 
     // --- EVENTOS DE REVISIONES ---
-    
-    // 1. Botones de Lógica (Iterar / Fase)
     document.getElementById("btnIterar").onclick = () => setNextLogic('ITERATE');
     document.getElementById("btnFase").onclick = () => setNextLogic('PHASE');
-    
-    // 2. Cambio de Estándar (Codelco vs AMSA) actualiza textos sugeridos
     document.getElementById("ddlEstandar").onchange = () => setNextLogic('UPDATE_TEXT');
-
-    // 3. Botón "Insertar en Lista Arriba" (Panel visual)
     document.getElementById("btnAgregarAlista").onclick = addRevisionRow;
-
-    // 4. Botón "Actualizar Tabla en Documento" (Escribir en Word)
+    
+    // EL BOTÓN IMPORTANTE
     document.getElementById("btnActualizarWord").onclick = escribirTablaEnWord;
 }
 
@@ -47,109 +35,85 @@ function asignarEventos() {
 // 2. LÓGICA DE REVISIONES (UI & VALIDACIÓN)
 // ---------------------------------------------
 
-// Función para calcular automáticamente la siguiente letra y descripción
 function setNextLogic(type) {
-    // Obtenemos la última letra agregada para saber qué sigue
     const lastRev = revisions.length > 0 ? revisions[revisions.length - 1].letra : null;
     let nextLetra = 'A';
     let nextDesc = '';
     const clientStd = document.getElementById('ddlEstandar').value;
 
     if (!lastRev) {
-        // Si la lista está vacía, partimos con A
         nextLetra = 'A';
         nextDesc = 'Revisión Interna Empresa de Ingeniería';
     } else {
         if (type === 'ITERATE' || type === 'UPDATE_TEXT') {
-            // Si es actualizar texto, mantenemos la letra actual del input si existe
             if (type === 'UPDATE_TEXT') {
                  const currentInput = document.getElementById('txtRevLetra').value;
                  nextLetra = currentInput || String.fromCharCode(lastRev.charCodeAt(0) + 1);
             } else {
-                // Cálculo matemático: A->B, B->C...
                 nextLetra = String.fromCharCode(lastRev.charCodeAt(0) + 1);
             }
 
-            // Lógica de Textos según cliente
             if (nextLetra === 'A') {
                 nextDesc = 'Revisión Interna Empresa de Ingeniería';
             } else if (nextLetra === 'B') {
                 nextDesc = (clientStd === 'CODELCO') ? 'Revisión de Codelco' : 'Revisión Cliente';
             } else {
-                // Para C, D, E...
                 nextDesc = (clientStd === 'CODELCO') ? 'Revisión de Codelco' : 'Revisión Cliente';
             }
 
         } else if (type === 'PHASE') {
-            // Salto a Fase P
             if (lastRev < 'P') {
                 nextLetra = 'P';
-                nextDesc = 'Siguiente Fase'; // O "Apto para Construcción"
+                nextDesc = 'Siguiente Fase'; 
             } else {
-                // Si ya estamos en P, sigue Q
                 nextLetra = String.fromCharCode(lastRev.charCodeAt(0) + 1);
                 nextDesc = 'Siguiente Fase';
             }
         }
     }
-
-    // Rellenar inputs visuales
     document.getElementById('txtRevLetra').value = nextLetra;
     document.getElementById('txtRevDesc').value = nextDesc;
-    
-    // Actualizar fecha a hoy
     establecerFechaHoyInput();
 }
 
-// Agregar fila a la lista visual del Taskpane
 function addRevisionRow() {
     const letra = document.getElementById('txtRevLetra').value.toUpperCase().trim();
     const fecha = document.getElementById('txtRevFecha').value;
     const desc = document.getElementById('txtRevDesc').value.trim();
 
-    // 1. VALIDACIÓN BÁSICA
     if (!letra || !fecha) {
         mostrarMensaje("⚠️ Falta letra o fecha.", "orange");
         return;
     }
 
-    // 2. VALIDACIÓN DE DUPLICADOS (Evita dos 'B' o dos 'A')
     const existe = revisions.some(r => r.letra === letra);
     if (existe) {
         mostrarMensaje(`⛔ Error: La revisión "${letra}" ya existe en la lista.`, "red");
         return;
     }
 
-    // 3. AGREGAR Y ORDENAR
     revisions.push({ letra, fecha, desc });
     
-    // Ordenamos siempre alfabéticamente (A, B, C... P) para mantener consistencia
+    // Ordenamos siempre alfabéticamente (A, B, C... P)
     revisions.sort((a, b) => {
         if (a.letra === b.letra) return 0;
         return a.letra > b.letra ? 1 : -1;
     });
 
-    renderTable(); // Dibujar tabla HTML
-    
-    // Calcular siguiente paso automáticamente
+    renderTable();
     setNextLogic('ITERATE');
     mostrarMensaje("");
 }
 
-// Dibujar la tabla HTML en el panel lateral
 function renderTable() {
     const tbody = document.getElementById('tbodyRevisiones');
     tbody.innerHTML = '';
-
-    // Invertimos para mostrar la más reciente ARRIBA (Pila visual: C sobre B sobre A)
+    // Invertimos para visualización (stack up)
     const displayRevisions = [...revisions].reverse(); 
 
     displayRevisions.forEach((rev, index) => {
-        // Calculamos el índice real para poder borrar correctamente
         const realIndex = revisions.length - 1 - index;
-        
         const tr = document.createElement('tr');
-        // Usamos estilos inline básicos compatibles o clases si prefieres
         tr.innerHTML = `
             <td><b>${rev.letra}</b></td>
             <td>${rev.fecha}</td>
@@ -162,80 +126,112 @@ function renderTable() {
     });
 }
 
-// Función global para borrar filas del panel
 window.deleteRev = function(index) {
     revisions.splice(index, 1);
     renderTable();
 };
 
 // ---------------------------------------------
-// 3. ESCRITURA EN WORD (MODO PILA COMPLETA)
+// 3. ESCRITURA EN WORD (INTELIGENTE: ACTUALIZA O INSERTA)
 // ---------------------------------------------
 
 async function escribirTablaEnWord() {
-    mostrarMensaje("⏳ Insertando historial en Word...", "blue");
+    mostrarMensaje("⏳ Analizando y actualizando tabla...", "blue");
 
     if (revisions.length === 0) {
-        mostrarMensaje("⚠️ Lista vacía. Agrega revisiones en el panel primero.", "orange");
+        mostrarMensaje("⚠️ Lista vacía. Agrega revisiones primero.", "orange");
         return;
     }
 
     await Word.run(async (context) => {
-        // 1. Buscamos el control contenedor de la tabla
-        // IMPORTANTE: El tag "ccTablaRevisiones" debe estar en la FILA DE DATOS (la vacía sobre el encabezado)
+        // 1. Obtener la tabla
         const contentControls = context.document.contentControls.getByTag("ccTablaRevisiones");
         contentControls.load("items");
-        
         await context.sync();
 
-        if (contentControls.items.length === 0) {
-            mostrarMensaje("❌ No encontré el tag 'ccTablaRevisiones'. Verifica tu Word.", "red");
+        if (contentControls.items.length === 0 || contentControls.items[0].tables.items.length === 0) {
+            mostrarMensaje("❌ No encontré la tabla con tag 'ccTablaRevisiones'.", "red");
             return;
         }
 
-        // 2. Obtenemos la tabla dentro del control
-        const control = contentControls.items[0];
-        const tablas = control.tables;
-        tablas.load("items");
+        const tablaWord = contentControls.items[0].tables.items[0];
         
+        // 2. Cargar TODAS las filas y sus celdas para leerlas
+        const filasWord = tablaWord.rows;
+        filasWord.load("items/cells/items/value");
         await context.sync();
 
-        if (tablas.items.length === 0) {
-            mostrarMensaje("❌ El control no contiene una tabla válida.", "red");
-            return;
+        // Creamos un mapa de nuestras revisiones nuevas para búsqueda rápida
+        // Clave: Letra, Valor: Objeto completo {letra, fecha, desc}
+        let mapaRevisionesNuevas = new Map();
+        revisions.forEach(r => mapaRevisionesNuevas.set(r.letra, r));
+
+        let filasActualizadas = 0;
+
+        // 3. ITERAR FILAS EXISTENTES DE WORD (Buscando coincidencias)
+        // Importante: Asumimos que la última fila es el ENCABEZADO (según tu imagen).
+        // Iteramos hasta items.length - 1 para no tocar el encabezado.
+        for (let i = 0; i < filasWord.items.length - 1; i++) {
+            let filaActual = filasWord.items[i];
+            
+            // Asegurar que la fila tenga al menos 3 celdas (Letra, Fecha, Desc)
+            if (filaActual.cells.items.length < 3) continue;
+
+            // Leer la letra de la primera celda (Columna 0)
+            let letraEnWord = filaActual.cells.items[0].value.trim().toUpperCase();
+
+            // ¿Existe esta letra en nuestra lista nueva?
+            if (mapaRevisionesNuevas.has(letraEnWord)) {
+                // ¡SÍ EXISTE! Actualizamos esta fila.
+                let datosNuevos = mapaRevisionesNuevas.get(letraEnWord);
+                
+                // Consola para depurar
+                console.log(`Actualizando fila existente: ${letraEnWord}`);
+
+                // Sobrescribir Fecha (Columna 1)
+                filaActual.cells.items[1].insertText(datosNuevos.fecha, "Replace");
+                // Sobrescribir Descripción (Columna 2)
+                filaActual.cells.items[2].insertText(datosNuevos.desc, "Replace");
+                
+                // Marcamos como "ya procesada" borrándola del mapa
+                mapaRevisionesNuevas.delete(letraEnWord);
+                filasActualizadas++;
+            }
         }
 
-        const tablaWord = tablas.items[0];
+        // 4. INSERTAR LAS SOBRANTES (Las que no existían en Word)
+        // Si queda algo en 'mapaRevisionesNuevas', son filas nuevas (ej: C).
+        // Debemos insertarlas ARRIBA ("Start").
 
-        // 3. PREPARAR DATOS (INVERTIDOS)
-        // Queremos que en el Word quede:
-        // C (Arriba)
-        // B
-        // A (Abajo)
-        // Encabezado (Fijo)
-        // Por lo tanto, invertimos el array y mandamos el bloque completo.
+        let nuevasFilasParaInsertar = [];
+
+        // IMPORTANTE: El mapa no tiene orden garantizado.
+        // Debemos recorrer nuestro array original 'revisions' (que está ordenado A,B,C)
+        // en orden INVERSO (C, B, A) para que se apilen correctamente al usar "Start".
         
-        const datosParaWord = [...revisions].reverse().map(rev => {
-            return [rev.letra, rev.fecha, rev.desc];
+        [...revisions].reverse().forEach(rev => {
+            // Si todavía está en el mapa, es que no se encontró en Word.
+            if (mapaRevisionesNuevas.has(rev.letra)) {
+                 nuevasFilasParaInsertar.push([rev.letra, rev.fecha, rev.desc]);
+            }
         });
 
-        // 4. INSERTAR BLOQUE COMPLETO AL INICIO ('Start')
-        // Esto empujará lo que ya exista hacia abajo.
-        // Si tenías filas viejas o vacías, quedarán debajo de las nuevas.
-        // El usuario solo debe borrar las sobrantes manualmente si es necesario.
-        
-        tablaWord.addRows("Start", datosParaWord.length, datosParaWord);
+        if (nuevasFilasParaInsertar.length > 0) {
+            console.log(`Insertando ${nuevasFilasParaInsertar.length} filas nuevas arriba.`);
+            // Insertar al inicio (Start) empuja todo lo demás hacia abajo
+            tablaWord.addRows("Start", nuevasFilasParaInsertar.length, nuevasFilasParaInsertar);
+        }
         
         await context.sync();
         
-        mostrarMensaje(`✅ Se insertaron ${datosParaWord.length} revisiones correctamente.`, "green");
+        let mensaje = `✅ Proceso terminado. Actualizadas: ${filasActualizadas}. Insertadas: ${nuevasFilasParaInsertar.length}.`;
+        mostrarMensaje(mensaje, "green");
 
     }).catch(error => {
         console.error("Error Word:", error);
-        mostrarMensaje("❌ Error al escribir: " + error.message, "red");
+        mostrarMensaje("❌ Error crítico: " + error.message, "red");
     });
 }
-
 
 // ---------------------------------------------
 // 4. LÓGICA DE AZURE Y DATOS PROYECTO (ORIGINAL)
@@ -256,10 +252,8 @@ async function cargarDocumentosDesdeAzure(idProyecto) {
         if (!response.ok) throw new Error("Error Power Automate");
         const listaCruda = await response.json();
 
-        // Filtro duplicados
         const documentosUnicos = [];
         const codigosVistos = new Set();
-
         listaCruda.forEach(doc => {
             const idUnico = doc.codFDA || doc.Nombre; 
             if (!codigosVistos.has(idUnico)) {
@@ -273,7 +267,6 @@ async function cargarDocumentosDesdeAzure(idProyecto) {
             ddl.innerHTML = "<option>No se encontraron documentos</option>";
             return;
         }
-
         const optDef = document.createElement("option");
         optDef.text = "-- Seleccione un Código FDA --";
         optDef.value = "";
@@ -287,7 +280,6 @@ async function cargarDocumentosDesdeAzure(idProyecto) {
             opt.setAttribute("data-cliente", doc.codCliente || "");
             ddl.appendChild(opt);
         });
-
     } catch (error) {
         console.error(error);
         ddl.innerHTML = "<option>Error al cargar lista</option>";
@@ -298,12 +290,10 @@ async function insertarDocumentoSeleccionado() {
     const ddl = document.getElementById("ddlDocumentos");
     const opcionSeleccionada = ddl.options[ddl.selectedIndex];
     const codigoFDA = ddl.value;
-
     if (!codigoFDA) return;
 
     let nombreDoc = opcionSeleccionada.getAttribute("data-nombre");
     let codigoCliente = opcionSeleccionada.getAttribute("data-cliente");
-
     if (!codigoCliente || codigoCliente === "SIN-CODIGO") codigoCliente = "N/A";
     if (!nombreDoc) nombreDoc = "DOCUMENTO SIN NOMBRE";
     nombreDoc = nombreDoc.toUpperCase();
@@ -312,16 +302,11 @@ async function insertarDocumentoSeleccionado() {
         const ccFDA = context.document.contentControls.getByTag("ccCodigoFDA");
         const ccCli = context.document.contentControls.getByTag("ccCodigoCliente");
         const ccNom = context.document.contentControls.getByTag("ccNombreDoc");
-
-        ccFDA.load("items");
-        ccCli.load("items");
-        ccNom.load("items");
+        ccFDA.load("items"); ccCli.load("items"); ccNom.load("items");
         await context.sync();
-
         if (ccFDA.items.length > 0) ccFDA.items.forEach(cc => cc.insertText(codigoFDA, "Replace"));
         if (ccCli.items.length > 0) ccCli.items.forEach(cc => cc.insertText(codigoCliente, "Replace"));
         if (ccNom.items.length > 0) ccNom.items.forEach(cc => cc.insertText(nombreDoc, "Replace"));
-
         await context.sync();
     }).catch(e => console.error(e));
 }
@@ -349,9 +334,7 @@ async function cargarDatosDeMemoria() {
             setText("lblDivision",  datos.division);
             setText("lblContrato",  datos.contrato);
             setText("lblProyecto",  datos.nombre);
-
             escribirDatosBaseEnWord(datos).catch(e => console.warn(e));
-
             if (datos.id) cargarDocumentosDesdeAzure(datos.id);
         }
     } catch (e) { console.error(e); }
@@ -367,7 +350,6 @@ async function escribirDatosBaseEnWord(datos) {
             { t: "ccCliente_encabezado",   v: datos.cliente },
             { t: "ccNProyecto_Encabezado", v: datos.nombre }
         ];
-
         for (let item of tagsMapa) {
             if (!item.v) continue;
             let ccs = context.document.contentControls.getByTag(item.t);
@@ -392,7 +374,6 @@ function establecerFechaHoyInput() {
         const dia = String(hoy.getDate()).padStart(2, '0');
         const mes = String(hoy.getMonth() + 1).padStart(2, '0');
         const anio = hoy.getFullYear();
-        //// Usamos formato texto dd/mm/aaaa
         txtFecha.value = `${dia}/${mes}/${anio}`;
     }
 }
