@@ -238,7 +238,7 @@ async function escribirTablaEnWord() {
         // 5. CREAR FILAS NUEVAS SI ES NECESARIO
         if (filasNuevasParaCrear.length > 0) {
             console.log(`Creando ${filasNuevasParaCrear.length} filas nuevas arriba.`);
-            // 'Start' las inserta al principio de la tabla (fila 0), empujando el resto hacia abajo.
+            /// 'Start' las inserta al principio de la tabla (fila 0), empujando el resto hacia abajo.
             // Como las filas protegidas (headers) están abajo, no se ven afectadas.
             tablaWord.addRows("Start", filasNuevasParaCrear);
         }
