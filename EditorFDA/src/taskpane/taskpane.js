@@ -136,7 +136,7 @@ window.deleteRev = function(index) {
 // ---------------------------------------------
 
 async function escribirTablaEnWord() {
-    mostrarMensaje("⏳ Actualizando con Protección de Encabezados...", "blue");
+    mostrarMensaje("⏳ Actualizando tabla...", "blue");
 
     if (revisions.length === 0) {
         mostrarMensaje("⚠️ Lista vacía. Agrega revisiones primero.", "orange");
@@ -157,7 +157,7 @@ async function escribirTablaEnWord() {
         const tablaWord = contentControls.items[0].tables.items[0];
         const filasWord = tablaWord.rows;
         
-        // Cargamos valores y bodies
+        // Cargamos valores y bodies (IMPRESCINDIBLE)
         filasWord.load("items/cells/items/value, items/cells/items/body");
         await context.sync();
 
@@ -166,58 +166,43 @@ async function escribirTablaEnWord() {
         revisions.forEach(r => mapaDeseado.set(r.letra, r));
         let slotsDisponibles = [];
 
-        // PALABRAS CLAVE PARA PROTEGER FILAS (Si la celda contiene esto, NO SE TOCA)
         const palabrasProtegidas = ["REVISIÓN", "REVISION", "FECHA", "EMITIDO", "PROYECTO", "7609", "FDA", "APROBÓ", "REV."];
 
-        // 3. PRIMERA PASADA: PROCESAR FILAS
-        // Iteramos TODAS las filas que haya en el control
+        // 3. PRIMERA PASADA: PROCESAR FILAS EXISTENTES
         for (let i = 0; i < filasWord.items.length; i++) {
             let fila = filasWord.items[i];
             
-            // Si la fila tiene menos de 3 celdas, probablemente es footer complejo o error. Saltamos.
+            // Protección contra footers o errores
             if (fila.cells.items.length < 3) continue;
 
             let valorCelda = fila.cells.items[0].value;
-            // Limpiamos el texto para comparar mejor
             let textoCelda = valorCelda ? valorCelda.trim().toUpperCase() : "";
 
-            // --- FILTRO DE PROTECCIÓN (NUEVO) ---
-            // Si la celda contiene palabras del sistema, LA IGNORAMOS COMPLETAMENTE
+            // Filtro de filas de sistema
             let esFilaSistema = palabrasProtegidas.some(palabra => textoCelda.includes(palabra));
-            if (esFilaSistema) {
-                console.log(`🔒 Fila protegida ignorada: ${textoCelda}`);
-                continue; // Saltamos a la siguiente iteración sin tocar nada
-            }
+            if (esFilaSistema) continue;
 
-            // --- LÓGICA NORMAL ---
             if (textoCelda === "") {
-                // Fila vacía real -> Slot disponible
+                // Fila vacía -> Disponible para reciclar
                 slotsDisponibles.push(fila);
             } 
             else if (mapaDeseado.has(textoCelda)) {
-                // Coincidencia (A=A) -> Actualizar
+                // Coincidencia exacta -> Actualizar datos
                 let datos = mapaDeseado.get(textoCelda);
-                console.log(`Actualizando: ${textoCelda}`);
                 fila.cells.items[1].body.insertText(datos.fecha, "Replace");
                 fila.cells.items[2].body.insertText(datos.desc, "Replace");
                 mapaDeseado.delete(textoCelda);
             } 
             else {
-                // Obsoleta (P) que NO es sistema -> Reciclar
-                // OJO: Solo si estamos seguros que no es una fila importante que se nos pasó
-                // Como ya filtramos "Revisión" y "7609", esto debería ser seguro para "P".
-                console.log(`Reciclando obsoleta: ${textoCelda}`);
-                
+                // Fila obsoleta (Ej: borraste la 'C' del historial) -> Limpiar y reciclar
                 fila.cells.items[0].body.insertText("", "Replace");
                 fila.cells.items[1].body.insertText("", "Replace");
                 fila.cells.items[2].body.insertText("", "Replace");
-                
                 slotsDisponibles.push(fila);
             }
         }
 
-        // 4. LLENAR SLOTS CON LAS NUEVAS
-        // Invertimos para priorizar las más nuevas (D, C) en los slots superiores
+        // 4. LLENAR SLOTS RECICLADOS
         let pendientes = [...revisions].reverse().filter(r => mapaDeseado.has(r.letra));
         let filasNuevasParaCrear = [];
 
@@ -225,52 +210,51 @@ async function escribirTablaEnWord() {
             if (slotsDisponibles.length > 0) {
                 // Usar slot reciclado
                 let slot = slotsDisponibles.shift(); 
-                console.log(`Escribiendo ${rev.letra} en slot reciclado.`);
                 slot.cells.items[0].body.insertText(rev.letra, "Replace");
                 slot.cells.items[1].body.insertText(rev.fecha, "Replace");
                 slot.cells.items[2].body.insertText(rev.desc, "Replace");
             } else {
-                // No hay slots -> Crear nueva
+                // No hay huecos -> A la cola de crear
                 filasNuevasParaCrear.push([rev.letra, rev.fecha, rev.desc]);
             }
         }
 
-// 5. CREAR FILAS NUEVAS (SOLUCIÓN FINAL: ARGUMENTOS CORRECTOS)
+        // 5. CREAR FILAS NUEVAS (SOLUCIÓN FINAL QUE FUNCIONÓ)
         if (filasNuevasParaCrear.length > 0) {
-            console.log(`Preparando para crear ${filasNuevasParaCrear.length} filas...`);
-
-            // PASO A: DETECTAR LA REJILLA REAL (Esto estaba bien)
+            // A: Detectar rejilla real
             let plantillaArray = [];
             if (filasWord.items.length > 0) {
                 filasWord.items[0].load("values");
                 await context.sync();
                 let valoresFila0 = filasWord.items[0].values[0]; 
                 plantillaArray = new Array(valoresFila0.length).fill("");
-                console.log(`Rejilla detectada: ${valoresFila0.length} columnas.`);
             } else {
                 plantillaArray = new Array(7).fill("");
             }
 
-            // PASO B: CONSTRUIR LOS DATOS (Esto también estaba bien)
+            // B: Construir datos
             const datosParaWord = filasNuevasParaCrear.map(filaDatos => {
                 let filaLista = [...plantillaArray];
-                // Rellenamos A, Fecha, Desc
                 if (filaLista.length >= 1) filaLista[0] = filaDatos[0];
                 if (filaLista.length >= 2) filaLista[1] = filaDatos[1];
                 if (filaLista.length >= 3) filaLista[2] = filaDatos[2];
                 return filaLista;
             });
 
-            // PASO C: INSERTAR (AQUÍ ESTABA EL ERROR)
-            // ANTES (MAL): tablaWord.addRows("Start", datosParaWord);
-            // AHORA (BIEN): Le pasamos la CANTIDAD (datosParaWord.length) en medio.
-            
+            // C: Insertar con los 3 argumentos correctos
             tablaWord.addRows("Start", datosParaWord.length, datosParaWord);
         }
 
+        // 6. LIMPIEZA FINAL (GARBAGE COLLECTOR) 🗑️
+        // Si sobraron slots vacíos que nadie usó (porque borraste revisiones), los eliminamos de Word.
+        if (slotsDisponibles.length > 0) {
+            console.log(`Eliminando ${slotsDisponibles.length} filas vacías sobrantes.`);
+            // delete() borra la fila de la tabla
+            slotsDisponibles.forEach(fila => fila.delete());
+        }
 
         await context.sync();
-        mostrarMensaje("✅ Tabla actualizada (Encabezados protegidos).", "green");
+        mostrarMensaje("✅ Tabla Sincronizada y Limpia.", "green");
 
     }).catch(error => {
         console.error("Error Word:", error);
