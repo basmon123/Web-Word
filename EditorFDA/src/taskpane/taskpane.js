@@ -235,36 +235,52 @@ async function escribirTablaEnWord() {
             }
         }
 
- // 5. CREAR FILAS NUEVAS (SOLUCIÓN DEFINITIVA: RELLENO DE 7 COLUMNAS)
+// 5. CREAR FILAS NUEVAS (SOLUCIÓN BLINDADA: USAR VALORES REALES)
         if (filasNuevasParaCrear.length > 0) {
             console.log(`Preparando para crear ${filasNuevasParaCrear.length} filas...`);
 
-            // PASO A: DETECTAR EL NÚMERO DE COLUMNAS (Ya sabemos que es 7, pero dejamos que el código lo lea)
-            let numColumnasReales = 0;
+            // PASO A: OBTENER "PLANTILLA" DE LA REJILLA REAL
+            // No confiamos en .cells.length, confiamos en .values que trae la estructura interna exacta
+            let plantillaArray = [];
+            
             if (filasWord.items.length > 0) {
-                numColumnasReales = filasWord.items[0].cells.items.length;
+                // Cargamos los valores de la primera fila para usarlos de molde
+                filasWord.items[0].load("values");
+                await context.sync();
+                
+                // Si la primera fila tiene datos, copiamos su estructura de array
+                // values[0] nos dará algo como ["P", "Fecha", "...", "", "", ""] con el largo EXACTO que Word quiere
+                let valoresFila0 = filasWord.items[0].values[0]; 
+                
+                // Creamos un array vacío con ESE mismo largo
+                plantillaArray = new Array(valoresFila0.length).fill("");
+                console.log(`Rejilla detectada por valores: ${valoresFila0.length} columnas.`);
             } else {
-                numColumnasReales = 7; // Valor de seguridad si la tabla estuviera vacía
+                // Fallback de emergencia si la tabla está 100% vacía
+                plantillaArray = new Array(7).fill("");
             }
-            console.log(`Ajustando datos para tabla de ${numColumnasReales} columnas.`);
 
-            // PASO B: RELLENAR LOS DATOS PARA QUE TENGAN 7 COLUMNAS
-            // Transformamos ["D", "Fecha", "Desc"] en ["D", "Fecha", "Desc", "", "", "", ""]
-            const datosAjustados = filasNuevasParaCrear.map(filaOriginal => {
-                let filaRellena = [...filaOriginal]; // Copiamos para no romper nada
-                while (filaRellena.length < numColumnasReales) {
-                    filaRellena.push(""); // Agregamos celdas vacías hasta llegar a 7
-                }
-                return filaRellena;
+            // PASO B: CONSTRUIR LOS DATOS NUEVOS USANDO LA PLANTILLA
+            const datosParaWord = filasNuevasParaCrear.map(filaDatos => {
+                // Clonamos la plantilla vacía (con el largo correcto)
+                let filaLista = [...plantillaArray];
+                
+                // Rellenamos solo las primeras 3 posiciones (Letra, Fecha, Desc)
+                // y dejamos el resto (posiciones 3, 4, 5...) vacías o como vengan en la plantilla
+                if (filaLista.length >= 1) filaLista[0] = filaDatos[0]; // Letra
+                if (filaLista.length >= 2) filaLista[1] = filaDatos[1]; // Fecha
+                if (filaLista.length >= 3) filaLista[2] = filaDatos[2]; // Desc
+                
+                return filaLista;
             });
 
-            // PASO C: INSERTAR USANDO addRows
-            // Ahora addRows NO fallará porque le estamos pasando arrays de longitud 7 a una tabla de 7 columnas.
-            // Argumento 1: "Start" (Al principio)
-            // Argumento 2: La matriz de datos (NO le pases el length en medio)
-            tablaWord.addRows("Start", datosAjustados);
+            // PASO C: INSERTAR
+            // Ahora es imposible que falle el largo, porque estamos devolviendo exactamente
+            // el mismo largo de array que Word nos dio en 'firstRow.values'.
+            tablaWord.addRows("Start", datosParaWord);
         }
 
+        
         await context.sync();
         mostrarMensaje("✅ Tabla actualizada (Encabezados protegidos).", "green");
 
