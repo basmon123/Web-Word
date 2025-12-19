@@ -141,7 +141,7 @@ window.deleteRev = function(index) {
 // ---------------------------------------------
 
 async function escribirTablaEnWord() {
-    mostrarMensaje("⏳ Procesando tabla...", "blue");
+    mostrarMensaje("⏳ Actualizando tabla...", "blue");
 
     if (revisions.length === 0) {
         mostrarMensaje("⚠️ Lista vacía. Agrega revisiones primero.", "orange");
@@ -150,7 +150,7 @@ async function escribirTablaEnWord() {
 
     // 0. CONFIGURACIÓN
     const estandar = document.getElementById("ddlEstandar").value;
-    const esAMSA = (estandar === "AMSA"); // TRUE = Hacia Abajo (3 filas). FALSE = Hacia Arriba (1 fila).
+    const esAMSA = (estandar === "AMSA"); // MODO ESPECIAL
 
     await Word.run(async (context) => {
         // 1. OBTENER TABLA
@@ -158,176 +158,184 @@ async function escribirTablaEnWord() {
         contentControls.load("items/tables/items");
         await context.sync();
 
-        if (contentControls.items.length === 0) {
+        if (contentControls.items.length === 0 || contentControls.items[0].tables.items.length === 0) {
             mostrarMensaje("❌ No encontré la tabla 'ccTablaRevisiones'.", "red");
             return;
         }
 
         const tablaWord = contentControls.items[0].tables.items[0];
         const filasWord = tablaWord.rows;
-        filasWord.load("items/cells/items/value");
+        
+        // Cargamos valores y bodies (IMPRESCINDIBLE)
+        filasWord.load("items/cells/items/value, items/cells/items/body");
         await context.sync();
 
-        // 2. DETECTAR QUÉ REVISIONES YA EXISTEN (Para no duplicar)
-        let letrasEnTabla = new Set();
-        for (let i = 0; i < filasWord.items.length; i++) {
-            // Leemos la primera celda de cada fila. 
-            // .trim() evita errores por espacios vacíos
-            let val = filasWord.items[i].cells.items[0].value.trim().toUpperCase();
-            // Ignoramos encabezados o filas vacías
-            if (val && val !== "REV" && val !== "REVISIÓN" && val !== "REVISION") {
-                letrasEnTabla.add(val);
-            }
-        }
-
-        // 3. FILTRAR: ¿QUÉ FALTA POR ESCRIBIR?
-        // Solo procesamos las que están en tu lista pero NO en Word.
-        let nuevasParaEscribir = revisions.filter(r => !letrasEnTabla.has(r.letra));
-
-        if (nuevasParaEscribir.length === 0) {
-            mostrarMensaje("✅ La tabla ya está actualizada.", "green");
-            return;
-        }
-
-        console.log(`Modo AMSA: ${esAMSA}. Insertando ${nuevasParaEscribir.length} nuevas revisiones.`);
+        // 2. PREPARACIÓN COMÚN
+        let mapaDeseado = new Map();
+        revisions.forEach(r => mapaDeseado.set(r.letra, r));
+        
+        // Palabras protegidas
+        const palabrasProtegidas = ["REVISIÓN", "REVISION", "REV.", "FECHA", "EMITIDO", "DESCRIPCIÓN", "PROYECTO", "FDA", "APROBÓ", "PREPARÓ", "REVISÓ", "CLIENTE", "N°", "N.", "NO."];
 
         // =========================================================
-        // 🏗️ CASO 1: MODO AMSA (HACIA ABAJO - STACK DOWN - 3 FILAS)
+        // 🏗️ RAMA 1: MODO AMSA (HACIA ABAJO - 3 FILAS - MERGE)
         // =========================================================
         if (esAMSA) {
-            
-            // A. OBTENER MOLDE DE NOMBRES (De la última fila existente)
-            let nombresMolde = [];
-            let anchoTabla = 8; // Valor seguro por defecto
+            console.log("🔵 MODO AMSA ACTIVADO (Stack Down)");
 
-            if (filasWord.items.length > 0) {
-                // En Stack Down, la última revisión está al final.
-                // Si la tabla tiene filas, copiamos la estructura de la última.
-                // Si es un bloque de 3, la fila de nombres suele ser la primera del bloque (antepenúltima total)
-                // Pero para ir a lo seguro, tomamos la ÚLTIMA fila visible y copiamos sus firmas.
-                let ultimaFila = filasWord.items[filasWord.items.length - 1];
-                ultimaFila.load("values");
-                await context.sync();
-                
-                // values[0] es el array de datos ["Letra", "Desc", "Etiqueta", "Firma1", "Firma2"...]
-                nombresMolde = ultimaFila.values[0]; 
-                anchoTabla = nombresMolde.length;
-            } else {
-                nombresMolde = new Array(8).fill("");
+            // A. DETECTAR QUÉ FALTA (Filtrar repetidos)
+            let letrasEnTabla = new Set();
+            for (let i = 0; i < filasWord.items.length; i++) {
+                let val = filasWord.items[i].cells.items[0].value.trim().toUpperCase();
+                if (val && !palabrasProtegidas.some(p => val.includes(p))) {
+                    letrasEnTabla.add(val);
+                }
             }
+            let nuevasParaEscribir = revisions.filter(r => !letrasEnTabla.has(r.letra));
 
-            // B. ITERAR Y CREAR UNO POR UNO (Al final de la tabla)
-            for (let rev of nuevasParaEscribir) {
+            if (nuevasParaEscribir.length > 0) {
+                // B. OBTENER MOLDE DE NOMBRES (De la ÚLTIMA fila existente)
+                let nombresMolde = [];
+                let anchoTabla = 8;
                 
-                // Construimos las 3 filas del bloque AMSA
-                
-                // Fila 1: NOMBRES (Copiamos firmas del molde)
-                let fila1 = [...nombresMolde]; 
-                fila1[0] = rev.letra; 
-                fila1[1] = rev.desc; 
-                if(fila1.length > 2) fila1[2] = "NOMBRE"; // Etiqueta
-                // El resto (indices 3,4,5...) se mantienen con los nombres clonados (Juan, Pedro...)
-
-                // Fila 2: FIRMAS (Vacío para firmar a mano)
-                let fila2 = new Array(anchoTabla).fill("");
-                fila2[0] = rev.letra; 
-                fila2[1] = rev.desc; 
-                if(fila2.length > 2) fila2[2] = "FIRMA";
-
-                // Fila 3: FECHAS
-                let fila3 = new Array(anchoTabla).fill("");
-                fila3[0] = rev.letra; 
-                fila3[1] = rev.desc; 
-                if(fila3.length > 2) fila3[2] = "FECHA";
-                // Rellenamos la fecha en las columnas de firmas (asumimos desde la col 3)
-                for(let k=3; k<anchoTabla; k++) { 
-                    // Ponemos fecha solo si esa columna tenía nombre en el molde (para no ensuciar celdas vacías)
-                    if (nombresMolde[k] !== "") fila3[k] = rev.fecha; 
+                if (filasWord.items.length > 0) {
+                    let ultimaFila = filasWord.items[filasWord.items.length - 1];
+                    ultimaFila.load("values");
+                    await context.sync();
+                    nombresMolde = ultimaFila.values[0];
+                    anchoTabla = nombresMolde.length;
+                } else {
+                    nombresMolde = new Array(8).fill("");
                 }
 
-                // C. INSERTAR "End" (AL FINAL)
-                // addRows devuelve un Rango con las filas nuevas
-                let rangoNuevo = tablaWord.addRows("End", 3, [fila1, fila2, fila3]);
-                
-                // Sincronizamos para que el rango exista físicamente
-                await context.sync();
+                // C. ITERAR Y CREAR
+                for (let rev of nuevasParaEscribir) {
+                    // Fila 1: Nombres (Copiados)
+                    let fila1 = [...nombresMolde];
+                    fila1[0] = rev.letra; fila1[1] = rev.desc; if(fila1.length>2) fila1[2] = "NOMBRE";
+                    
+                    // Fila 2: Firmas (Vacío)
+                    let fila2 = new Array(anchoTabla).fill("");
+                    fila2[0] = rev.letra; fila2[1] = rev.desc; if(fila2.length>2) fila2[2] = "FIRMA";
+                    
+                    // Fila 3: Fechas
+                    let fila3 = new Array(anchoTabla).fill("");
+                    fila3[0] = rev.letra; fila3[1] = rev.desc; if(fila3.length>2) fila3[2] = "FECHA";
+                    for(let k=3; k<anchoTabla; k++) { if (nombresMolde[k] !== "") fila3[k] = rev.fecha; }
 
-                // D. FUSIONAR CELDAS (MERGE) 🧬
-                // Usamos getCell(fila, columna) relativo al nuevo rango (indices 0, 1, 2)
-                
-                // Columna 0 (REV): Fusionar fila 0 con fila 2 del nuevo rango
-                let celdaRevTop = rangoNuevo.getCell(0, 0);
-                let celdaRevBot = rangoNuevo.getCell(2, 0);
-                celdaRevTop.merge(celdaRevBot);
-                celdaRevTop.verticalAlignment = "Center"; // Centrar verticalmente
+                    // INSERTAR AL FINAL ("End")
+                    let rangoNuevo = tablaWord.addRows("End", 3, [fila1, fila2, fila3]);
+                    
+                    // ⚠️ SOLUCIÓN AL ERROR: Cargamos las filas del rango nuevo para acceder a sus celdas
+                    rangoNuevo.load("rows/cells/body"); 
+                    await context.sync();
 
-                // Columna 1 (DESC): Fusionar fila 0 con fila 2 del nuevo rango
-                let celdaDescTop = rangoNuevo.getCell(0, 1);
-                let celdaDescBot = rangoNuevo.getCell(2, 1);
-                celdaDescTop.merge(celdaDescBot);
-                celdaDescTop.verticalAlignment = "Center";
+                    // D. MERGE SEGURO (Sin getCell)
+                    // rangoNuevo.rows.items[0] es la fila superior del bloque insertado
+                    // rangoNuevo.rows.items[2] es la fila inferior del bloque insertado
+                    
+                    // Columna 0 (REV)
+                    let celdaTopRev = rangoNuevo.rows.items[0].cells.items[0].body.getRange("Whole");
+                    let celdaBotRev = rangoNuevo.rows.items[2].cells.items[0].body.getRange("Whole");
+                    let rangoRev = celdaTopRev.expandTo(celdaBotRev);
+                    rangoRev.merge();
+                    rangoNuevo.rows.items[0].cells.items[0].verticalAlignment = "Center";
+
+                    // Columna 1 (DESC)
+                    let celdaTopDesc = rangoNuevo.rows.items[0].cells.items[1].body.getRange("Whole");
+                    let celdaBotDesc = rangoNuevo.rows.items[2].cells.items[1].body.getRange("Whole");
+                    let rangoDesc = celdaTopDesc.expandTo(celdaBotDesc);
+                    rangoDesc.merge();
+                    rangoNuevo.rows.items[0].cells.items[1].verticalAlignment = "Center";
+                }
             }
-        } 
+        }
         
         // =========================================================
-        // 🏗️ CASO 2: MODO CODELCO/ESTÁNDAR (HACIA ARRIBA - 1 FILA)
+        // 🏗️ RAMA 2: MODO CODELCO/ESTÁNDAR (TU CÓDIGO ORIGINAL)
         // =========================================================
         else {
-            
-            // A. OBTENER MOLDE DE NOMBRES (De la PRIMERA fila existente)
-            let nombresMolde = [];
-            
-            if (filasWord.items.length > 0) {
-                // En Stack Up, la revisión más reciente está arriba (índice 0).
-                // Copiamos sus firmas para la nueva que irá ENCIMA de ella.
-                let primeraFila = filasWord.items[0];
-                primeraFila.load("values");
-                await context.sync();
-                nombresMolde = primeraFila.values[0];
-            } else {
-                nombresMolde = new Array(7).fill("");
+            let slotsDisponibles = [];
+
+            // 3. RECICLAJE (Tu lógica original intacta)
+            for (let i = 0; i < filasWord.items.length; i++) {
+                let fila = filasWord.items[i];
+                if (fila.cells.items.length < 3) continue;
+                let valorCelda = fila.cells.items[0].value;
+                let textoCelda = valorCelda ? valorCelda.trim().toUpperCase() : "";
+                
+                if (palabrasProtegidas.some(palabra => textoCelda.includes(palabra))) continue;
+
+                if (textoCelda === "") {
+                    slotsDisponibles.push(fila);
+                } 
+                else if (mapaDeseado.has(textoCelda)) {
+                    let datos = mapaDeseado.get(textoCelda);
+                    fila.cells.items[1].body.insertText(datos.fecha, "Replace");
+                    fila.cells.items[2].body.insertText(datos.desc, "Replace");
+                    mapaDeseado.delete(textoCelda);
+                } 
+                else {
+                    fila.cells.items[0].body.insertText("", "Replace");
+                    fila.cells.items[1].body.insertText("", "Replace");
+                    fila.cells.items[2].body.insertText("", "Replace");
+                    slotsDisponibles.push(fila);
+                }
             }
 
-            // B. CONSTRUIR DATOS (Invertimos orden para insertarlas bien si hay varias)
-            // Si hay que insertar C y D, y usamos "Start", primero insertamos C, luego D encima.
-            // Así queda D, C, B, A.
-            // 'nuevasParaEscribir' viene en orden A,B,C... lo invertimos si queremos stack up estricto, 
-            // o lo iteramos normal. Para "Start", iteramos normal:
-            // 1. Inserto C en 0. (Tabla: C, B, A)
-            // 2. Inserto D en 0. (Tabla: D, C, B, A) -> Correcto.
-            
-            // Usaremos map para preparar todas las filas de golpe
-            const datosParaInsertar = nuevasParaEscribir.map(rev => {
-                let filaNueva = [...nombresMolde]; // Copia del molde
-                
-                // Sobrescribimos datos nuevos
-                if(filaNueva.length >= 1) filaNueva[0] = rev.letra;
-                if(filaNueva.length >= 2) filaNueva[1] = rev.fecha;
-                if(filaNueva.length >= 3) filaNueva[2] = rev.desc;
-                
-                return filaNueva;
-            });
+            // 4. LLENAR SLOTS
+            let pendientes = [...revisions].reverse().filter(r => mapaDeseado.has(r.letra));
+            let filasNuevasParaCrear = [];
 
-            // C. INSERTAR "Start" (AL PRINCIPIO)
-            // Insertamos todas de una vez, pero ojo con el orden visual.
-            // Si mandamos el bloque [C, D], "Start" pondrá [C, D] y empujará lo viejo.
-            // Quedará: C, D, B, A.
-            // Si queremos D, C, B, A, tenemos que invertir el array de datos antes de enviarlo.
-            datosParaInsertar.reverse(); 
+            for (let rev of pendientes) {
+                if (slotsDisponibles.length > 0) {
+                    let slot = slotsDisponibles.shift(); 
+                    slot.cells.items[0].body.insertText(rev.letra, "Replace");
+                    slot.cells.items[1].body.insertText(rev.fecha, "Replace");
+                    slot.cells.items[2].body.insertText(rev.desc, "Replace");
+                } else {
+                    filasNuevasParaCrear.push([rev.letra, rev.fecha, rev.desc]);
+                }
+            }
 
-            if (datosParaInsertar.length > 0) {
-                tablaWord.addRows("Start", datosParaInsertar.length, datosParaInsertar);
+            // 5. CREAR FILAS NUEVAS (Tu lógica con clonación)
+            if (filasNuevasParaCrear.length > 0) {
+                let filaMoldeValues = [];
+                if (filasWord.items.length > 0) {
+                    filasWord.items[0].load("values");
+                    await context.sync();
+                    filaMoldeValues = filasWord.items[0].values[0]; 
+                } else {
+                    filaMoldeValues = new Array(7).fill("");
+                }
+
+                const datosParaWord = filasNuevasParaCrear.map(filaDatos => {
+                    let filaNueva = [...filaMoldeValues];
+                    if (filaNueva.length >= 1) filaNueva[0] = filaDatos[0];
+                    if (filaNueva.length >= 2) filaNueva[1] = filaDatos[1];
+                    if (filaNueva.length >= 3) filaNueva[2] = filaDatos[2];
+                    return filaNueva;
+                });
+
+                tablaWord.addRows("Start", datosParaWord.length, datosParaWord);
+            }
+
+            // 6. LIMPIEZA FINAL (Tu lógica original)
+            if (slotsDisponibles.length > 0) {
+                await context.sync(); // Sync antes de borrar
+                slotsDisponibles.reverse().forEach(fila => fila.delete());
             }
         }
 
         await context.sync();
-        mostrarMensaje("✅ Tabla actualizada correctamente.", "green");
+        mostrarMensaje("✅ Tabla Sincronizada.", "green");
 
     }).catch(error => {
         console.error("Error Word:", error);
         mostrarMensaje("❌ Error: " + error.message, "red");
     });
 }
+
 // ---------------------------------------------
 // 4. LÓGICA DE AZURE Y DATOS PROYECTO (ORIGINAL)
 // ---------------------------------------------
