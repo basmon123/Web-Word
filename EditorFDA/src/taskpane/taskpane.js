@@ -141,12 +141,16 @@ window.deleteRev = function(index) {
 // ---------------------------------------------
 
 async function escribirTablaEnWord() {
-    mostrarMensaje("⏳ Actualizando tabla...", "blue");
+    mostrarMensaje("⏳ Procesando tabla...", "blue");
 
     if (revisions.length === 0) {
         mostrarMensaje("⚠️ Lista vacía. Agrega revisiones primero.", "orange");
         return;
     }
+
+    // 0. CONFIGURACIÓN
+    const estandar = document.getElementById("ddlEstandar").value;
+    const esAMSA = (estandar === "AMSA"); // TRUE = Hacia Abajo (3 filas). FALSE = Hacia Arriba (1 fila).
 
     await Word.run(async (context) => {
         // 1. OBTENER TABLA
@@ -154,151 +158,176 @@ async function escribirTablaEnWord() {
         contentControls.load("items/tables/items");
         await context.sync();
 
-        if (contentControls.items.length === 0 || contentControls.items[0].tables.items.length === 0) {
+        if (contentControls.items.length === 0) {
             mostrarMensaje("❌ No encontré la tabla 'ccTablaRevisiones'.", "red");
             return;
         }
 
         const tablaWord = contentControls.items[0].tables.items[0];
         const filasWord = tablaWord.rows;
-        
-        // Cargamos valores y bodies (IMPRESCINDIBLE)
-        filasWord.load("items/cells/items/value, items/cells/items/body");
+        filasWord.load("items/cells/items/value");
         await context.sync();
 
-        // 2. PREPARACIÓN
-        let mapaDeseado = new Map();
-        revisions.forEach(r => mapaDeseado.set(r.letra, r));
-        let slotsDisponibles = [];
-
-       // PALABRAS CLAVE GENÉRICAS PARA PROTEGER FILAS (Sin números específicos)
-        // Agregamos variaciones comunes como "N.", "N°", "PREPARÓ", "CLIENTE" para cubrir todas las bases.
-        const palabrasProtegidas = [
-            "REVISIÓN", "REVISION", "REV.", 
-            "FECHA", 
-            "EMITIDO", "DESCRIPCIÓN", "DESCRIPCION",
-            "PROYECTO", "FDA", 
-            "APROBÓ", "APROBO", 
-            "PREPARÓ", "PREPARO", 
-            "REVISÓ", "REVISO", 
-            "CLIENTE", 
-            "N°", "N.", "NO." // Protege "N. Apellido", "Nº Proyecto", etc.
-        ];
-
-        // 3. PRIMERA PASADA: PROCESAR FILAS EXISTENTES
+        // 2. DETECTAR QUÉ REVISIONES YA EXISTEN (Para no duplicar)
+        let letrasEnTabla = new Set();
         for (let i = 0; i < filasWord.items.length; i++) {
-            let fila = filasWord.items[i];
+            // Leemos la primera celda de cada fila. 
+            // .trim() evita errores por espacios vacíos
+            let val = filasWord.items[i].cells.items[0].value.trim().toUpperCase();
+            // Ignoramos encabezados o filas vacías
+            if (val && val !== "REV" && val !== "REVISIÓN" && val !== "REVISION") {
+                letrasEnTabla.add(val);
+            }
+        }
+
+        // 3. FILTRAR: ¿QUÉ FALTA POR ESCRIBIR?
+        // Solo procesamos las que están en tu lista pero NO en Word.
+        let nuevasParaEscribir = revisions.filter(r => !letrasEnTabla.has(r.letra));
+
+        if (nuevasParaEscribir.length === 0) {
+            mostrarMensaje("✅ La tabla ya está actualizada.", "green");
+            return;
+        }
+
+        console.log(`Modo AMSA: ${esAMSA}. Insertando ${nuevasParaEscribir.length} nuevas revisiones.`);
+
+        // =========================================================
+        // 🏗️ CASO 1: MODO AMSA (HACIA ABAJO - STACK DOWN - 3 FILAS)
+        // =========================================================
+        if (esAMSA) {
             
-            // Protección contra footers o errores
-            if (fila.cells.items.length < 3) continue;
+            // A. OBTENER MOLDE DE NOMBRES (De la última fila existente)
+            let nombresMolde = [];
+            let anchoTabla = 8; // Valor seguro por defecto
 
-            let valorCelda = fila.cells.items[0].value;
-            let textoCelda = valorCelda ? valorCelda.trim().toUpperCase() : "";
-
-            // Filtro de filas de sistema
-            let esFilaSistema = palabrasProtegidas.some(palabra => textoCelda.includes(palabra));
-            if (esFilaSistema) continue;
-
-            if (textoCelda === "") {
-                // Fila vacía -> Disponible para reciclar
-                slotsDisponibles.push(fila);
-            } 
-            else if (mapaDeseado.has(textoCelda)) {
-                // Coincidencia exacta -> Actualizar datos
-                let datos = mapaDeseado.get(textoCelda);
-                fila.cells.items[1].body.insertText(datos.fecha, "Replace");
-                fila.cells.items[2].body.insertText(datos.desc, "Replace");
-                mapaDeseado.delete(textoCelda);
-            } 
-            else {
-                // Fila obsoleta (Ej: borraste la 'C' del historial) -> Limpiar y reciclar
-                fila.cells.items[0].body.insertText("", "Replace");
-                fila.cells.items[1].body.insertText("", "Replace");
-                fila.cells.items[2].body.insertText("", "Replace");
-                slotsDisponibles.push(fila);
-            }
-        }
-
-        // 4. LLENAR SLOTS RECICLADOS
-        let pendientes = [...revisions].reverse().filter(r => mapaDeseado.has(r.letra));
-        let filasNuevasParaCrear = [];
-
-        for (let rev of pendientes) {
-            if (slotsDisponibles.length > 0) {
-                // Usar slot reciclado
-                let slot = slotsDisponibles.shift(); 
-                slot.cells.items[0].body.insertText(rev.letra, "Replace");
-                slot.cells.items[1].body.insertText(rev.fecha, "Replace");
-                slot.cells.items[2].body.insertText(rev.desc, "Replace");
+            if (filasWord.items.length > 0) {
+                // En Stack Down, la última revisión está al final.
+                // Si la tabla tiene filas, copiamos la estructura de la última.
+                // Si es un bloque de 3, la fila de nombres suele ser la primera del bloque (antepenúltima total)
+                // Pero para ir a lo seguro, tomamos la ÚLTIMA fila visible y copiamos sus firmas.
+                let ultimaFila = filasWord.items[filasWord.items.length - 1];
+                ultimaFila.load("values");
+                await context.sync();
+                
+                // values[0] es el array de datos ["Letra", "Desc", "Etiqueta", "Firma1", "Firma2"...]
+                nombresMolde = ultimaFila.values[0]; 
+                anchoTabla = nombresMolde.length;
             } else {
-                // No hay huecos -> A la cola de crear
-                filasNuevasParaCrear.push([rev.letra, rev.fecha, rev.desc]);
+                nombresMolde = new Array(8).fill("");
             }
-        }
 
-// 5. CREAR FILAS NUEVAS (CON CLONACIÓN DE FIRMAS/NOMBRES)
-        if (filasNuevasParaCrear.length > 0) {
-            console.log(`Preparando para crear ${filasNuevasParaCrear.length} filas...`);
+            // B. ITERAR Y CREAR UNO POR UNO (Al final de la tabla)
+            for (let rev of nuevasParaEscribir) {
+                
+                // Construimos las 3 filas del bloque AMSA
+                
+                // Fila 1: NOMBRES (Copiamos firmas del molde)
+                let fila1 = [...nombresMolde]; 
+                fila1[0] = rev.letra; 
+                fila1[1] = rev.desc; 
+                if(fila1.length > 2) fila1[2] = "NOMBRE"; // Etiqueta
+                // El resto (indices 3,4,5...) se mantienen con los nombres clonados (Juan, Pedro...)
 
-            // A: Obtener la "fila molde" (la que ya existe en Word)
-            let filaMoldeValues = [];
+                // Fila 2: FIRMAS (Vacío para firmar a mano)
+                let fila2 = new Array(anchoTabla).fill("");
+                fila2[0] = rev.letra; 
+                fila2[1] = rev.desc; 
+                if(fila2.length > 2) fila2[2] = "FIRMA";
+
+                // Fila 3: FECHAS
+                let fila3 = new Array(anchoTabla).fill("");
+                fila3[0] = rev.letra; 
+                fila3[1] = rev.desc; 
+                if(fila3.length > 2) fila3[2] = "FECHA";
+                // Rellenamos la fecha en las columnas de firmas (asumimos desde la col 3)
+                for(let k=3; k<anchoTabla; k++) { 
+                    // Ponemos fecha solo si esa columna tenía nombre en el molde (para no ensuciar celdas vacías)
+                    if (nombresMolde[k] !== "") fila3[k] = rev.fecha; 
+                }
+
+                // C. INSERTAR "End" (AL FINAL)
+                // addRows devuelve un Rango con las filas nuevas
+                let rangoNuevo = tablaWord.addRows("End", 3, [fila1, fila2, fila3]);
+                
+                // Sincronizamos para que el rango exista físicamente
+                await context.sync();
+
+                // D. FUSIONAR CELDAS (MERGE) 🧬
+                // Usamos getCell(fila, columna) relativo al nuevo rango (indices 0, 1, 2)
+                
+                // Columna 0 (REV): Fusionar fila 0 con fila 2 del nuevo rango
+                let celdaRevTop = rangoNuevo.getCell(0, 0);
+                let celdaRevBot = rangoNuevo.getCell(2, 0);
+                celdaRevTop.merge(celdaRevBot);
+                celdaRevTop.verticalAlignment = "Center"; // Centrar verticalmente
+
+                // Columna 1 (DESC): Fusionar fila 0 con fila 2 del nuevo rango
+                let celdaDescTop = rangoNuevo.getCell(0, 1);
+                let celdaDescBot = rangoNuevo.getCell(2, 1);
+                celdaDescTop.merge(celdaDescBot);
+                celdaDescTop.verticalAlignment = "Center";
+            }
+        } 
+        
+        // =========================================================
+        // 🏗️ CASO 2: MODO CODELCO/ESTÁNDAR (HACIA ARRIBA - 1 FILA)
+        // =========================================================
+        else {
+            
+            // A. OBTENER MOLDE DE NOMBRES (De la PRIMERA fila existente)
+            let nombresMolde = [];
             
             if (filasWord.items.length > 0) {
-                filasWord.items[0].load("values");
+                // En Stack Up, la revisión más reciente está arriba (índice 0).
+                // Copiamos sus firmas para la nueva que irá ENCIMA de ella.
+                let primeraFila = filasWord.items[0];
+                primeraFila.load("values");
                 await context.sync();
-                // Guardamos los valores de la fila superior actual (ej: la 'B' o la 'P')
-                // Esto incluye ["P", "Fecha", "Desc", "JUAN", "PEDRO", "LUIS", "..."]
-                filaMoldeValues = filasWord.items[0].values[0]; 
+                nombresMolde = primeraFila.values[0];
             } else {
-                // Si la tabla estuviera vacía, usamos plantilla en blanco de 7
-                filaMoldeValues = new Array(7).fill("");
+                nombresMolde = new Array(7).fill("");
             }
 
-            // B: Construir las nuevas filas USANDO EL MOLDE
-            const datosParaWord = filasNuevasParaCrear.map(filaDatos => {
-                // 1. CLONAMOS la fila de abajo completa (incluyendo nombres)
-                let filaNueva = [...filaMoldeValues];
-
-                // 2. SOBRESCRIBIMOS solo los 3 primeros datos (los nuevos)
-                // Las columnas 3, 4, 5, 6 se quedan tal cual venían en 'filaMoldeValues'
-                if (filaNueva.length >= 1) filaNueva[0] = filaDatos[0]; // Letra Nueva
-                if (filaNueva.length >= 2) filaNueva[1] = filaDatos[1]; // Fecha Nueva
-                if (filaNueva.length >= 3) filaNueva[2] = filaDatos[2]; // Desc Nueva
+            // B. CONSTRUIR DATOS (Invertimos orden para insertarlas bien si hay varias)
+            // Si hay que insertar C y D, y usamos "Start", primero insertamos C, luego D encima.
+            // Así queda D, C, B, A.
+            // 'nuevasParaEscribir' viene en orden A,B,C... lo invertimos si queremos stack up estricto, 
+            // o lo iteramos normal. Para "Start", iteramos normal:
+            // 1. Inserto C en 0. (Tabla: C, B, A)
+            // 2. Inserto D en 0. (Tabla: D, C, B, A) -> Correcto.
+            
+            // Usaremos map para preparar todas las filas de golpe
+            const datosParaInsertar = nuevasParaEscribir.map(rev => {
+                let filaNueva = [...nombresMolde]; // Copia del molde
+                
+                // Sobrescribimos datos nuevos
+                if(filaNueva.length >= 1) filaNueva[0] = rev.letra;
+                if(filaNueva.length >= 2) filaNueva[1] = rev.fecha;
+                if(filaNueva.length >= 3) filaNueva[2] = rev.desc;
                 
                 return filaNueva;
             });
 
-            // C: Insertar
-            tablaWord.addRows("Start", datosParaWord.length, datosParaWord);
+            // C. INSERTAR "Start" (AL PRINCIPIO)
+            // Insertamos todas de una vez, pero ojo con el orden visual.
+            // Si mandamos el bloque [C, D], "Start" pondrá [C, D] y empujará lo viejo.
+            // Quedará: C, D, B, A.
+            // Si queremos D, C, B, A, tenemos que invertir el array de datos antes de enviarlo.
+            datosParaInsertar.reverse(); 
+
+            if (datosParaInsertar.length > 0) {
+                tablaWord.addRows("Start", datosParaInsertar.length, datosParaInsertar);
+            }
         }
 
-        // Sincronizamos
         await context.sync();
-
-        // 6. LIMPIEZA FINAL (GARBAGE COLLECTOR MEJORADO) 🗑️
-        if (slotsDisponibles.length > 0) {
-            console.log(`Eliminando ${slotsDisponibles.length} filas vacías sobrantes.`);
-            
-            // TRUCO DE SEGURIDAD: Invertimos el orden (.reverse())
-            // Al borrar, siempre es mejor empezar por la última fila y subir.
-            // Así no cambias el índice de las filas que te quedan por borrar arriba.
-            slotsDisponibles.reverse().forEach(fila => {
-                // Verificamos que la fila siga existiendo antes de borrarla
-                fila.delete();
-            });
-            
-            // Sincronizamos de nuevo para confirmar los borrados
-            await context.sync();
-        }
-
-        mostrarMensaje("✅ Tabla Sincronizada y Limpia.", "green");
+        mostrarMensaje("✅ Tabla actualizada correctamente.", "green");
 
     }).catch(error => {
         console.error("Error Word:", error);
         mostrarMensaje("❌ Error: " + error.message, "red");
     });
 }
-
 // ---------------------------------------------
 // 4. LÓGICA DE AZURE Y DATOS PROYECTO (ORIGINAL)
 // ---------------------------------------------
