@@ -44,34 +44,35 @@ function setNextLogic(type) {
     // --- CALCULAR LETRA ---
     if (!lastRev) {
         nextLetra = 'A';
-    } else {
+    } 
+    else if (lastRev === 'A') {
+        // 🔒 REGLA DE ORO: Después de la A, siempre va la B.
+        // Ignoramos si presionó "Fase" o "Iterar", forzamos B.
+        nextLetra = 'B';
+    }
+    else {
+        // Lógica normal para el resto (B -> C, o saltar a P)
         if (type === 'PHASE') {
-            // Botón Fase salta directo a P (o la siguiente letra si ya pasamos P)
             nextLetra = (lastRev < 'P') ? 'P' : String.fromCharCode(lastRev.charCodeAt(0) + 1);
         } else if (type === 'UPDATE_TEXT') {
-            // Mantiene la letra actual del input si solo cambiaste el combo
             const currentInput = document.getElementById('txtRevLetra').value;
             nextLetra = currentInput || String.fromCharCode(lastRev.charCodeAt(0) + 1);
         } else {
-            // Botón Iterar normal (A->B->C...)
             nextLetra = String.fromCharCode(lastRev.charCodeAt(0) + 1);
         }
     }
 
-    // --- CALCULAR DESCRIPCIÓN (Lógica Mejorada) ---
+    // --- CALCULAR DESCRIPCIÓN ---
     if (nextLetra === 'A') {
         nextDesc = 'Revisión Interna Empresa de Ingeniería';
     } 
     else if (nextLetra === 'B') {
         nextDesc = (clientStd === 'CODELCO') ? 'Revisión de Codelco' : 'Revisión Cliente';
     } 
-    // AQUÍ ESTÁ EL CAMBIO PARA Q, R, S, P...
     else if (nextLetra >= 'P') { 
-        // Si es P o superior, asumimos que es una fase nueva o construcción
         nextDesc = 'Siguiente Fase'; 
     } 
     else {
-        // Para C, D, E... (Intermedias)
         nextDesc = (clientStd === 'CODELCO') ? 'Revisión de Codelco' : 'Revisión Cliente';
     }
 
