@@ -223,41 +223,44 @@ async function escribirTablaEnWord() {
             }
         }
 
- // 5. CREAR FILAS NUEVAS (SOLUCIÓN DEFINITIVA)
+ // 5. CREAR FILAS NUEVAS
         if (filasNuevasParaCrear.length > 0) {
+            console.log(`Preparando para crear ${filasNuevasParaCrear.length} filas...`);
+
             // A: Detectar rejilla real
             let plantillaArray = [];
+            
             if (filasWord.items.length > 0) {
-                // Truco: Si no hemos cargado values antes, hazlo ahora por seguridad
-                filasWord.items[0].load("values"); 
-                // Nota: Si ya lo cargaste arriba no hace falta, pero no estorba.
-                // Lo importante es que uses la lógica que ya te funcionó.
-                // Asumiremos que el contexto ya tiene los values si usaste mi código anterior.
-                // Si te da error de "property not loaded", añade un sync aquí.
+                // 1. Pedimos cargar la propiedad 'values' de la primera fila
+                filasWord.items[0].load("values");
                 
+                // 🔴 ¡AQUÍ FALTABA ESTA LÍNEA! SIN ESTO, WORD NO TRAE LOS DATOS 🔴
+                await context.sync(); 
+
+                // 2. Ahora ya es seguro leer .values
                 let valoresFila0 = filasWord.items[0].values[0]; 
                 plantillaArray = new Array(valoresFila0.length).fill("");
+                console.log(`Rejilla detectada: ${valoresFila0.length} columnas.`);
             } else {
                 plantillaArray = new Array(7).fill("");
             }
 
-            // B: Construir datos
+            // B: Construir datos usando la plantilla
             const datosParaWord = filasNuevasParaCrear.map(filaDatos => {
                 let filaLista = [...plantillaArray];
+                // Rellenamos A, Fecha, Desc y dejamos el resto vacío
                 if (filaLista.length >= 1) filaLista[0] = filaDatos[0];
                 if (filaLista.length >= 2) filaLista[1] = filaDatos[1];
                 if (filaLista.length >= 3) filaLista[2] = filaDatos[2];
                 return filaLista;
             });
 
-            // C: Insertar
+            // C: Insertar (Argumentos: Dónde, Cuántas, Qué)
             tablaWord.addRows("Start", datosParaWord.length, datosParaWord);
         }
 
-        // --- CORRECCIÓN CRÍTICA AQUÍ ---
-        // Sincronizamos AHORA para que Word procese las inserciones y estabilice los índices
-        // antes de intentar borrar nada. Esto evita el GeneralException.
-        await context.sync(); 
+        // Sincronizamos para guardar la creación antes de pasar a borrar (Evita GeneralException)
+        await context.sync();
 
         // 6. LIMPIEZA FINAL (GARBAGE COLLECTOR MEJORADO) 🗑️
         if (slotsDisponibles.length > 0) {
