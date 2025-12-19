@@ -41,36 +41,40 @@ function setNextLogic(type) {
     let nextDesc = '';
     const clientStd = document.getElementById('ddlEstandar').value;
 
+    // --- CALCULAR LETRA ---
     if (!lastRev) {
         nextLetra = 'A';
-        nextDesc = 'Revisión Interna Empresa de Ingeniería';
     } else {
-        if (type === 'ITERATE' || type === 'UPDATE_TEXT') {
-            if (type === 'UPDATE_TEXT') {
-                 const currentInput = document.getElementById('txtRevLetra').value;
-                 nextLetra = currentInput || String.fromCharCode(lastRev.charCodeAt(0) + 1);
-            } else {
-                nextLetra = String.fromCharCode(lastRev.charCodeAt(0) + 1);
-            }
-
-            if (nextLetra === 'A') {
-                nextDesc = 'Revisión Interna Empresa de Ingeniería';
-            } else if (nextLetra === 'B') {
-                nextDesc = (clientStd === 'CODELCO') ? 'Revisión de Codelco' : 'Revisión Cliente';
-            } else {
-                nextDesc = (clientStd === 'CODELCO') ? 'Revisión de Codelco' : 'Revisión Cliente';
-            }
-
-        } else if (type === 'PHASE') {
-            if (lastRev < 'P') {
-                nextLetra = 'P';
-                nextDesc = 'Siguiente Fase'; 
-            } else {
-                nextLetra = String.fromCharCode(lastRev.charCodeAt(0) + 1);
-                nextDesc = 'Siguiente Fase';
-            }
+        if (type === 'PHASE') {
+            // Botón Fase salta directo a P (o la siguiente letra si ya pasamos P)
+            nextLetra = (lastRev < 'P') ? 'P' : String.fromCharCode(lastRev.charCodeAt(0) + 1);
+        } else if (type === 'UPDATE_TEXT') {
+            // Mantiene la letra actual del input si solo cambiaste el combo
+            const currentInput = document.getElementById('txtRevLetra').value;
+            nextLetra = currentInput || String.fromCharCode(lastRev.charCodeAt(0) + 1);
+        } else {
+            // Botón Iterar normal (A->B->C...)
+            nextLetra = String.fromCharCode(lastRev.charCodeAt(0) + 1);
         }
     }
+
+    // --- CALCULAR DESCRIPCIÓN (Lógica Mejorada) ---
+    if (nextLetra === 'A') {
+        nextDesc = 'Revisión Interna Empresa de Ingeniería';
+    } 
+    else if (nextLetra === 'B') {
+        nextDesc = (clientStd === 'CODELCO') ? 'Revisión de Codelco' : 'Revisión Cliente';
+    } 
+    // AQUÍ ESTÁ EL CAMBIO PARA Q, R, S, P...
+    else if (nextLetra >= 'P') { 
+        // Si es P o superior, asumimos que es una fase nueva o construcción
+        nextDesc = 'Siguiente Fase'; 
+    } 
+    else {
+        // Para C, D, E... (Intermedias)
+        nextDesc = (clientStd === 'CODELCO') ? 'Revisión de Codelco' : 'Revisión Cliente';
+    }
+
     document.getElementById('txtRevLetra').value = nextLetra;
     document.getElementById('txtRevDesc').value = nextDesc;
     establecerFechaHoyInput();
