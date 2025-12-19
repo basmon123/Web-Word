@@ -148,6 +148,11 @@ async function escribirTablaEnWord() {
         return;
     }
 
+    // 0. DETECTAR EL ESTÁNDAR (AMSA = Hacia Abajo)
+    // Aquí puedes agregar más clientes con || si lo necesitas
+    const estandar = document.getElementById("ddlEstandar").value;
+    const esStackDown = (estandar === "AMSA"); 
+
     await Word.run(async (context) => {
         // 1. OBTENER TABLA
         const contentControls = context.document.contentControls.getByTag("ccTablaRevisiones");
@@ -162,7 +167,6 @@ async function escribirTablaEnWord() {
         const tablaWord = contentControls.items[0].tables.items[0];
         const filasWord = tablaWord.rows;
         
-        // Cargamos valores y bodies (IMPRESCINDIBLE)
         filasWord.load("items/cells/items/value, items/cells/items/body");
         await context.sync();
 
@@ -171,8 +175,7 @@ async function escribirTablaEnWord() {
         revisions.forEach(r => mapaDeseado.set(r.letra, r));
         let slotsDisponibles = [];
 
-        // PALABRAS CLAVE GENÉRICAS PARA PROTEGER FILAS (Sin números específicos)
-        // Agregamos variaciones comunes como "N.", "N°", "PREPARÓ", "CLIENTE" para cubrir todas las bases.
+        // Palabras protegidas genéricas
         const palabrasProtegidas = [
             "REVISIÓN", "REVISION", "REV.", 
             "FECHA", 
@@ -182,36 +185,32 @@ async function escribirTablaEnWord() {
             "PREPARÓ", "PREPARO", 
             "REVISÓ", "REVISO", 
             "CLIENTE", 
-            "N°", "N.", "NO." // Protege "N. Apellido", "Nº Proyecto", etc.
+            "N°", "N.", "NO."
         ];
 
-        // 3. PRIMERA PASADA: PROCESAR FILAS EXISTENTES
+        // 3. PRIMERA PASADA: PROCESAR FILAS (Misma lógica de reciclaje)
         for (let i = 0; i < filasWord.items.length; i++) {
             let fila = filasWord.items[i];
             
-            // Protección contra footers o errores
             if (fila.cells.items.length < 3) continue;
 
             let valorCelda = fila.cells.items[0].value;
             let textoCelda = valorCelda ? valorCelda.trim().toUpperCase() : "";
 
-            // Filtro de filas de sistema
             let esFilaSistema = palabrasProtegidas.some(palabra => textoCelda.includes(palabra));
             if (esFilaSistema) continue;
 
             if (textoCelda === "") {
-                // Fila vacía -> Disponible para reciclar
                 slotsDisponibles.push(fila);
             } 
             else if (mapaDeseado.has(textoCelda)) {
-                // Coincidencia exacta -> Actualizar datos
                 let datos = mapaDeseado.get(textoCelda);
                 fila.cells.items[1].body.insertText(datos.fecha, "Replace");
                 fila.cells.items[2].body.insertText(datos.desc, "Replace");
                 mapaDeseado.delete(textoCelda);
             } 
             else {
-                // Fila obsoleta (Ej: borraste la 'C' del historial) -> Limpiar y reciclar
+                // Limpiar obsoleta
                 fila.cells.items[0].body.insertText("", "Replace");
                 fila.cells.items[1].body.insertText("", "Replace");
                 fila.cells.items[2].body.insertText("", "Replace");
@@ -219,79 +218,80 @@ async function escribirTablaEnWord() {
             }
         }
 
-        // 4. LLENAR SLOTS RECICLADOS
-        let pendientes = [...revisions].reverse().filter(r => mapaDeseado.has(r.letra));
+        // 4. LLENAR SLOTS (Orden inteligente según el caso)
+        // Si es Stack Down (AMSA), queremos llenar primero los huecos de arriba (orden natural).
+        // Si es Stack Up (Codelco), también (orden natural hacia abajo visualmente).
+        // Así que slotsDisponibles.shift() funciona bien para ambos.
+        
+        let pendientes = [];
+        if (esStackDown) {
+             // Para AMSA (A, B, C...), procesamos en orden normal
+             pendientes = revisions.filter(r => mapaDeseado.has(r.letra));
+        } else {
+             // Para Codelco (P, B, A...), procesamos en orden inverso (Stack Up)
+             pendientes = [...revisions].reverse().filter(r => mapaDeseado.has(r.letra));
+        }
+
         let filasNuevasParaCrear = [];
 
         for (let rev of pendientes) {
             if (slotsDisponibles.length > 0) {
-                // Usar slot reciclado
                 let slot = slotsDisponibles.shift(); 
                 slot.cells.items[0].body.insertText(rev.letra, "Replace");
                 slot.cells.items[1].body.insertText(rev.fecha, "Replace");
                 slot.cells.items[2].body.insertText(rev.desc, "Replace");
             } else {
-                // No hay huecos -> A la cola de crear
                 filasNuevasParaCrear.push([rev.letra, rev.fecha, rev.desc]);
             }
         }
 
-// 5. CREAR FILAS NUEVAS (CON CLONACIÓN DE FIRMAS/NOMBRES)
+        // 5. CREAR FILAS NUEVAS (LÓGICA DUAL: AMSA vs CODELCO)
         if (filasNuevasParaCrear.length > 0) {
-            console.log(`Preparando para crear ${filasNuevasParaCrear.length} filas...`);
+            console.log(`Creando ${filasNuevasParaCrear.length} filas. Modo StackDown: ${esStackDown}`);
 
-            // A: Obtener la "fila molde" (la que ya existe en Word)
             let filaMoldeValues = [];
             
             if (filasWord.items.length > 0) {
-                filasWord.items[0].load("values");
+                // DETALLE CLAVE: ¿De qué fila copiamos las firmas?
+                // Si es AMSA (inserta al final), copiamos la ÚLTIMA fila visible.
+                // Si es CODELCO (inserta al principio), copiamos la PRIMERA fila visible.
+                let indexMolde = esStackDown ? filasWord.items.length - 1 : 0;
+                
+                let rowMolde = filasWord.items[indexMolde];
+                rowMolde.load("values");
                 await context.sync();
-                // Guardamos los valores de la fila superior actual (ej: la 'B' o la 'P')
-                // Esto incluye ["P", "Fecha", "Desc", "JUAN", "PEDRO", "LUIS", "..."]
-                filaMoldeValues = filasWord.items[0].values[0]; 
+                
+                filaMoldeValues = rowMolde.values[0]; 
             } else {
-                // Si la tabla estuviera vacía, usamos plantilla en blanco de 7
                 filaMoldeValues = new Array(7).fill("");
             }
 
-            // B: Construir las nuevas filas USANDO EL MOLDE
             const datosParaWord = filasNuevasParaCrear.map(filaDatos => {
-                // 1. CLONAMOS la fila de abajo completa (incluyendo nombres)
                 let filaNueva = [...filaMoldeValues];
-
-                // 2. SOBRESCRIBIMOS solo los 3 primeros datos (los nuevos)
-                // Las columnas 3, 4, 5, 6 se quedan tal cual venían en 'filaMoldeValues'
-                if (filaNueva.length >= 1) filaNueva[0] = filaDatos[0]; // Letra Nueva
-                if (filaNueva.length >= 2) filaNueva[1] = filaDatos[1]; // Fecha Nueva
-                if (filaNueva.length >= 3) filaNueva[2] = filaDatos[2]; // Desc Nueva
-                
+                // Sobrescribimos A, Fecha, Desc
+                if (filaNueva.length >= 1) filaNueva[0] = filaDatos[0];
+                if (filaNueva.length >= 2) filaNueva[1] = filaDatos[1];
+                if (filaNueva.length >= 3) filaNueva[2] = filaDatos[2];
                 return filaNueva;
             });
 
-            // C: Insertar
-            tablaWord.addRows("Start", datosParaWord.length, datosParaWord);
+            // DETALLE CLAVE 2: ¿Dónde insertamos?
+            // "End" para AMSA (abajo), "Start" para Codelco (arriba)
+            let insertLocation = esStackDown ? "End" : "Start";
+            
+            tablaWord.addRows(insertLocation, datosParaWord.length, datosParaWord);
         }
 
-        // Sincronizamos
         await context.sync();
 
-        // 6. LIMPIEZA FINAL (GARBAGE COLLECTOR MEJORADO) 🗑️
+        // 6. LIMPIEZA FINAL
         if (slotsDisponibles.length > 0) {
-            console.log(`Eliminando ${slotsDisponibles.length} filas vacías sobrantes.`);
-            
-            // TRUCO DE SEGURIDAD: Invertimos el orden (.reverse())
-            // Al borrar, siempre es mejor empezar por la última fila y subir.
-            // Así no cambias el índice de las filas que te quedan por borrar arriba.
-            slotsDisponibles.reverse().forEach(fila => {
-                // Verificamos que la fila siga existiendo antes de borrarla
-                fila.delete();
-            });
-            
-            // Sincronizamos de nuevo para confirmar los borrados
+            console.log(`Limpiando ${slotsDisponibles.length} filas vacías.`);
+            slotsDisponibles.reverse().forEach(fila => fila.delete());
             await context.sync();
         }
 
-        mostrarMensaje("✅ Tabla Sincronizada y Limpia.", "green");
+        mostrarMensaje("✅ Tabla Sincronizada.", "green");
 
     }).catch(error => {
         console.error("Error Word:", error);
