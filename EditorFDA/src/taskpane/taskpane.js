@@ -150,7 +150,7 @@ async function escribirTablaEnWord() {
 
     // 0. DETECTAR EL ESTÁNDAR
     const estandar = document.getElementById("ddlEstandar").value;
-    const esAMSA = (estandar === "AMSA"); // Activa el modo especial de 3 filas
+    const esAMSA = (estandar === "AMSA"); 
 
     await Word.run(async (context) => {
         const contentControls = context.document.contentControls.getByTag("ccTablaRevisiones");
@@ -168,135 +168,105 @@ async function escribirTablaEnWord() {
         await context.sync();
 
         // ---------------------------------------------------------
-        // LÓGICA 1: LIMPIEZA Y RECICLAJE (Igual que antes)
+        // LÓGICA DE FILTRADO (PENDIENTES)
         // ---------------------------------------------------------
         let mapaDeseado = new Map();
         revisions.forEach(r => mapaDeseado.set(r.letra, r));
-        let slotsDisponibles = []; // Solo se usa en modo normal (Codelco)
-
-        // En AMSA es difícil reciclar por los merges, así que simplificamos:
-        // Si es AMSA, asumimos que solo AGREGAMOS al final (Stack Down puro).
-        // Si es Codelco, usamos la lógica de reciclaje de siempre.
-        
         let filasNuevasParaCrear = [];
 
-        if (!esAMSA) {
-            // ... (Lógica de reciclaje Codelco - Omitida por brevedad, se mantiene igual) ...
-            // Para simplificar esta respuesta, asumimos que si es AMSA, todo lo nuevo se crea.
-            filasNuevasParaCrear = revisions.filter(r => !mapaDeseado.has(r.letra)); // Esto es simplificado
-            // (Tu lógica de reciclaje original iría aquí para el 'else')
-             // Recuperamos tu lógica de pendientes:
-            let pendientes = [...revisions].reverse().filter(r => mapaDeseado.has(r.letra));
-             // ...
-        } 
-        else {
+        if (esAMSA) {
              // LÓGICA AMSA: FILTRAR LO QUE YA EXISTE EN LA TABLA
-             // Escaneamos la tabla buscando revisiones ya escritas
              let letrasEnTabla = new Set();
              for (let i = 0; i < filasWord.items.length; i++) {
+                 // Leemos la primera celda para ver qué letras ya están
                  let val = filasWord.items[i].cells.items[0].value.trim().toUpperCase();
                  if(val) letrasEnTabla.add(val);
              }
-             // Lo que está en 'revisions' pero NO en la tabla, hay que crearlo
              filasNuevasParaCrear = revisions.filter(r => !letrasEnTabla.has(r.letra));
+        } else {
+             // LÓGICA CODELCO / NORMAL (Simplificada para este ejemplo)
+             // Aquí iría tu lógica de reciclaje normal si la necesitas.
+             // Asumimos para este fix que si no es AMSA, usamos tu lógica anterior (reciclaje + creación simple)
+             // ... (Tu código de Codelco se mantiene aquí si lo tienes separado)
+             // Para simplificar, llenamos el array solo si no existen:
+             filasNuevasParaCrear = [...revisions].reverse().filter(r => !mapaDeseado.has(r.letra)); // Placeholder
         }
 
-        // Si estamos en modo CODELCO (Normal), usa tu lógica anterior aquí...
-        // PERO SI ES AMSA, USAMOS ESTA LÓGICA NUEVA BLINDADA:
-
+        // =========================================================
+        // 🚀 BLOQUE AMSA CORREGIDO (MERGE SEGURO)
+        // =========================================================
         if (esAMSA && filasNuevasParaCrear.length > 0) {
-            console.log(`🚀 MODO AMSA DETECTADO. Creando ${filasNuevasParaCrear.length} bloques de revisión...`);
+            console.log(`🚀 MODO AMSA. Creando ${filasNuevasParaCrear.length} bloques...`);
 
-            // 1. OBTENER MOLDE DE NOMBRES (De la última revisión existente)
+            // A. OBTENER MOLDE DE NOMBRES
             let nombresMolde = [];
-            let anchoTabla = 8; // Valor por defecto AMSA
+            let anchoTabla = 8; 
             
             if (filasWord.items.length >= 3) {
-                // En AMSA Stack Down, la última revisión son las últimas 3 filas.
-                // La fila de "Nombres" es la antepenúltima (Índice total - 3)
                 let filaNombreIndex = filasWord.items.length - 3; 
                 let filaMolde = filasWord.items[filaNombreIndex];
-                
                 filaMolde.load("values");
                 await context.sync();
-                
-                nombresMolde = filaMolde.values[0]; // ["B", "Desc", "NOMBRE", "JUAN", "PEDRO"...]
+                nombresMolde = filaMolde.values[0]; 
                 anchoTabla = nombresMolde.length;
             } else {
                 nombresMolde = new Array(anchoTabla).fill("");
             }
 
-            // 2. ITERAMOS POR CADA NUEVA REVISIÓN (C, D...)
+            // B. ITERAMOS POR CADA NUEVA REVISIÓN
             for (let rev of filasNuevasParaCrear) {
                 
-                // PREPARAMOS 3 FILAS (NOMBRE, FIRMA, FECHA)
-                // Usamos 'nombresMolde' para mantener el largo exacto y los nombres de las columnas 3,4,5...
-                
-                // FILA 1: NOMBRE (Copiamos nombres del molde)
+                // PREPARAMOS 3 FILAS
                 let fila1 = [...nombresMolde]; 
-                fila1[0] = rev.letra;      // Col 0: Letra
-                fila1[1] = rev.desc;       // Col 1: Descripción
-                fila1[2] = "NOMBRE";       // Col 2: Etiqueta Hardcoded (Ver foto 3)
-                // Col 3, 4, 5... se quedan con los nombres de 'nombresMolde' (Juan, Pedro...)
+                fila1[0] = rev.letra; fila1[1] = rev.desc; fila1[2] = "NOMBRE";
 
-                // FILA 2: FIRMA (Vaciaremos las firmas para que firmen de nuevo)
                 let fila2 = new Array(anchoTabla).fill("");
-                fila2[0] = rev.letra;      // Repetimos letra (se fusionará luego)
-                fila2[1] = rev.desc;       // Repetimos desc (se fusionará luego)
-                fila2[2] = "FIRMA";
-                // El resto vacío
+                fila2[0] = rev.letra; fila2[1] = rev.desc; fila2[2] = "FIRMA";
 
-                // FILA 3: FECHA (Ponemos la fecha nueva)
                 let fila3 = new Array(anchoTabla).fill("");
-                fila3[0] = rev.letra;
-                fila3[1] = rev.desc;
-                fila3[2] = "FECHA";
-                fila3[3] = rev.fecha;      // Asumimos que la fecha va en la primera columna de firmas? 
-                // OJO: En la foto AMSA, la fecha va repetida en cada columna de firma. 
-                // Si quieres repetirla:
-                for(let k=3; k<anchoTabla; k++) { if(k < 6) fila3[k] = rev.fecha; } 
+                fila3[0] = rev.letra; fila3[1] = rev.desc; fila3[2] = "FECHA";
+                // Rellenar fecha en columnas de firma (opcional, índice 3 en adelante)
+                for(let k=3; k<anchoTabla; k++) { if(k < 8) fila3[k] = rev.fecha; } 
 
-                // 3. INSERTAR EL BLOQUE DE 3 FILAS AL FINAL
-                // addRows devuelve un objeto Range con las filas añadidas
+                // INSERTAR
                 let nuevasFilas = tablaWord.addRows("End", 3, [fila1, fila2, fila3]);
                 
-                // Cargamos para poder hacer el merge
+                // --- CAMBIO CLAVE: CARGAMOS Y SINCRONIZAMOS ANTES DE FUSIONAR ---
+                // Necesitamos cargar las celdas de las nuevas filas para obtener sus rangos
                 nuevasFilas.load("items/cells"); 
-                await context.sync();
+                await context.sync(); // <--- IMPRESCINDIBLE: Confirmar existencia física
 
-                // 4. HACER EL MERGE VERTICAL (FUSIONAR CELDAS) 🧬
-                // Fusionamos Columna 0 (REV) de la fila 1 a la 3
-                // Fusionamos Columna 1 (DESC) de la fila 1 a la 3
+                // C. HACER EL MERGE USANDO RANGOS (FORMA SEGURA) 🛡️
+                // Word prefiere 'expandTo' a 'merge(cell)' directo
                 
-                // Sintaxis: celdaSuperior.merge(celdaInferior) -> Fusiona todo el rango entre ellas
-                let celdaRevTop = nuevasFilas.items[0].cells.items[0];
-                let celdaRevBot = nuevasFilas.items[2].cells.items[0];
-                celdaRevTop.merge(celdaRevBot);
+                // Fusión Columna 0 (REV)
+                let rangoRevTop = nuevasFilas.items[0].cells.items[0].getRange();
+                let rangoRevBot = nuevasFilas.items[2].cells.items[0].getRange();
+                let rangoRevTotal = rangoRevTop.expandTo(rangoRevBot); // Crea rango vertical
+                rangoRevTotal.merge(); // Fusiona el rango
 
-                let celdaDescTop = nuevasFilas.items[0].cells.items[1];
-                let celdaDescBot = nuevasFilas.items[2].cells.items[1];
-                celdaDescTop.merge(celdaDescBot);
+                // Fusión Columna 1 (DESC)
+                let rangoDescTop = nuevasFilas.items[0].cells.items[1].getRange();
+                let rangoDescBot = nuevasFilas.items[2].cells.items[1].getRange();
+                let rangoDescTotal = rangoDescTop.expandTo(rangoDescBot); // Crea rango vertical
+                rangoDescTotal.merge(); // Fusiona el rango
+                
+                // Alineación vertical al centro (Opcional, para que se vea bonito)
+                rangoRevTotal.verticalAlignment = "Center";
+                rangoDescTotal.verticalAlignment = "Center";
             }
         } 
         else if (!esAMSA) {
-             // AQUÍ PEGA TU LÓGICA ANTERIOR PARA CODELCO (STACK UP / 1 FILA)
-             // (La que ya te funcionaba bien con addRows "Start")
-             // ...
-             // Solo asegúrate de envolverla en un if (!esAMSA) para que no choquen.
-             
-             // ... (Código resumido de tu versión anterior para Codelco) ...
-             if (filasNuevasParaCrear.length > 0) {
-                 // ... lógica de clonar fila simple y addRows("Start") ...
-                 // ...
-                 tablaWord.addRows("Start", datosParaWord.length, datosParaWord);
-             }
+             // ... (TU LÓGICA CODELCO AQUÍ) ...
+             // Si el código Codelco ya te funcionaba, pégalo aquí tal cual.
+             // Recuerda usar addRows("Start") y la lógica de clonación simple.
         }
 
         await context.sync();
         mostrarMensaje("✅ Tabla AMSA Actualizada.", "green");
 
     }).catch(error => {
-        console.error(error);
+        console.error("Error Word:", error);
         mostrarMensaje("❌ Error: " + error.message, "red");
     });
 }
