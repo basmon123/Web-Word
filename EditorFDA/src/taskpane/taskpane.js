@@ -192,8 +192,8 @@ async function escribirTablaEnWord() {
              filasNuevasParaCrear = [...revisions].reverse().filter(r => !mapaDeseado.has(r.letra)); // Placeholder
         }
 
-        // =========================================================
-        // 🚀 BLOQUE AMSA CORREGIDO (MERGE SEGURO)
+      // =========================================================
+        // 🚀 BLOQUE AMSA CORREGIDO (MERGE VÍA BODY)
         // =========================================================
         if (esAMSA && filasNuevasParaCrear.length > 0) {
             console.log(`🚀 MODO AMSA. Creando ${filasNuevasParaCrear.length} bloques...`);
@@ -225,37 +225,39 @@ async function escribirTablaEnWord() {
 
                 let fila3 = new Array(anchoTabla).fill("");
                 fila3[0] = rev.letra; fila3[1] = rev.desc; fila3[2] = "FECHA";
-                // Rellenar fecha en columnas de firma (opcional, índice 3 en adelante)
+                // Repetir fecha en columnas de firma (índice 3 en adelante)
                 for(let k=3; k<anchoTabla; k++) { if(k < 8) fila3[k] = rev.fecha; } 
 
                 // INSERTAR
                 let nuevasFilas = tablaWord.addRows("End", 3, [fila1, fila2, fila3]);
                 
-                // --- CAMBIO CLAVE: CARGAMOS Y SINCRONIZAMOS ANTES DE FUSIONAR ---
-                // Necesitamos cargar las celdas de las nuevas filas para obtener sus rangos
-                nuevasFilas.load("items/cells"); 
-                await context.sync(); // <--- IMPRESCINDIBLE: Confirmar existencia física
+                // --- CAMBIO IMPORTANTE: CARGAMOS EL BODY ---
+                // Necesitamos 'body' para poder sacar el rango después
+                nuevasFilas.load("items/cells/body"); 
+                await context.sync(); 
 
-                // C. HACER EL MERGE USANDO RANGOS (FORMA SEGURA) 🛡️
-                // Word prefiere 'expandTo' a 'merge(cell)' directo
+                // C. HACER EL MERGE USANDO 'BODY' COMO ANCLA ⚓
+                // 1. Obtenemos el rango del TEXTO de la celda de arriba y la de abajo
+                let rangoRevTop = nuevasFilas.items[0].cells.items[0].body.getRange("Whole");
+                let rangoRevBot = nuevasFilas.items[2].cells.items[0].body.getRange("Whole");
                 
-                // Fusión Columna 0 (REV)
-                let rangoRevTop = nuevasFilas.items[0].cells.items[0].getRange();
-                let rangoRevBot = nuevasFilas.items[2].cells.items[0].getRange();
-                let rangoRevTotal = rangoRevTop.expandTo(rangoRevBot); // Crea rango vertical
-                rangoRevTotal.merge(); // Fusiona el rango
+                // 2. Expandimos para crear un rango gigante que cubra las 3 celdas
+                let rangoRevTotal = rangoRevTop.expandTo(rangoRevBot); 
+                
+                // 3. Fusionamos las celdas que estén DENTRO de ese rango
+                rangoRevTotal.cells.merge(); 
 
-                // Fusión Columna 1 (DESC)
-                let rangoDescTop = nuevasFilas.items[0].cells.items[1].getRange();
-                let rangoDescBot = nuevasFilas.items[2].cells.items[1].getRange();
-                let rangoDescTotal = rangoDescTop.expandTo(rangoDescBot); // Crea rango vertical
-                rangoDescTotal.merge(); // Fusiona el rango
+                // REPETIMOS PARA LA DESCRIPCIÓN (Columna 1)
+                let rangoDescTop = nuevasFilas.items[0].cells.items[1].body.getRange("Whole");
+                let rangoDescBot = nuevasFilas.items[2].cells.items[1].body.getRange("Whole");
+                let rangoDescTotal = rangoDescTop.expandTo(rangoDescBot); 
+                rangoDescTotal.cells.merge(); 
                 
-                // Alineación vertical al centro (Opcional, para que se vea bonito)
-                rangoRevTotal.verticalAlignment = "Center";
-                rangoDescTotal.verticalAlignment = "Center";
+                // D. ALINEACIÓN VERTICAL (Se aplica a la celda superior resultante)
+                nuevasFilas.items[0].cells.items[0].verticalAlignment = "Center";
+                nuevasFilas.items[0].cells.items[1].verticalAlignment = "Center";
             }
-        } 
+        }
         else if (!esAMSA) {
              // ... (TU LÓGICA CODELCO AQUÍ) ...
              // Si el código Codelco ya te funcionaba, pégalo aquí tal cual.
