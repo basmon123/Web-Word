@@ -224,43 +224,43 @@ async function escribirTablaEnWord() {
             }
         }
 
- // 5. CREAR FILAS NUEVAS
+// 5. CREAR FILAS NUEVAS (CON CLONACIÓN DE FIRMAS/NOMBRES)
         if (filasNuevasParaCrear.length > 0) {
             console.log(`Preparando para crear ${filasNuevasParaCrear.length} filas...`);
 
-            // A: Detectar rejilla real
-            let plantillaArray = [];
+            // A: Obtener la "fila molde" (la que ya existe en Word)
+            let filaMoldeValues = [];
             
             if (filasWord.items.length > 0) {
-                // 1. Pedimos cargar la propiedad 'values' de la primera fila
                 filasWord.items[0].load("values");
-                
-                // 🔴 ¡AQUÍ FALTABA ESTA LÍNEA! SIN ESTO, WORD NO TRAE LOS DATOS 🔴
-                await context.sync(); 
-
-                // 2. Ahora ya es seguro leer .values
-                let valoresFila0 = filasWord.items[0].values[0]; 
-                plantillaArray = new Array(valoresFila0.length).fill("");
-                console.log(`Rejilla detectada: ${valoresFila0.length} columnas.`);
+                await context.sync();
+                // Guardamos los valores de la fila superior actual (ej: la 'B' o la 'P')
+                // Esto incluye ["P", "Fecha", "Desc", "JUAN", "PEDRO", "LUIS", "..."]
+                filaMoldeValues = filasWord.items[0].values[0]; 
             } else {
-                plantillaArray = new Array(7).fill("");
+                // Si la tabla estuviera vacía, usamos plantilla en blanco de 7
+                filaMoldeValues = new Array(7).fill("");
             }
 
-            // B: Construir datos usando la plantilla
+            // B: Construir las nuevas filas USANDO EL MOLDE
             const datosParaWord = filasNuevasParaCrear.map(filaDatos => {
-                let filaLista = [...plantillaArray];
-                // Rellenamos A, Fecha, Desc y dejamos el resto vacío
-                if (filaLista.length >= 1) filaLista[0] = filaDatos[0];
-                if (filaLista.length >= 2) filaLista[1] = filaDatos[1];
-                if (filaLista.length >= 3) filaLista[2] = filaDatos[2];
-                return filaLista;
+                // 1. CLONAMOS la fila de abajo completa (incluyendo nombres)
+                let filaNueva = [...filaMoldeValues];
+
+                // 2. SOBRESCRIBIMOS solo los 3 primeros datos (los nuevos)
+                // Las columnas 3, 4, 5, 6 se quedan tal cual venían en 'filaMoldeValues'
+                if (filaNueva.length >= 1) filaNueva[0] = filaDatos[0]; // Letra Nueva
+                if (filaNueva.length >= 2) filaNueva[1] = filaDatos[1]; // Fecha Nueva
+                if (filaNueva.length >= 3) filaNueva[2] = filaDatos[2]; // Desc Nueva
+                
+                return filaNueva;
             });
 
-            // C: Insertar (Argumentos: Dónde, Cuántas, Qué)
+            // C: Insertar
             tablaWord.addRows("Start", datosParaWord.length, datosParaWord);
         }
 
-        // Sincronizamos para guardar la creación antes de pasar a borrar (Evita GeneralException)
+        // Sincronizamos
         await context.sync();
 
         // 6. LIMPIEZA FINAL (GARBAGE COLLECTOR MEJORADO) 🗑️
