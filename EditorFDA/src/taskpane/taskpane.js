@@ -276,11 +276,11 @@ async function escribirTablaEnWord() {
 
             // PASO C: INSERTAR
             // Ahora es imposible que falle el largo, porque estamos devolviendo exactamente
-            // el mismo largo de array que Word nos dio en 'firstRow.values'.
+            /// el mismo largo de array que Word nos dio en 'firstRow.values'.
             tablaWord.addRows("Start", datosParaWord);
         }
 
-        
+
         await context.sync();
         mostrarMensaje("✅ Tabla actualizada (Encabezados protegidos).", "green");
 
