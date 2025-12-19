@@ -235,49 +235,37 @@ async function escribirTablaEnWord() {
             }
         }
 
-// 5. CREAR FILAS NUEVAS (SOLUCIÓN BLINDADA: USAR VALORES REALES)
+// 5. CREAR FILAS NUEVAS (SOLUCIÓN FINAL: ARGUMENTOS CORRECTOS)
         if (filasNuevasParaCrear.length > 0) {
             console.log(`Preparando para crear ${filasNuevasParaCrear.length} filas...`);
 
-            // PASO A: OBTENER "PLANTILLA" DE LA REJILLA REAL
-            // No confiamos en .cells.length, confiamos en .values que trae la estructura interna exacta
+            // PASO A: DETECTAR LA REJILLA REAL (Esto estaba bien)
             let plantillaArray = [];
-            
             if (filasWord.items.length > 0) {
-                // Cargamos los valores de la primera fila para usarlos de molde
                 filasWord.items[0].load("values");
                 await context.sync();
-                
-                // Si la primera fila tiene datos, copiamos su estructura de array
-                // values[0] nos dará algo como ["P", "Fecha", "...", "", "", ""] con el largo EXACTO que Word quiere
                 let valoresFila0 = filasWord.items[0].values[0]; 
-                
-                // Creamos un array vacío con ESE mismo largo
                 plantillaArray = new Array(valoresFila0.length).fill("");
-                console.log(`Rejilla detectada por valores: ${valoresFila0.length} columnas.`);
+                console.log(`Rejilla detectada: ${valoresFila0.length} columnas.`);
             } else {
-                // Fallback de emergencia si la tabla está 100% vacía
                 plantillaArray = new Array(7).fill("");
             }
 
-            // PASO B: CONSTRUIR LOS DATOS NUEVOS USANDO LA PLANTILLA
+            // PASO B: CONSTRUIR LOS DATOS (Esto también estaba bien)
             const datosParaWord = filasNuevasParaCrear.map(filaDatos => {
-                // Clonamos la plantilla vacía (con el largo correcto)
                 let filaLista = [...plantillaArray];
-                
-                // Rellenamos solo las primeras 3 posiciones (Letra, Fecha, Desc)
-                // y dejamos el resto (posiciones 3, 4, 5...) vacías o como vengan en la plantilla
-                if (filaLista.length >= 1) filaLista[0] = filaDatos[0]; // Letra
-                if (filaLista.length >= 2) filaLista[1] = filaDatos[1]; // Fecha
-                if (filaLista.length >= 3) filaLista[2] = filaDatos[2]; // Desc
-                
+                // Rellenamos A, Fecha, Desc
+                if (filaLista.length >= 1) filaLista[0] = filaDatos[0];
+                if (filaLista.length >= 2) filaLista[1] = filaDatos[1];
+                if (filaLista.length >= 3) filaLista[2] = filaDatos[2];
                 return filaLista;
             });
 
-            // PASO C: INSERTAR
-            // Ahora es imposible que falle el largo, porque estamos devolviendo exactamente
-            /// el mismo largo de array que Word nos dio en 'firstRow.values'.
-            tablaWord.addRows("Start", datosParaWord);
+            // PASO C: INSERTAR (AQUÍ ESTABA EL ERROR)
+            // ANTES (MAL): tablaWord.addRows("Start", datosParaWord);
+            // AHORA (BIEN): Le pasamos la CANTIDAD (datosParaWord.length) en medio.
+            
+            tablaWord.addRows("Start", datosParaWord.length, datosParaWord);
         }
 
 
