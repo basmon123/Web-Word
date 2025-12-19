@@ -171,7 +171,19 @@ async function escribirTablaEnWord() {
         revisions.forEach(r => mapaDeseado.set(r.letra, r));
         let slotsDisponibles = [];
 
-        const palabrasProtegidas = ["REVISIÓN", "REVISION", "FECHA", "EMITIDO", "PROYECTO", "7609", "FDA", "APROBÓ", "REV."];
+        // PALABRAS CLAVE GENÉRICAS PARA PROTEGER FILAS (Sin números específicos)
+        // Agregamos variaciones comunes como "N.", "N°", "PREPARÓ", "CLIENTE" para cubrir todas las bases.
+        const palabrasProtegidas = [
+            "REVISIÓN", "REVISION", "REV.", 
+            "FECHA", 
+            "EMITIDO", "DESCRIPCIÓN", "DESCRIPCION",
+            "PROYECTO", "FDA", 
+            "APROBÓ", "APROBO", 
+            "PREPARÓ", "PREPARO", 
+            "REVISÓ", "REVISO", 
+            "CLIENTE", 
+            "N°", "N.", "NO." // Protege "N. Apellido", "Nº Proyecto", etc.
+        ];
 
         // 3. PRIMERA PASADA: PROCESAR FILAS EXISTENTES
         for (let i = 0; i < filasWord.items.length; i++) {
