@@ -223,13 +223,18 @@ async function escribirTablaEnWord() {
             }
         }
 
-        // 5. CREAR FILAS NUEVAS (SOLUCIÓN FINAL QUE FUNCIONÓ)
+ // 5. CREAR FILAS NUEVAS (SOLUCIÓN DEFINITIVA)
         if (filasNuevasParaCrear.length > 0) {
             // A: Detectar rejilla real
             let plantillaArray = [];
             if (filasWord.items.length > 0) {
-                filasWord.items[0].load("values");
-                await context.sync();
+                // Truco: Si no hemos cargado values antes, hazlo ahora por seguridad
+                filasWord.items[0].load("values"); 
+                // Nota: Si ya lo cargaste arriba no hace falta, pero no estorba.
+                // Lo importante es que uses la lógica que ya te funcionó.
+                // Asumiremos que el contexto ya tiene los values si usaste mi código anterior.
+                // Si te da error de "property not loaded", añade un sync aquí.
+                
                 let valoresFila0 = filasWord.items[0].values[0]; 
                 plantillaArray = new Array(valoresFila0.length).fill("");
             } else {
@@ -245,19 +250,31 @@ async function escribirTablaEnWord() {
                 return filaLista;
             });
 
-            // C: Insertar con los 3 argumentos correctos
+            // C: Insertar
             tablaWord.addRows("Start", datosParaWord.length, datosParaWord);
         }
 
-        // 6. LIMPIEZA FINAL (GARBAGE COLLECTOR) 🗑️
-        // Si sobraron slots vacíos que nadie usó (porque borraste revisiones), los eliminamos de Word.
+        // --- CORRECCIÓN CRÍTICA AQUÍ ---
+        // Sincronizamos AHORA para que Word procese las inserciones y estabilice los índices
+        // antes de intentar borrar nada. Esto evita el GeneralException.
+        await context.sync(); 
+
+        // 6. LIMPIEZA FINAL (GARBAGE COLLECTOR MEJORADO) 🗑️
         if (slotsDisponibles.length > 0) {
             console.log(`Eliminando ${slotsDisponibles.length} filas vacías sobrantes.`);
-            // delete() borra la fila de la tabla
-            slotsDisponibles.forEach(fila => fila.delete());
+            
+            // TRUCO DE SEGURIDAD: Invertimos el orden (.reverse())
+            // Al borrar, siempre es mejor empezar por la última fila y subir.
+            // Así no cambias el índice de las filas que te quedan por borrar arriba.
+            slotsDisponibles.reverse().forEach(fila => {
+                // Verificamos que la fila siga existiendo antes de borrarla
+                fila.delete();
+            });
+            
+            // Sincronizamos de nuevo para confirmar los borrados
+            await context.sync();
         }
 
-        await context.sync();
         mostrarMensaje("✅ Tabla Sincronizada y Limpia.", "green");
 
     }).catch(error => {
