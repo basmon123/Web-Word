@@ -141,7 +141,7 @@ window.deleteRev = function(index) {
 // ---------------------------------------------
 
 async function escribirTablaEnWord() {
-    mostrarMensaje("⏳ Procesando tabla...", "blue");
+    mostrarMensaje("⏳ Sincronizando tabla...", "blue");
 
     if (revisions.length === 0) {
         mostrarMensaje("⚠️ Lista vacía. Agrega revisiones primero.", "orange");
@@ -167,179 +167,173 @@ async function escribirTablaEnWord() {
         filasWord.load("items/cells/items/value, items/cells/items/body");
         await context.sync();
 
-        // 2. PREPARACIÓN DE DATOS
-        let mapaDeseado = new Map();
-        revisions.forEach(r => mapaDeseado.set(r.letra, r));
-        
-        // --- LISTA BLINDADA PARA AMSA Y CODELCO ---
-        // Basada en tus imágenes: Protege "N° INTERNO", "POR", "REVISIONES", "REV", etc.
+        // 2. LISTA BLINDADA DE PALABRAS PROTEGIDAS (ENCABEZADOS AMSA)
         const palabrasProtegidas = [
-            "REVISIÓN", "REVISION", "REV", "REV.", // "REV" sin punto es vital para AMSA
-            "REVISIONES", // Vital para encabezado AMSA
-            "FECHA", 
-            "EMITIDO", 
-            "DESCRIPCIÓN", "DESCRIPCION", 
-            "PROYECTO", 
-            "TÍTULO", "TITULO", // Vital para encabezado AMSA
-            "FDA", "CENTINELA", // Nombres de empresas en encabezados
-            "APROBÓ", "APROBO", 
-            "PREPARÓ", "PREPARO", "POR", // "POR" vital para AMSA
-            "REVISÓ", "REVISO", 
-            "CLIENTE", 
-            "N°", "N.", "NO.", "INTERNO", // "INTERNO" protege "N° INTERNO"
-            "NOMBRE", "FIRMA" // Etiquetas laterales de AMSA
+            "REVISIÓN", "REVISION", "REV", "REV.", 
+            "FECHA", "EMITIDO", "DESCRIPCIÓN", "DESCRIPCION", 
+            "PROYECTO", "TÍTULO", "TITULO", "FDA", "CENTINELA", 
+            "APROBÓ", "APROBO", "PREPARÓ", "PREPARO", "POR", 
+            "REVISÓ", "REVISO", "CLIENTE", 
+            "N°", "N.", "NO.", "INTERNO", "NOMBRE", "FIRMA"
         ];
 
         // =========================================================
-        // 🏗️ MODO AMSA (STACK DOWN)
+        // 🏗️ MODO AMSA (STACK DOWN - SECUENCIAL)
         // =========================================================
         if (esAMSA) {
-            console.log("🔵 MODO AMSA ACTIVADO");
+            console.log("🔵 MODO AMSA: SINCRONIZACIÓN SECUENCIAL");
 
-            let bloquesDisponibles = [];
-            let letrasYaEnTabla = new Set();
-
-            // Iteramos de 3 en 3 (saltando encabezados protegidos)
-            // IMPORTANTE: Ajustamos el loop para no romper si la tabla no es múltiplo de 3 exacto
-            // debido a los encabezados superiores.
+            // PASO A: IDENTIFICAR LOS BLOQUES DE DATOS (Slots)
+            // Un "slot" es el índice de la primera fila de un bloque de revisión (la que tiene el Nombre)
+            let slotsIndices = [];
             
-            // Paso A: Escanear toda la tabla fila por fila para identificar qué es qué
             for (let i = 0; i < filasWord.items.length; i++) {
-                let celdaRev = filasWord.items[i].cells.items[0];
-                let texto = celdaRev.value.trim().toUpperCase();
+                let texto = filasWord.items[i].cells.items[0].value.trim().toUpperCase();
 
-                // 1. CHEQUEO DE PROTECCIÓN (ENCABEZADOS)
-                // Si la celda contiene alguna palabra protegida, SALTAMOS esa fila.
-                // Usamos 'some' para ver si incluye alguna palabra clave.
-                if (palabrasProtegidas.some(p => texto.includes(p))) {
-                    continue; 
-                }
+                // Si es encabezado, saltamos
+                if (palabrasProtegidas.some(p => texto.includes(p))) continue;
 
-                // 2. DETECCIÓN DE BLOQUES DE DATOS
-                // Si llegamos aquí, NO es un encabezado. Es una fila de datos o vacía.
-                // En AMSA, los datos vienen en bloques de 3. Verificamos si es el inicio de un bloque.
-                // Un bloque válido tiene que tener espacio para 3 filas (i, i+1, i+2)
+                // Verificamos si es un bloque de 3 filas válido
+                // (Miramos la columna de etiquetas en i, i+1, i+2)
                 if (i + 2 < filasWord.items.length) {
-                    // Verificamos si esta fila 'i' es el inicio (letras A, B, C o vacío)
-                    // y que la fila 'i+1' tenga "FIRMA" (o vacío) en la columna lateral (índice 2)
-                    // Esto ayuda a confirmar que estamos en el "grid" correcto.
-                    
-                    // Cargamos valor de la etiqueta lateral (columna 2) para confirmar estructura AMSA
-                    let etiquetaLateral = filasWord.items[i].cells.items[2].value.trim().toUpperCase(); // Debería ser "NOMBRE" o vacío
-                    let etiquetaSiguiente = filasWord.items[i+1].cells.items[2].value.trim().toUpperCase(); // Debería ser "FIRMA"
-
-                    // Si parece un bloque AMSA (o está vacío y disponible)
-                    if (texto === "" && (etiquetaLateral === "" || etiquetaLateral === "NOMBRE")) {
-                        bloquesDisponibles.push(i);
-                        i += 2; // Saltamos las otras 2 filas del bloque
-                    } 
-                    else if (mapaDeseado.has(texto)) {
-                        // ES UNA REVISIÓN EXISTENTE (A, B...)
-                        let datos = mapaDeseado.get(texto);
-                        
-                        // Fila 1 (Nombre)
-                        filasWord.items[i].cells.items[1].body.insertText(datos.desc, "Replace");
-                        // Fila 3 (Fechas)
-                        let filaFechas = filasWord.items[i + 2];
-                        for(let c=3; c < filaFechas.cells.items.length; c++) {
-                             // Solo escribimos si la celda no está vacía (asumiendo que tiene borde/formato)
-                             // O simplemente escribimos sin miedo:
-                             filaFechas.cells.items[c].body.insertText(datos.fecha, "Replace");
-                        }
-                        letrasYaEnTabla.add(texto);
-                        i += 2; // Saltamos el bloque ya procesado
-                    }
-                    // Ojo: Si hay una fila suelta que no es bloque ni encabezado, el loop sigue normal.
+                    // En AMSA, la columna 2 suele tener "NOMBRE", luego "FIRMA", luego "FECHA"
+                    // O al menos la estructura permite 3 filas.
+                    // Asumimos que todo lo que no es encabezado es un bloque de datos.
+                    slotsIndices.push(i);
+                    i += 2; // Saltamos las filas internas del bloque (Firma y Fecha) para ir al siguiente
                 }
             }
 
-            // B. DETERMINAR PENDIENTES
-            let pendientes = revisions.filter(r => !letrasYaEnTabla.has(r.letra));
+            console.log(`Detectados ${slotsIndices.length} slots disponibles en la tabla.`);
 
-            // C. RECICLAR HUECOS
-            while (bloquesDisponibles.length > 0 && pendientes.length > 0) {
-                let rev = pendientes.shift(); 
-                let idx = bloquesDisponibles.shift();
+            // PASO B: SOBRESCRIBIR SLOTS EXISTENTES (A, B, P -> A, B, C)
+            // Iteramos sobre la lista de revisiones del usuario (revisions)
+            let revisionIndex = 0;
+
+            // Mientras haya slots y revisiones para llenarlos
+            while (revisionIndex < revisions.length && revisionIndex < slotsIndices.length) {
+                let rev = revisions[revisionIndex];
+                let idx = slotsIndices[revisionIndex]; // Índice de fila en Word
                 
+                // Filas del bloque
+                let filaTop = filasWord.items[idx];     // Nombre
+                // let filaMid = filasWord.items[idx+1]; // Firma (No la tocamos para mantener firmas manuales si existen)
+                let filaBot = filasWord.items[idx+2];   // Fecha
+
+                // 1. Actualizar Letra y Descripción (Fila Top)
+                filaTop.cells.items[0].body.insertText(rev.letra, "Replace");
+                filaTop.cells.items[1].body.insertText(rev.desc, "Replace");
+                
+                // 2. Asegurar etiquetas laterales (por si estaban borradas)
+                filaTop.cells.items[2].body.insertText("NOMBRE", "Replace");
+                filasWord.items[idx+1].cells.items[2].body.insertText("FIRMA", "Replace");
+                filaBot.cells.items[2].body.insertText("FECHA", "Replace");
+
+                // 3. Actualizar FECHAS (Solo en la fila inferior = FilaBot)
+                // Empezamos desde columna 3 hacia la derecha
+                for(let c = 3; c < filaBot.cells.items.length; c++) {
+                    // Escribimos la fecha
+                    filaBot.cells.items[c].body.insertText(rev.fecha, "Replace");
+                }
+                
+                // Limpiar firmas antiguas si la letra cambió? (Opcional, por seguridad no borramos firmas)
+                // Pero si antes era "P" y ahora es "C", quizás quieras limpiar la fila del medio.
+                // filaMid.cells.items[0].body.insertText(rev.letra, "Replace"); // Actualiza letra oculta mergeada
+
+                revisionIndex++;
+            }
+
+            // PASO C: LIMPIAR SLOTS SOBRANTES (Si tenías A,B,C,P y ahora solo A,B -> P debe borrarse)
+            while (revisionIndex < slotsIndices.length) {
+                let idx = slotsIndices[revisionIndex];
                 let filaTop = filasWord.items[idx];
                 let filaMid = filasWord.items[idx+1];
                 let filaBot = filasWord.items[idx+2];
 
-                // Llenamos etiquetas si estaban borradas
-                filaTop.cells.items[2].body.insertText("NOMBRE", "Replace");
-                filaMid.cells.items[2].body.insertText("FIRMA", "Replace");
-                filaBot.cells.items[2].body.insertText("FECHA", "Replace");
-
-                // Datos
-                filaTop.cells.items[0].body.insertText(rev.letra, "Replace");
-                filaTop.cells.items[1].body.insertText(rev.desc, "Replace");
+                // Borramos textos visibles
+                filaTop.cells.items[0].body.insertText("", "Replace");
+                filaTop.cells.items[1].body.insertText("", "Replace");
                 
-                // Repetimos letra/desc en filas ocultas para consistencia visual si no hay merge
-                // (Si ya hay merge visual, esto no se ve, pero no daña)
-                filaMid.cells.items[0].body.insertText(rev.letra, "Replace");
-                filaBot.cells.items[0].body.insertText(rev.letra, "Replace");
-
-                for(let c=3; c < filaBot.cells.items.length; c++) {
-                    filaBot.cells.items[c].body.insertText(rev.fecha, "Replace");
+                // Borramos fechas abajo
+                for(let c = 3; c < filaBot.cells.items.length; c++) {
+                    filaBot.cells.items[c].body.insertText("", "Replace");
                 }
+                // Borramos firmas en medio?
+                for(let c = 3; c < filaMid.cells.items.length; c++) {
+                    filaMid.cells.items[c].body.insertText("", "Replace");
+                }
+                
+                revisionIndex++;
             }
 
-            // D. CREAR NUEVOS BLOQUES
+            // PASO D: CREAR NUEVOS BLOQUES (Si tienes A,B,C,D y tabla solo tenía 3 slots)
+            // revisionIndex ahora apunta a la primera revisión que NO cupo en la tabla
+            let pendientes = revisions.slice(revisionIndex); 
+
             if (pendientes.length > 0) {
-                // Molde
+                // Obtener molde de nombres de la última fila válida
                 let nombresMolde = [];
                 let anchoTabla = 8;
                 if (filasWord.items.length > 0) {
-                    let ultimaFila = filasWord.items[filasWord.items.length - 1];
-                    ultimaFila.load("values");
+                    let ultima = filasWord.items[filasWord.items.length - 1];
+                    ultima.load("values");
                     await context.sync();
-                    nombresMolde = ultimaFila.values[0];
+                    nombresMolde = ultima.values[0];
                     anchoTabla = nombresMolde.length;
                 } else { nombresMolde = new Array(8).fill(""); }
 
                 for (let rev of pendientes) {
-                    let f1 = [...nombresMolde]; f1[0]=rev.letra; f1[1]=rev.desc; if(f1.length>2) f1[2]="NOMBRE";
-                    let f2 = new Array(anchoTabla).fill(""); f2[0]=rev.letra; f2[1]=rev.desc; if(f2.length>2) f2[2]="FIRMA";
-                    let f3 = new Array(anchoTabla).fill(""); f3[0]=rev.letra; f3[1]=rev.desc; if(f3.length>2) f3[2]="FECHA";
-                    for(let k=3; k<anchoTabla; k++) { if(nombresMolde[k]!=="") f3[k] = rev.fecha; }
+                    // PREPARAR ARRAYS
+                    let f1 = [...nombresMolde]; 
+                    f1[0]=rev.letra; f1[1]=rev.desc; if(f1.length>2) f1[2]="NOMBRE";
 
+                    let f2 = new Array(anchoTabla).fill(""); 
+                    f2[0]=rev.letra; f2[1]=rev.desc; if(f2.length>2) f2[2]="FIRMA";
+
+                    let f3 = new Array(anchoTabla).fill(""); 
+                    f3[0]=rev.letra; f3[1]=rev.desc; if(f3.length>2) f3[2]="FECHA";
+                    
+                    // CORRECCIÓN DE FECHAS: Escribir fecha SOLO en f3 (fila 3) y en columnas correctas
+                    for(let k=3; k<anchoTabla; k++) { 
+                        // Solo ponemos fecha si hay un encabezado de nombre correspondiente en el molde
+                        if(nombresMolde[k] !== "") f3[k] = rev.fecha; 
+                    }
+
+                    // INSERTAR
                     let rangoNuevo = tablaWord.addRows("End", 3, [f1, f2, f3]);
                     rangoNuevo.load("rows/cells/body");
                     await context.sync();
 
-                    // Merge Col 0
-                    let topRev = rangoNuevo.rows.items[0].cells.items[0].body.getRange("Whole");
-                    let botRev = rangoNuevo.rows.items[2].cells.items[0].body.getRange("Whole");
-                    topRev.expandTo(botRev).merge();
+                    // MERGE
+                    let tRev = rangoNuevo.rows.items[0].cells.items[0].body.getRange("Whole");
+                    let bRev = rangoNuevo.rows.items[2].cells.items[0].body.getRange("Whole");
+                    tRev.expandTo(bRev).merge();
                     rangoNuevo.rows.items[0].cells.items[0].verticalAlignment = "Center";
 
-                    // Merge Col 1
-                    let topDesc = rangoNuevo.rows.items[0].cells.items[1].body.getRange("Whole");
-                    let botDesc = rangoNuevo.rows.items[2].cells.items[1].body.getRange("Whole");
-                    topDesc.expandTo(botDesc).merge();
+                    let tDesc = rangoNuevo.rows.items[0].cells.items[1].body.getRange("Whole");
+                    let bDesc = rangoNuevo.rows.items[2].cells.items[1].body.getRange("Whole");
+                    tDesc.expandTo(bDesc).merge();
                     rangoNuevo.rows.items[0].cells.items[1].verticalAlignment = "Center";
                 }
             }
         } 
         
         // =========================================================
-        // 🏗️ MODO CODELCO (STACK UP)
+        // 🏗️ MODO CODELCO (STACK UP - 1 FILA) - LÓGICA ORIGINAL
         // =========================================================
         else {
             console.log("🟢 MODO ESTÁNDAR ACTIVADO");
             let slotsDisponibles = [];
+            let mapaDeseado = new Map();
+            revisions.forEach(r => mapaDeseado.set(r.letra, r));
 
             for (let i = 0; i < filasWord.items.length; i++) {
                 let fila = filasWord.items[i];
                 if (fila.cells.items.length < 3) continue;
-                
                 let texto = fila.cells.items[0].value.trim().toUpperCase();
-                
                 if (palabrasProtegidas.some(p => texto.includes(p))) continue;
 
-                if (texto === "") {
-                    slotsDisponibles.push(fila);
-                } 
+                if (texto === "") slotsDisponibles.push(fila);
                 else if (mapaDeseado.has(texto)) {
                     let datos = mapaDeseado.get(texto);
                     fila.cells.items[1].body.insertText(datos.fecha, "Replace");
