@@ -164,7 +164,6 @@ async function escribirTablaEnWord() {
 
         const tablaWord = contentControls.items[0].tables.items[0];
         const filasWord = tablaWord.rows;
-        // Cargamos Values (para leer datos) y Body (para escribir rangos)
         filasWord.load("items/cells/items/value, items/cells/items/body");
         await context.sync();
 
@@ -172,81 +171,122 @@ async function escribirTablaEnWord() {
         let mapaDeseado = new Map();
         revisions.forEach(r => mapaDeseado.set(r.letra, r));
         
-        const palabrasProtegidas = ["REVISIÓN", "REVISION", "REV.", "FECHA", "EMITIDO", "DESCRIPCIÓN", "PROYECTO", "FDA", "APROBÓ", "PREPARÓ", "REVISÓ", "CLIENTE", "N°", "N.", "NO.", "NOMBRE", "FIRMA"];
+        // --- LISTA BLINDADA PARA AMSA Y CODELCO ---
+        // Basada en tus imágenes: Protege "N° INTERNO", "POR", "REVISIONES", "REV", etc.
+        const palabrasProtegidas = [
+            "REVISIÓN", "REVISION", "REV", "REV.", // "REV" sin punto es vital para AMSA
+            "REVISIONES", // Vital para encabezado AMSA
+            "FECHA", 
+            "EMITIDO", 
+            "DESCRIPCIÓN", "DESCRIPCION", 
+            "PROYECTO", 
+            "TÍTULO", "TITULO", // Vital para encabezado AMSA
+            "FDA", "CENTINELA", // Nombres de empresas en encabezados
+            "APROBÓ", "APROBO", 
+            "PREPARÓ", "PREPARO", "POR", // "POR" vital para AMSA
+            "REVISÓ", "REVISO", 
+            "CLIENTE", 
+            "N°", "N.", "NO.", "INTERNO", // "INTERNO" protege "N° INTERNO"
+            "NOMBRE", "FIRMA" // Etiquetas laterales de AMSA
+        ];
 
         // =========================================================
-        //  MODO AMSA (HACIA ABAJO - BLOQUES DE 3 - RECICLAJE)
+        // 🏗️ MODO AMSA (STACK DOWN)
         // =========================================================
         if (esAMSA) {
-            console.log("🔵 MODO AMSA ACTIVADO (Stack Down + Reciclaje)");
+            console.log("🔵 MODO AMSA ACTIVADO");
 
-            // A. ESCANEAR BLOQUES EXISTENTES (DE 3 EN 3)
-            let bloquesDisponibles = []; // Guardamos el índice de la primera fila del bloque
+            let bloquesDisponibles = [];
             let letrasYaEnTabla = new Set();
 
-            // Iteramos de 3 en 3 porque cada revisión son 3 filas
-            for (let i = 0; i < filasWord.items.length - 2; i += 3) {
+            // Iteramos de 3 en 3 (saltando encabezados protegidos)
+            // IMPORTANTE: Ajustamos el loop para no romper si la tabla no es múltiplo de 3 exacto
+            // debido a los encabezados superiores.
+            
+            // Paso A: Escanear toda la tabla fila por fila para identificar qué es qué
+            for (let i = 0; i < filasWord.items.length; i++) {
                 let celdaRev = filasWord.items[i].cells.items[0];
                 let texto = celdaRev.value.trim().toUpperCase();
 
-                // Saltamos encabezados
-                if (palabrasProtegidas.some(p => texto.includes(p))) continue;
+                // 1. CHEQUEO DE PROTECCIÓN (ENCABEZADOS)
+                // Si la celda contiene alguna palabra protegida, SALTAMOS esa fila.
+                // Usamos 'some' para ver si incluye alguna palabra clave.
+                if (palabrasProtegidas.some(p => texto.includes(p))) {
+                    continue; 
+                }
 
-                if (texto === "") {
-                    // Bloque vacío detectado
-                    bloquesDisponibles.push(i);
-                } else {
-                    // Bloque ocupado
-                    if (mapaDeseado.has(texto)) {
-                        // Si existe en tu lista, actualizamos datos (Descripción / Fecha)
+                // 2. DETECCIÓN DE BLOQUES DE DATOS
+                // Si llegamos aquí, NO es un encabezado. Es una fila de datos o vacía.
+                // En AMSA, los datos vienen en bloques de 3. Verificamos si es el inicio de un bloque.
+                // Un bloque válido tiene que tener espacio para 3 filas (i, i+1, i+2)
+                if (i + 2 < filasWord.items.length) {
+                    // Verificamos si esta fila 'i' es el inicio (letras A, B, C o vacío)
+                    // y que la fila 'i+1' tenga "FIRMA" (o vacío) en la columna lateral (índice 2)
+                    // Esto ayuda a confirmar que estamos en el "grid" correcto.
+                    
+                    // Cargamos valor de la etiqueta lateral (columna 2) para confirmar estructura AMSA
+                    let etiquetaLateral = filasWord.items[i].cells.items[2].value.trim().toUpperCase(); // Debería ser "NOMBRE" o vacío
+                    let etiquetaSiguiente = filasWord.items[i+1].cells.items[2].value.trim().toUpperCase(); // Debería ser "FIRMA"
+
+                    // Si parece un bloque AMSA (o está vacío y disponible)
+                    if (texto === "" && (etiquetaLateral === "" || etiquetaLateral === "NOMBRE")) {
+                        bloquesDisponibles.push(i);
+                        i += 2; // Saltamos las otras 2 filas del bloque
+                    } 
+                    else if (mapaDeseado.has(texto)) {
+                        // ES UNA REVISIÓN EXISTENTE (A, B...)
                         let datos = mapaDeseado.get(texto);
                         
                         // Fila 1 (Nombre)
                         filasWord.items[i].cells.items[1].body.insertText(datos.desc, "Replace");
-                        
-                        // Fila 3 (Fechas) - Asumimos fechas desde col 3 en adelante
+                        // Fila 3 (Fechas)
                         let filaFechas = filasWord.items[i + 2];
                         for(let c=3; c < filaFechas.cells.items.length; c++) {
-                            // Solo escribimos si hay algo escrito en la celda (para no romper formato)
-                            // O forzamos escritura si lo prefieres.
-                            filaFechas.cells.items[c].body.insertText(datos.fecha, "Replace");
+                             // Solo escribimos si la celda no está vacía (asumiendo que tiene borde/formato)
+                             // O simplemente escribimos sin miedo:
+                             filaFechas.cells.items[c].body.insertText(datos.fecha, "Replace");
                         }
                         letrasYaEnTabla.add(texto);
-                    } else {
-                        // Es una revisión vieja que borraste de tu lista (ej: borraste la B)
-                        // Limpiamos el bloque y lo marcamos disponible
-                        filasWord.items[i].cells.items[0].body.insertText("", "Replace");
-                        filasWord.items[i].cells.items[1].body.insertText("", "Replace");
-                        bloquesDisponibles.push(i);
+                        i += 2; // Saltamos el bloque ya procesado
                     }
+                    // Ojo: Si hay una fila suelta que no es bloque ni encabezado, el loop sigue normal.
                 }
             }
 
-            // B. DETERMINAR QUÉ FALTA POR ESCRIBIR
-            // En AMSA el orden es A -> B -> C (Natural)
+            // B. DETERMINAR PENDIENTES
             let pendientes = revisions.filter(r => !letrasYaEnTabla.has(r.letra));
 
-            // C. LLENAR HUECOS VACÍOS (RECICLAJE)
-            // Mientras queden huecos y pendientes, los usamos
+            // C. RECICLAR HUECOS
             while (bloquesDisponibles.length > 0 && pendientes.length > 0) {
-                let rev = pendientes.shift(); // Tomamos el primero (A)
-                let idx = bloquesDisponibles.shift(); // Tomamos el primer hueco
+                let rev = pendientes.shift(); 
+                let idx = bloquesDisponibles.shift();
                 
-                // Llenamos el bloque existente
                 let filaTop = filasWord.items[idx];
-                let filaBot = filasWord.items[idx + 2];
+                let filaMid = filasWord.items[idx+1];
+                let filaBot = filasWord.items[idx+2];
 
+                // Llenamos etiquetas si estaban borradas
+                filaTop.cells.items[2].body.insertText("NOMBRE", "Replace");
+                filaMid.cells.items[2].body.insertText("FIRMA", "Replace");
+                filaBot.cells.items[2].body.insertText("FECHA", "Replace");
+
+                // Datos
                 filaTop.cells.items[0].body.insertText(rev.letra, "Replace");
                 filaTop.cells.items[1].body.insertText(rev.desc, "Replace");
+                
+                // Repetimos letra/desc en filas ocultas para consistencia visual si no hay merge
+                // (Si ya hay merge visual, esto no se ve, pero no daña)
+                filaMid.cells.items[0].body.insertText(rev.letra, "Replace");
+                filaBot.cells.items[0].body.insertText(rev.letra, "Replace");
 
                 for(let c=3; c < filaBot.cells.items.length; c++) {
                     filaBot.cells.items[c].body.insertText(rev.fecha, "Replace");
                 }
             }
 
-            // D. CREAR NUEVOS BLOQUES (Si se acabaron los huecos)
+            // D. CREAR NUEVOS BLOQUES
             if (pendientes.length > 0) {
-                // Obtenemos molde de la última fila para copiar firmas
+                // Molde
                 let nombresMolde = [];
                 let anchoTabla = 8;
                 if (filasWord.items.length > 0) {
@@ -257,29 +297,23 @@ async function escribirTablaEnWord() {
                     anchoTabla = nombresMolde.length;
                 } else { nombresMolde = new Array(8).fill(""); }
 
-                // Iteramos lo que falta por crear
                 for (let rev of pendientes) {
-                    // Preparamos 3 filas
                     let f1 = [...nombresMolde]; f1[0]=rev.letra; f1[1]=rev.desc; if(f1.length>2) f1[2]="NOMBRE";
                     let f2 = new Array(anchoTabla).fill(""); f2[0]=rev.letra; f2[1]=rev.desc; if(f2.length>2) f2[2]="FIRMA";
                     let f3 = new Array(anchoTabla).fill(""); f3[0]=rev.letra; f3[1]=rev.desc; if(f3.length>2) f3[2]="FECHA";
                     for(let k=3; k<anchoTabla; k++) { if(nombresMolde[k]!=="") f3[k] = rev.fecha; }
 
-                    // INSERTAR AL FINAL
                     let rangoNuevo = tablaWord.addRows("End", 3, [f1, f2, f3]);
-                    
-                    // Cargar para merge (SOLUCIÓN SEGURA)
                     rangoNuevo.load("rows/cells/body");
                     await context.sync();
 
-                    // MERGE VERTICAL
-                    // Col 0
+                    // Merge Col 0
                     let topRev = rangoNuevo.rows.items[0].cells.items[0].body.getRange("Whole");
                     let botRev = rangoNuevo.rows.items[2].cells.items[0].body.getRange("Whole");
                     topRev.expandTo(botRev).merge();
                     rangoNuevo.rows.items[0].cells.items[0].verticalAlignment = "Center";
 
-                    // Col 1
+                    // Merge Col 1
                     let topDesc = rangoNuevo.rows.items[0].cells.items[1].body.getRange("Whole");
                     let botDesc = rangoNuevo.rows.items[2].cells.items[1].body.getRange("Whole");
                     topDesc.expandTo(botDesc).merge();
@@ -289,13 +323,12 @@ async function escribirTablaEnWord() {
         } 
         
         // =========================================================
-        //  MODO CODELCO (HACIA ARRIBA - 1 FILA - TU LÓGICA ORIGINAL)
+        // 🏗️ MODO CODELCO (STACK UP)
         // =========================================================
         else {
-            console.log("🟢 MODO ESTÁNDAR ACTIVADO (Stack Up)");
+            console.log("🟢 MODO ESTÁNDAR ACTIVADO");
             let slotsDisponibles = [];
 
-            // 1. SCAN Y RECICLAJE
             for (let i = 0; i < filasWord.items.length; i++) {
                 let fila = filasWord.items[i];
                 if (fila.cells.items.length < 3) continue;
@@ -311,10 +344,9 @@ async function escribirTablaEnWord() {
                     let datos = mapaDeseado.get(texto);
                     fila.cells.items[1].body.insertText(datos.fecha, "Replace");
                     fila.cells.items[2].body.insertText(datos.desc, "Replace");
-                    mapaDeseado.delete(texto); // Marcamos como hecha
+                    mapaDeseado.delete(texto); 
                 } 
                 else {
-                    // Obsoleta -> Limpiar
                     fila.cells.items[0].body.insertText("", "Replace");
                     fila.cells.items[1].body.insertText("", "Replace");
                     fila.cells.items[2].body.insertText("", "Replace");
@@ -322,8 +354,6 @@ async function escribirTablaEnWord() {
                 }
             }
 
-            // 2. LLENAR SLOTS CON PENDIENTES
-            // Stack Up: Invertimos orden (última revisión arriba)
             let pendientes = [...revisions].reverse().filter(r => mapaDeseado.has(r.letra));
             let nuevasParaCrear = [];
 
@@ -338,11 +368,9 @@ async function escribirTablaEnWord() {
                 }
             }
 
-            // 3. CREAR FILAS SI FALTAN
             if (nuevasParaCrear.length > 0) {
                 let molde = [];
                 if (filasWord.items.length > 0) {
-                    // Copiamos firmas de la PRIMERA fila (la de más arriba)
                     filasWord.items[0].load("values");
                     await context.sync();
                     molde = filasWord.items[0].values[0];
@@ -355,11 +383,9 @@ async function escribirTablaEnWord() {
                     if(f.length>=3) f[2]=d[2];
                     return f;
                 });
-
                 tablaWord.addRows("Start", datosInsertar.length, datosInsertar);
             }
 
-            // 4. LIMPIEZA FINAL (Solo en modo estándar)
             if (slotsDisponibles.length > 0) {
                 await context.sync();
                 slotsDisponibles.reverse().forEach(f => f.delete());
