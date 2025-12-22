@@ -143,7 +143,6 @@ window.deleteRev = function(index) {
 // ---------------------------------------------
 // 3. ESCRITURA EN WORD (INTELIGENTE: ACTUALIZA O INSERTA)
 // ---------------------------------------------
-
 async function escribirTablaEnWord() {
     mostrarMensaje("⏳ Sincronizando tabla...", "blue");
 
@@ -171,7 +170,7 @@ async function escribirTablaEnWord() {
         filasWord.load("items/cells/items/value, items/cells/items/body");
         await context.sync();
 
-        // 2. LISTA BLINDADA DE PALABRAS PROTEGIDAS (ENCABEZADOS AMSA)
+        // 2. PALABRAS PROTEGIDAS
         const palabrasProtegidas = [
             "REVISIÓN", "REVISION", "REV", "REV.", 
             "FECHA", "EMITIDO", "DESCRIPCIÓN", "DESCRIPCION", 
@@ -187,87 +186,97 @@ async function escribirTablaEnWord() {
         if (esAMSA) {
             console.log("🔵 MODO AMSA: SINCRONIZACIÓN SECUENCIAL");
 
-            // PASO A: IDENTIFICAR LOS BLOQUES DE DATOS (Slots)
+            // A. IDENTIFICAR SLOTS (Bloques de 3 filas)
             let slotsIndices = [];
             
             for (let i = 0; i < filasWord.items.length; i++) {
-                // Validación básica de existencia
-                if (!filasWord.items[i].cells || !filasWord.items[i].cells.items[0]) continue;
+                // Chequeo de seguridad básico
+                if (!filasWord.items[i].cells || filasWord.items[i].cells.items.length === 0) continue;
 
                 let texto = filasWord.items[i].cells.items[0].value.trim().toUpperCase();
 
-                // Si es encabezado, saltamos
                 if (palabrasProtegidas.some(p => texto.includes(p))) continue;
 
-                // Verificamos si es un bloque de 3 filas válido (espacio físico)
+                // Verificamos espacio para bloque de 3
                 if (i + 2 < filasWord.items.length) {
                     slotsIndices.push(i);
-                    i += 2; // Saltamos las filas internas del bloque
+                    i += 2; 
                 }
             }
-
             console.log(`Detectados ${slotsIndices.length} slots disponibles.`);
 
-            // PASO B: SOBRESCRIBIR SLOTS EXISTENTES (A, B, P -> A, B, C)
+            // B. SOBRESCRIBIR SLOTS EXISTENTES
             let revisionIndex = 0;
 
             while (revisionIndex < revisions.length && revisionIndex < slotsIndices.length) {
                 let rev = revisions[revisionIndex];
                 let idx = slotsIndices[revisionIndex]; 
                 
-                // Filas del bloque
-                let filaTop = filasWord.items[idx];     // Nombre
-                let filaMid = filasWord.items[idx+1];   // Firma
-                let filaBot = filasWord.items[idx+2];   // Fecha
+                let filaTop = filasWord.items[idx];     
+                let filaMid = filasWord.items[idx+1];   
+                let filaBot = filasWord.items[idx+2];   
 
-                // 1. Actualizar Letra y Descripción (Fila Top)
+                // --- 1. FILA SUPERIOR (Nombre, Rev, Desc) ---
                 if (filaTop.cells.items.length > 0) filaTop.cells.items[0].body.insertText(rev.letra, "Replace");
                 if (filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText(rev.desc, "Replace");
-                
-                // 2. Asegurar etiquetas laterales (con chequeo de seguridad)
-                if (filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace");
-                
-                // Verificamos si filaMid tiene celdas accesibles (a veces el merge oculta celdas 0 y 1)
-                // Usamos la columna 2 que suele ser segura para "FIRMA"
-                if (filaMid.cells.items.length > 2) {
-                     filaMid.cells.items[2].body.insertText("FIRMA", "Replace");
-                } else if (filaMid.cells.items.length > 0) {
-                     // Intento fallback si la estructura varía
-                     try { filaMid.cells.items[filaMid.cells.items.length-1].body.insertText("FIRMA", "Replace"); } catch(e){}
+                // Etiqueta NOMBRE: Si la fila está llena, suele ser indice 2. Si está fusionada raro, indice 0.
+                let idxNombre = (filaTop.cells.items.length > 2) ? 2 : -1;
+                if(idxNombre !== -1) filaTop.cells.items[idxNombre].body.insertText("NOMBRE", "Replace");
+
+                // --- 2. FILA MEDIO (Etiqueta FIRMA) ---
+                // Aquí es donde ocurría el error. Si hay merge, esta fila tiene menos celdas.
+                let celdasMid = filaMid.cells.items;
+                // Si la fila tiene pocas celdas (ej: 6), la celda "0" es visualmente la columna 2.
+                let idxFirma = (celdasMid.length < 5) ? 0 : 2; 
+                if (celdasMid.length > idxFirma) {
+                    celdasMid[idxFirma].body.insertText("FIRMA", "Replace");
                 }
 
-                if (filaBot.cells.items.length > 2) filaBot.cells.items[2].body.insertText("FECHA", "Replace");
+                // --- 3. FILA INFERIOR (Etiqueta FECHA y Fechas) ---
+                let celdasBot = filaBot.cells.items;
+                let idxFechaLabel = (celdasBot.length < 5) ? 0 : 2;
+                
+                if (celdasBot.length > idxFechaLabel) {
+                    celdasBot[idxFechaLabel].body.insertText("FECHA", "Replace");
+                }
 
-                // 3. Actualizar FECHAS (Solo en la fila inferior = FilaBot)
-                // Empezamos desde columna 3 hacia la derecha
-                for(let c = 3; c < filaBot.cells.items.length; c++) {
-                    filaBot.cells.items[c].body.insertText(rev.fecha, "Replace");
+                // Las fechas reales van a la derecha de la etiqueta.
+                // Si idxFechaLabel es 0, las fechas van en 1, 2, 3...
+                // Si idxFechaLabel es 2, las fechas van en 3, 4, 5...
+                let startCol = idxFechaLabel + 1;
+                for(let c = startCol; c < celdasBot.length; c++) {
+                    // Verificación extra: solo escribir si no es una celda fantasma
+                    try { celdasBot[c].body.insertText(rev.fecha, "Replace"); } catch(e){}
                 }
                 
                 revisionIndex++;
             }
 
-            // PASO C: LIMPIAR SLOTS SOBRANTES (Si tenías A,B,C,P y ahora solo A,B -> P debe borrarse)
+            // C. LIMPIAR SLOTS SOBRANTES
             while (revisionIndex < slotsIndices.length) {
                 let idx = slotsIndices[revisionIndex];
                 let filaTop = filasWord.items[idx];
                 let filaBot = filasWord.items[idx+2];
-
+                // Borrar datos fila top
                 if(filaTop.cells.items.length > 0) filaTop.cells.items[0].body.insertText("", "Replace");
                 if(filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText("", "Replace");
                 
-                for(let c = 3; c < filaBot.cells.items.length; c++) {
-                    filaBot.cells.items[c].body.insertText("", "Replace");
+                // Borrar fechas fila bot
+                let celdasBot = filaBot.cells.items;
+                let idxStart = (celdasBot.length < 5) ? 1 : 3; // Misma lógica dinámica
+                for(let c = idxStart; c < celdasBot.length; c++) {
+                    try { celdasBot[c].body.insertText("", "Replace"); } catch(e){}
                 }
-                
                 revisionIndex++;
             }
 
-            // PASO D: CREAR NUEVOS BLOQUES (Si faltan)
+            // D. CREAR NUEVOS BLOQUES
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
-                // Obtener molde de nombres de la última fila válida
+                console.log(`Creando ${pendientes.length} nuevos bloques (3 filas c/u).`);
+                
+                // Molde
                 let nombresMolde = [];
                 let anchoTabla = 8;
                 if (filasWord.items.length > 0) {
@@ -279,7 +288,7 @@ async function escribirTablaEnWord() {
                 } else { nombresMolde = new Array(8).fill(""); }
 
                 for (let rev of pendientes) {
-                    // PREPARAR ARRAYS
+                    // 3 Arrays para las 3 filas
                     let f1 = [...nombresMolde]; 
                     f1[0]=rev.letra; f1[1]=rev.desc; if(f1.length>2) f1[2]="NOMBRE";
 
@@ -289,34 +298,36 @@ async function escribirTablaEnWord() {
                     let f3 = new Array(anchoTabla).fill(""); 
                     f3[0]=rev.letra; f3[1]=rev.desc; if(f3.length>2) f3[2]="FECHA";
                     
-                    // CORRECCIÓN DE FECHAS: Escribir fecha SOLO en f3
+                    // Fechas en f3
                     for(let k=3; k<anchoTabla; k++) { 
                         if(nombresMolde[k] !== "") f3[k] = rev.fecha; 
                     }
 
                     // INSERTAR
                     let rangoNuevo = tablaWord.addRows("End", 3, [f1, f2, f3]);
-                    rangoNuevo.load("rows/cells/body");
+                    rangoNuevo.load("rows/cells/body"); // Cargamos para el merge
                     await context.sync();
 
-                    // MERGE VERTICAL SEGURO
-                    // Col 0 (REV)
-                    let tRev = rangoNuevo.rows.items[0].cells.items[0].body.getRange("Whole");
-                    let bRev = rangoNuevo.rows.items[2].cells.items[0].body.getRange("Whole");
-                    tRev.expandTo(bRev).merge();
-                    rangoNuevo.rows.items[0].cells.items[0].verticalAlignment = "Center";
+                    // MERGE SEGURO
+                    try {
+                        let tRev = rangoNuevo.rows.items[0].cells.items[0].body.getRange("Whole");
+                        let bRev = rangoNuevo.rows.items[2].cells.items[0].body.getRange("Whole");
+                        tRev.expandTo(bRev).merge();
+                        rangoNuevo.rows.items[0].cells.items[0].verticalAlignment = "Center";
 
-                    // Col 1 (DESC)
-                    let tDesc = rangoNuevo.rows.items[0].cells.items[1].body.getRange("Whole");
-                    let bDesc = rangoNuevo.rows.items[2].cells.items[1].body.getRange("Whole");
-                    tDesc.expandTo(bDesc).merge();
-                    rangoNuevo.rows.items[0].cells.items[1].verticalAlignment = "Center";
+                        let tDesc = rangoNuevo.rows.items[0].cells.items[1].body.getRange("Whole");
+                        let bDesc = rangoNuevo.rows.items[2].cells.items[1].body.getRange("Whole");
+                        tDesc.expandTo(bDesc).merge();
+                        rangoNuevo.rows.items[0].cells.items[1].verticalAlignment = "Center";
+                    } catch (e) {
+                        console.warn("Error en merge visual (no crítico):", e);
+                    }
                 }
             }
         } 
         
         // =========================================================
-        // 🏗️ MODO CODELCO (STACK UP - 1 FILA) - LÓGICA ORIGINAL
+        // 🏗️ MODO CODELCO (STACK UP - 1 FILA)
         // =========================================================
         else {
             console.log("🟢 MODO ESTÁNDAR ACTIVADO");
@@ -391,6 +402,8 @@ async function escribirTablaEnWord() {
         mostrarMensaje("❌ Error: " + error.message, "red");
     });
 }
+
+
 
 async function insertarDocumentoSeleccionado() {
     const ddl = document.getElementById("ddlDocumentos");
