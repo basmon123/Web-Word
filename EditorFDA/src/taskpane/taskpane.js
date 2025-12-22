@@ -139,7 +139,6 @@ window.deleteRev = function(index) {
 /// ---------------------------------------------
 // 3. ESCRITURA EN WORD (INTELIGENTE: ACTUALIZA O INSERTA)
 // ---------------------------------------------
-
 async function escribirTablaEnWord() {
     mostrarMensaje("⏳ Sincronizando tabla...", "blue");
 
@@ -163,7 +162,6 @@ async function escribirTablaEnWord() {
         }
 
         const tablaWord = contentControls.items[0].tables.items[0];
-        // Referencia base
         const filasWord = tablaWord.rows;
         filasWord.load("items/cells/items/value, items/cells/items/body");
         await context.sync();
@@ -182,6 +180,28 @@ async function escribirTablaEnWord() {
         // =========================================================
         if (esAMSA) {
             console.log("🔵 MODO AMSA: ACTIVADO");
+
+            // --- PASO PREVIO: BUSCAR MOLDE DE NOMBRES (JUAN, PEDRO...) ---
+            // Buscamos la última fila que tenga texto en la columna "POR" (índice 3)
+            // para usarla como plantilla. Así evitamos copiar filas vacías (como la P).
+            let moldeNombres = new Array(8).fill(""); // Valor por defecto vacío
+            
+            // Recorremos todas las filas buscando la última válida
+            for (let i = 0; i < filasWord.items.length; i++) {
+                // Chequeo de seguridad
+                if (!filasWord.items[i].cells || filasWord.items[i].cells.items.length < 4) continue;
+                
+                // Obtenemos valor de la columna 3 (POR)
+                let valorPor = filasWord.items[i].cells.items[3].value.trim();
+                
+                // Si tiene texto y NO es un encabezado protegido, es un candidato a molde
+                if (valorPor.length > 0 && !palabrasProtegidas.some(p => valorPor.toUpperCase().includes(p))) {
+                    // Guardamos TODA la fila como molde (copiamos los valores)
+                    // Tenemos que acceder a values[0] porque values es [][]
+                    moldeNombres = filasWord.items[i].values[0];
+                }
+            }
+            // Ahora 'moldeNombres' tiene los datos de la última revisión válida (ej: la B)
 
             // A. IDENTIFICAR SLOTS (Bloques de 3 filas)
             let slotsIndices = [];
@@ -207,16 +227,24 @@ async function escribirTablaEnWord() {
                 let filaMid = filasWord.items[idx+1];   
                 let filaBot = filasWord.items[idx+2];   
 
-                // 1. Datos Superiores
+                // 1. Datos Superiores y NOMBRES (Aquí aplicamos el molde en reciclaje)
                 try { 
                     if(filaTop.cells.items.length > 0) filaTop.cells.items[0].body.insertText(rev.letra, "Replace"); 
                     if(filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText(rev.desc, "Replace"); 
-                    if(filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace"); 
+                    if(filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace");
+                    
+                    // INYECTAR NOMBRES DEL MOLDE (Columnas 3, 4, 5...)
+                    // Esto arregla que la 'C' (ex 'P') aparezca vacía
+                    for(let c = 3; c < filaTop.cells.items.length; c++) {
+                        // Solo escribimos si el molde tiene dato y la celda actual no es fecha/sistema
+                        // Escribimos siempre para asegurar que se copien los "N. Apellido"
+                        if (moldeNombres[c] && moldeNombres[c].trim() !== "") {
+                            filaTop.cells.items[c].body.insertText(moldeNombres[c], "Replace");
+                        }
+                    }
                 } catch(e){}
                 
-                // 2. Etiqueta FIRMA (CORREGIDO) 🛠️
-                // Si la fila tiene menos de 7 celdas, está fusionada -> Índice 0.
-                // Si la fila tiene 8 celdas, es normal -> Índice 2.
+                // 2. Etiqueta FIRMA
                 try { 
                     if(filaMid.cells.items.length > 0) {
                         let idxFirma = (filaMid.cells.items.length < 7) ? 0 : 2;
@@ -228,7 +256,6 @@ async function escribirTablaEnWord() {
 
                 // 3. Etiqueta FECHA y Fechas Reales
                 try { 
-                    // Misma lógica dinámica para la etiqueta FECHA
                     if(filaBot.cells.items.length > 0) {
                         let idxFechaLabel = (filaBot.cells.items.length < 7) ? 0 : 2;
                         if(filaBot.cells.items.length > idxFechaLabel) {
@@ -236,13 +263,10 @@ async function escribirTablaEnWord() {
                         }
                     }
                     
-                    // ESCRIBIR FECHAS
-                    // Si está fusionada (<7), las fechas empiezan en 1. Si no, en 3.
                     let startCol = (filaBot.cells.items.length < 7) ? 1 : 3;
                     let totalCeldas = filaBot.cells.items.length;
                     
                     for(let c = startCol; c < totalCeldas; c++) {
-                        // REGLA: Si es revisión A, las últimas 2 columnas van vacías
                         let esColumnaCliente = (c >= totalCeldas - 2); 
                         if (rev.letra === "A" && esColumnaCliente) {
                             filaBot.cells.items[c].body.insertText("", "Replace"); 
@@ -261,7 +285,6 @@ async function escribirTablaEnWord() {
                 try { filasWord.items[idx].cells.items[0].body.insertText("", "Replace"); } catch(e){}
                 try { filasWord.items[idx].cells.items[1].body.insertText("", "Replace"); } catch(e){}
                 
-                // Limpiar fechas
                 let fb = filasWord.items[idx+2];
                 let startCol = (fb.cells.items.length < 7) ? 1 : 3;
                 for(let c = startCol; c < fb.cells.items.length; c++) {
@@ -274,31 +297,15 @@ async function escribirTablaEnWord() {
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
-                // 1. OBTENER MOLDE (CORREGIDO CON RECARGA) 🔄
-                // Recargamos la tabla para asegurarnos de leer los valores actuales
-                // Esto es vital para que copie los nombres "N. Apellido" correctamente
-                const filasParaMolde = tablaWord.rows;
-                filasParaMolde.load("items/values"); // Solo necesitamos valores
-                await context.sync();
+                // Usamos 'moldeNombres' que calculamos inteligentemente al principio
+                let anchoTabla = moldeNombres.length > 0 ? moldeNombres.length : 8;
 
-                let nombresMolde = [];
-                let anchoTabla = 8;
-                
-                if (filasParaMolde.items.length >= 3) {
-                    // Tomamos la antepenúltima fila (la de Nombres del último bloque)
-                    let filaNombreAnterior = filasParaMolde.items[filasParaMolde.items.length - 3];
-                    nombresMolde = filaNombreAnterior.values[0];
-                    anchoTabla = nombresMolde.length;
-                } else { 
-                    nombresMolde = new Array(8).fill(""); 
-                }
-
-                // 2. ITERAR PENDIENTES
                 for (let rev of pendientes) {
-                    // Preparar las 3 filas
-                    // f1 se inicializa con el MOLDE (que trae los nombres)
-                    let f1 = [...nombresMolde]; 
-                    // Sobrescribimos solo las 3 primeras columnas, dejamos los nombres (indices 3,4,5) intactos
+                    // 1. Preparar las 3 filas
+                    // f1 COPIA los nombres del molde automáticamente
+                    let f1 = [...moldeNombres]; 
+                    
+                    // Sobrescribimos columnas 0, 1 y 2 con datos nuevos
                     f1[0]=rev.letra; f1[1]=rev.desc; if(f1.length>2) f1[2]="NOMBRE";
 
                     let f2 = new Array(anchoTabla).fill(""); 
@@ -307,7 +314,7 @@ async function escribirTablaEnWord() {
                     let f3 = new Array(anchoTabla).fill(""); 
                     if(f3.length>2) f3[2]="FECHA";
                     
-                    // Fechas
+                    // Fechas en f3
                     for(let k=3; k<anchoTabla; k++) { 
                         if (rev.letra === "A" && k >= 6) {
                             f3[k] = ""; 
@@ -316,15 +323,14 @@ async function escribirTablaEnWord() {
                         }
                     }
 
-                    // Insertar
+                    // 2. Insertar
                     tablaWord.addRows("End", 3, [f1, f2, f3]);
                     
-                    // Recargar Filas Reales (Necesario para el merge)
-                    // Usamos la referencia original filasWord y la recargamos
+                    // 3. Recargar
                     filasWord.load("items/cells/body"); 
                     await context.sync(); 
 
-                    // Merge
+                    // 4. Merge
                     let totalFilas = filasWord.items.length;
                     let rowTop = filasWord.items[totalFilas - 3]; 
                     let rowBot = filasWord.items[totalFilas - 1]; 
