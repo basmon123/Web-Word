@@ -166,7 +166,6 @@ async function escribirTablaEnWord() {
         }
 
         const tablaWord = contentControls.items[0].tables.items[0];
-        // Referencia directa a las filas
         const filasWord = tablaWord.rows;
         filasWord.load("items/cells/items/value, items/cells/items/body");
         await context.sync();
@@ -209,7 +208,7 @@ async function escribirTablaEnWord() {
                 let filaTop = filasWord.items[idx];     
                 let filaBot = filasWord.items[idx+2];   
 
-                // Escribir datos
+                // Datos
                 try { if(filaTop.cells.items.length > 0) filaTop.cells.items[0].body.insertText(rev.letra, "Replace"); } catch(e){}
                 try { if(filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText(rev.desc, "Replace"); } catch(e){}
                 try { if(filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace"); } catch(e){}
@@ -225,6 +224,8 @@ async function escribirTablaEnWord() {
 
                 // Fechas
                 try { if(filaBot.cells.items.length > 0) filaBot.cells.items[0].body.insertText("FECHA", "Replace"); } catch(e){} 
+                
+                // Escribir fecha en TODAS las columnas de firma (3 en adelante)
                 for(let c = 3; c < filaBot.cells.items.length; c++) {
                     try { filaBot.cells.items[c].body.insertText(rev.fecha, "Replace"); } catch(e){}
                 }
@@ -247,7 +248,6 @@ async function escribirTablaEnWord() {
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
-                // Molde
                 let nombresMolde = [];
                 let anchoTabla = 8;
                 if (filasWord.items.length > 0) {
@@ -269,39 +269,33 @@ async function escribirTablaEnWord() {
                     let f3 = new Array(anchoTabla).fill(""); 
                     if(f3.length>2) f3[2]="FECHA";
                     
+                    // CORRECCIÓN AQUÍ: Quitamos el "if" que bloqueaba la fecha si no había nombre
+                    // Ahora llenamos SIEMPRE desde la columna 3 hasta el final.
                     for(let k=3; k<anchoTabla; k++) { 
-                        if(nombresMolde[k] !== "") f3[k] = rev.fecha; 
+                        f3[k] = rev.fecha; 
                     }
 
                     // 2. Insertar las 3 filas
                     tablaWord.addRows("End", 3, [f1, f2, f3]);
                     
                     // 3. RECARGAMOS LA TABLA REAL 
-                    // (Esto asegura que leamos los objetos 'Cell' reales, no temporales)
                     filasWord.load("items/cells/body"); 
                     await context.sync(); 
 
-                    // 4. MERGE CORRECTO (Celda.merge(Celda)) ✅
-                    // Buscamos las filas recién creadas al final de la tabla
+                    // 4. MERGE (USANDO LAS FILAS REALES)
                     let totalFilas = filasWord.items.length;
-                    
-                    // La fila superior del bloque nuevo
                     let rowTop = filasWord.items[totalFilas - 3]; 
-                    // La fila inferior del bloque nuevo
                     let rowBot = filasWord.items[totalFilas - 1]; 
                     
                     try {
-                        // FUSIONAR COLUMNA 0 (REV)
-                        // Sintaxis correcta: celdaArriba.merge(celdaAbajo)
                         let cellRevTop = rowTop.cells.items[0];
                         let cellRevBot = rowBot.cells.items[0];
-                        cellRevTop.merge(cellRevBot); // <--- ESTO SÍ ES DE WORD
+                        cellRevTop.merge(cellRevBot);
                         cellRevTop.verticalAlignment = "Center";
 
-                        // FUSIONAR COLUMNA 1 (DESC)
                         let cellDescTop = rowTop.cells.items[1];
                         let cellDescBot = rowBot.cells.items[1];
-                        cellDescTop.merge(cellDescBot); // <--- ESTO SÍ ES DE WORD
+                        cellDescTop.merge(cellDescBot);
                         cellDescTop.verticalAlignment = "Center";
 
                     } catch(e) {
@@ -312,7 +306,7 @@ async function escribirTablaEnWord() {
         } 
         
         // =========================================================
-        // 🏗️ MODO CODELCO (STACK UP)
+        // 🏗️ MODO CODELCO (STACK UP) - ORIGINAL
         // =========================================================
         else {
             console.log("🟢 MODO ESTÁNDAR ACTIVADO");
