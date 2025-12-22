@@ -199,36 +199,48 @@ async function escribirTablaEnWord() {
                 }
             }
 
-            // B. RECICLAR SLOTS EXISTENTES
+            // B. RECICLAR SLOTS EXISTENTES (Lógica para filas FUSIONADAS)
+            // En una fila fusionada (Mid/Bot), la Celda 0 es la etiqueta lateral (FIRMA/FECHA).
+            // La Celda 1 es la columna "POR".
             let revisionIndex = 0;
             while (revisionIndex < revisions.length && revisionIndex < slotsIndices.length) {
                 let rev = revisions[revisionIndex];
                 let idx = slotsIndices[revisionIndex]; 
                 
                 let filaTop = filasWord.items[idx];     
+                let filaMid = filasWord.items[idx+1];   
                 let filaBot = filasWord.items[idx+2];   
 
-                // Datos
-                try { if(filaTop.cells.items.length > 0) filaTop.cells.items[0].body.insertText(rev.letra, "Replace"); } catch(e){}
-                try { if(filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText(rev.desc, "Replace"); } catch(e){}
-                try { if(filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace"); } catch(e){}
-                
-                // Etiqueta FIRMA
+                // 1. Fila TOP (Tiene todas las celdas, porque manda el merge)
                 try { 
-                    let filaMid = filasWord.items[idx+1];
+                    if(filaTop.cells.items.length > 0) filaTop.cells.items[0].body.insertText(rev.letra, "Replace"); 
+                    if(filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText(rev.desc, "Replace"); 
+                    if(filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace"); 
+                } catch(e){}
+                
+                // 2. Fila MID (FIRMA) - FUSIONADA
+                // Al estar fusionada, la celda 0 es la etiqueta lateral.
+                try { 
                     if(filaMid.cells.items.length > 0) {
-                         let colIndex = (filaMid.cells.items.length > 2) ? 2 : 0;
-                         if(filaMid.cells.items.length > colIndex) filaMid.cells.items[colIndex].body.insertText("FIRMA", "Replace"); 
+                        // En fila fusionada, index 0 es la columna de etiqueta
+                        filaMid.cells.items[0].body.insertText("FIRMA", "Replace"); 
                     }
                 } catch(e){}
 
-                // Fechas
-                try { if(filaBot.cells.items.length > 0) filaBot.cells.items[0].body.insertText("FECHA", "Replace"); } catch(e){} 
+                // 3. Fila BOT (FECHA) - FUSIONADA
+                // Al estar fusionada, la celda 0 es etiqueta, celda 1 es "POR"
+                try { 
+                    if(filaBot.cells.items.length > 0) {
+                        filaBot.cells.items[0].body.insertText("FECHA", "Replace"); 
+                    }
+                    
+                    // ESCRIBIR FECHAS (Desde índice 1 en adelante para filas fusionadas)
+                    // Índice 1 corresponde visualmente a la columna 3 ("POR")
+                    for(let c = 1; c < filaBot.cells.items.length; c++) {
+                        filaBot.cells.items[c].body.insertText(rev.fecha, "Replace"); 
+                    }
+                } catch(e){}
                 
-                // Escribir fecha en TODAS las columnas de firma (3 en adelante)
-                for(let c = 3; c < filaBot.cells.items.length; c++) {
-                    try { filaBot.cells.items[c].body.insertText(rev.fecha, "Replace"); } catch(e){}
-                }
                 revisionIndex++;
             }
 
@@ -238,13 +250,14 @@ async function escribirTablaEnWord() {
                 try { filasWord.items[idx].cells.items[0].body.insertText("", "Replace"); } catch(e){}
                 try { filasWord.items[idx].cells.items[1].body.insertText("", "Replace"); } catch(e){}
                 let fb = filasWord.items[idx+2];
+                // Limpiar fechas (índice 1 en adelante)
                 for(let c = 1; c < fb.cells.items.length; c++) {
                      try { fb.cells.items[c].body.insertText("", "Replace"); } catch(e){}
                 }
                 revisionIndex++;
             }
 
-            // D. CREAR NUEVOS BLOQUES
+            // D. CREAR NUEVOS BLOQUES (Lógica para filas NUEVAS/NO FUSIONADAS)
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
@@ -259,30 +272,31 @@ async function escribirTablaEnWord() {
                 } else { nombresMolde = new Array(8).fill(""); }
 
                 for (let rev of pendientes) {
-                    // 1. Preparar las 3 filas
+                    // 1. Preparar las 3 filas (Aquí los índices son NORMALES)
+                    // Col 0: Rev, Col 1: Desc, Col 2: Etiqueta, Col 3: POR...
+                    
                     let f1 = [...nombresMolde]; 
                     f1[0]=rev.letra; f1[1]=rev.desc; if(f1.length>2) f1[2]="NOMBRE";
 
                     let f2 = new Array(anchoTabla).fill(""); 
-                    if(f2.length>2) f2[2]="FIRMA";
+                    if(f2.length>2) f2[2]="FIRMA"; // Índice 2 es etiqueta
 
                     let f3 = new Array(anchoTabla).fill(""); 
-                    if(f3.length>2) f3[2]="FECHA";
+                    if(f3.length>2) f3[2]="FECHA"; // Índice 2 es etiqueta
                     
-                    // CORRECCIÓN AQUÍ: Quitamos el "if" que bloqueaba la fecha si no había nombre
-                    // Ahora llenamos SIEMPRE desde la columna 3 hasta el final.
+                    // Escribir fechas desde columna 3 ("POR")
                     for(let k=3; k<anchoTabla; k++) { 
-                        f3[k] = rev.fecha; 
+                         f3[k] = rev.fecha; 
                     }
 
-                    // 2. Insertar las 3 filas
+                    // 2. Insertar
                     tablaWord.addRows("End", 3, [f1, f2, f3]);
                     
-                    // 3. RECARGAMOS LA TABLA REAL 
+                    // 3. Recargar
                     filasWord.load("items/cells/body"); 
                     await context.sync(); 
 
-                    // 4. MERGE (USANDO LAS FILAS REALES)
+                    // 4. Merge
                     let totalFilas = filasWord.items.length;
                     let rowTop = filasWord.items[totalFilas - 3]; 
                     let rowBot = filasWord.items[totalFilas - 1]; 
@@ -297,16 +311,13 @@ async function escribirTablaEnWord() {
                         let cellDescBot = rowBot.cells.items[1];
                         cellDescTop.merge(cellDescBot);
                         cellDescTop.verticalAlignment = "Center";
-
-                    } catch(e) {
-                        console.warn("Fallo visual en merge:", e);
-                    }
+                    } catch(e) { console.warn(e); }
                 }
             }
         } 
         
-        /// =========================================================
-        // 🏗️ MODO CODELCO (STACK UP) - ORIGINAL
+        // =========================================================
+        // 🏗️ MODO CODELCO (ESTÁNDAR)
         // =========================================================
         else {
             console.log("🟢 MODO ESTÁNDAR ACTIVADO");
@@ -381,7 +392,6 @@ async function escribirTablaEnWord() {
         mostrarMensaje("❌ Error: " + error.message, "red");
     });
 }
-
 
 
 async function insertarDocumentoSeleccionado() {
