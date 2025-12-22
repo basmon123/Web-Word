@@ -166,6 +166,7 @@ async function escribirTablaEnWord() {
         }
 
         const tablaWord = contentControls.items[0].tables.items[0];
+        // Definimos la colección de filas
         const filasWord = tablaWord.rows;
         filasWord.load("items/cells/items/value, items/cells/items/body");
         await context.sync();
@@ -213,17 +214,16 @@ async function escribirTablaEnWord() {
                 try { if(filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText(rev.desc, "Replace"); } catch(e){}
                 try { if(filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace"); } catch(e){}
                 
-                // Intentar poner etiqueta FIRMA
+                // Etiqueta FIRMA (Fallback)
                 try { 
                     let filaMid = filasWord.items[idx+1];
                     if(filaMid.cells.items.length > 0) {
-                         // Fallback para encontrar dónde escribir FIRMA
                          let colIndex = (filaMid.cells.items.length > 2) ? 2 : 0;
                          if(filaMid.cells.items.length > colIndex) filaMid.cells.items[colIndex].body.insertText("FIRMA", "Replace"); 
                     }
                 } catch(e){}
 
-                // Fechas y etiqueta
+                // Fechas
                 try { if(filaBot.cells.items.length > 0) filaBot.cells.items[0].body.insertText("FECHA", "Replace"); } catch(e){} 
                 for(let c = 3; c < filaBot.cells.items.length; c++) {
                     try { filaBot.cells.items[c].body.insertText(rev.fecha, "Replace"); } catch(e){}
@@ -243,10 +243,11 @@ async function escribirTablaEnWord() {
                 revisionIndex++;
             }
 
-            // D. CREAR NUEVOS BLOQUES (CORREGIDO - SIN getItemAt) 🛠️
+            // D. CREAR NUEVOS BLOQUES (AQUÍ ESTÁ LA MAGIA DEL "RELOAD") 🪄
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
+                // Obtener molde
                 let nombresMolde = [];
                 let anchoTabla = 8;
                 if (filasWord.items.length > 0) {
@@ -273,25 +274,26 @@ async function escribirTablaEnWord() {
                     }
 
                     // 2. Insertar las 3 filas
-                    let rangoNuevo = tablaWord.addRows("End", 3, [f1, f2, f3]);
+                    // NO guardamos el resultado en una variable, no lo necesitamos
+                    tablaWord.addRows("End", 3, [f1, f2, f3]);
                     
-                    // 3. CARGAR ESTRUCTURA PARA FUSIONAR
-                    // ¡Importante! Cargamos rows y cells dentro del rango nuevo
-                    rangoNuevo.load("rows/cells/body");
+                    // 3. RECARGAMOS LA TABLA REAL (Esto elimina el error undefined)
+                    // Le decimos a filasWord que actualice su lista de items
+                    filasWord.load("items/cells/body"); 
                     await context.sync(); 
 
-                    // 4. MERGE (USANDO ARRAYS ESTÁNDAR .items[]) ✅
+                    // 4. TOMAMOS LAS ÚLTIMAS 3 FILAS DE LA TABLA
+                    // Como acabamos de insertar al final, sabemos dónde están.
+                    let totalFilas = filasWord.items.length;
+                    let rowTop = filasWord.items[totalFilas - 3]; // La antepenúltima (Nombre)
+                    let rowBot = filasWord.items[totalFilas - 1]; // La última (Fecha)
+                    
+                    // 5. MERGE SEGURO USANDO LAS FILAS REALES ✅
                     try {
-                        // Accedemos a la Fila 0 (Top) y Fila 2 (Bot) del bloque nuevo
-                        let rowTop = rangoNuevo.rows.items[0]; 
-                        let rowBot = rangoNuevo.rows.items[2];
-                        
                         // FUSIONAR COLUMNA 0 (REV)
-                        // Usamos body.getRange("Whole") para asegurar que agarramos el contenido
                         let rngRevTop = rowTop.cells.items[0].body.getRange("Whole");
                         let rngRevBot = rowBot.cells.items[0].body.getRange("Whole");
                         
-                        // Expandimos desde arriba hasta abajo y fusionamos
                         let finalRev = rngRevTop.expandTo(rngRevBot);
                         finalRev.merge();
                         rowTop.cells.items[0].verticalAlignment = "Center";
@@ -305,7 +307,7 @@ async function escribirTablaEnWord() {
                         rowTop.cells.items[1].verticalAlignment = "Center";
 
                     } catch(e) {
-                        console.warn("No se pudo fusionar visualmente (pero los datos están):", e);
+                        console.warn("No se pudo fusionar visualmente:", e);
                     }
                 }
             }
