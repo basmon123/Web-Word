@@ -199,9 +199,7 @@ async function escribirTablaEnWord() {
                 }
             }
 
-            // B. RECICLAR SLOTS EXISTENTES (Lógica para filas FUSIONADAS)
-            // En una fila fusionada (Mid/Bot), la Celda 0 es la etiqueta lateral (FIRMA/FECHA).
-            // La Celda 1 es la columna "POR".
+            // B. RECICLAR SLOTS EXISTENTES
             let revisionIndex = 0;
             while (revisionIndex < revisions.length && revisionIndex < slotsIndices.length) {
                 let rev = revisions[revisionIndex];
@@ -211,33 +209,39 @@ async function escribirTablaEnWord() {
                 let filaMid = filasWord.items[idx+1];   
                 let filaBot = filasWord.items[idx+2];   
 
-                // 1. Fila TOP (Tiene todas las celdas, porque manda el merge)
+                // 1. Datos Superiores
                 try { 
                     if(filaTop.cells.items.length > 0) filaTop.cells.items[0].body.insertText(rev.letra, "Replace"); 
                     if(filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText(rev.desc, "Replace"); 
                     if(filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace"); 
                 } catch(e){}
                 
-                // 2. Fila MID (FIRMA) - FUSIONADA
-                // Al estar fusionada, la celda 0 es la etiqueta lateral.
+                // 2. Etiqueta FIRMA
                 try { 
                     if(filaMid.cells.items.length > 0) {
-                        // En fila fusionada, index 0 es la columna de etiqueta
-                        filaMid.cells.items[0].body.insertText("FIRMA", "Replace"); 
+                        let colIndex = (filaMid.cells.items.length > 2) ? 2 : 0;
+                        if(filaMid.cells.items.length > colIndex) filaMid.cells.items[colIndex].body.insertText("FIRMA", "Replace"); 
                     }
                 } catch(e){}
 
-                // 3. Fila BOT (FECHA) - FUSIONADA
-                // Al estar fusionada, la celda 0 es etiqueta, celda 1 es "POR"
+                // 3. Etiqueta FECHA y Fechas Reales
                 try { 
                     if(filaBot.cells.items.length > 0) {
                         filaBot.cells.items[0].body.insertText("FECHA", "Replace"); 
                     }
                     
-                    // ESCRIBIR FECHAS (Desde índice 1 en adelante para filas fusionadas)
-                    // Índice 1 corresponde visualmente a la columna 3 ("POR")
-                    for(let c = 1; c < filaBot.cells.items.length; c++) {
-                        filaBot.cells.items[c].body.insertText(rev.fecha, "Replace"); 
+                    // Iterar columnas de fechas (desde índice 1 en filas fusionadas)
+                    let totalCeldas = filaBot.cells.items.length;
+                    
+                    for(let c = 1; c < totalCeldas; c++) {
+                        // REGLA: Si es revisión A, las últimas 2 columnas van vacías
+                        let esColumnaCliente = (c >= totalCeldas - 2); 
+                        
+                        if (rev.letra === "A" && esColumnaCliente) {
+                            filaBot.cells.items[c].body.insertText("", "Replace"); // Vaciar
+                        } else {
+                            filaBot.cells.items[c].body.insertText(rev.fecha, "Replace"); // Escribir fecha
+                        }
                     }
                 } catch(e){}
                 
@@ -250,14 +254,13 @@ async function escribirTablaEnWord() {
                 try { filasWord.items[idx].cells.items[0].body.insertText("", "Replace"); } catch(e){}
                 try { filasWord.items[idx].cells.items[1].body.insertText("", "Replace"); } catch(e){}
                 let fb = filasWord.items[idx+2];
-                // Limpiar fechas (índice 1 en adelante)
                 for(let c = 1; c < fb.cells.items.length; c++) {
                      try { fb.cells.items[c].body.insertText("", "Replace"); } catch(e){}
                 }
                 revisionIndex++;
             }
 
-            // D. CREAR NUEVOS BLOQUES (Lógica para filas NUEVAS/NO FUSIONADAS)
+            // D. CREAR NUEVOS BLOQUES
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
@@ -272,21 +275,24 @@ async function escribirTablaEnWord() {
                 } else { nombresMolde = new Array(8).fill(""); }
 
                 for (let rev of pendientes) {
-                    // 1. Preparar las 3 filas (Aquí los índices son NORMALES)
-                    // Col 0: Rev, Col 1: Desc, Col 2: Etiqueta, Col 3: POR...
-                    
+                    // 1. Preparar las 3 filas
                     let f1 = [...nombresMolde]; 
                     f1[0]=rev.letra; f1[1]=rev.desc; if(f1.length>2) f1[2]="NOMBRE";
 
                     let f2 = new Array(anchoTabla).fill(""); 
-                    if(f2.length>2) f2[2]="FIRMA"; // Índice 2 es etiqueta
+                    if(f2.length>2) f2[2]="FIRMA";
 
                     let f3 = new Array(anchoTabla).fill(""); 
-                    if(f3.length>2) f3[2]="FECHA"; // Índice 2 es etiqueta
+                    if(f3.length>2) f3[2]="FECHA";
                     
-                    // Escribir fechas desde columna 3 ("POR")
+                    // REGLA: Llenar fechas desde col 3
                     for(let k=3; k<anchoTabla; k++) { 
-                         f3[k] = rev.fecha; 
+                        // SI ES REVISIÓN A y son las columnas 6 o 7 (Cliente) -> Dejar vacío
+                        if (rev.letra === "A" && k >= 6) {
+                            f3[k] = ""; 
+                        } else {
+                            f3[k] = rev.fecha; 
+                        }
                     }
 
                     // 2. Insertar
@@ -317,7 +323,7 @@ async function escribirTablaEnWord() {
         } 
         
         // =========================================================
-        // 🏗️ MODO CODELCO (ESTÁNDAR)
+        // 🏗️ MODO CODELCO (STACK UP)
         // =========================================================
         else {
             console.log("🟢 MODO ESTÁNDAR ACTIVADO");
