@@ -140,6 +140,10 @@ window.deleteRev = function(index) {
 // 3. ESCRITURA EN WORD (INTELIGENTE: ACTUALIZA O INSERTA)
 // ---------------------------------------------
 
+// ---------------------------------------------
+// 3. ESCRITURA EN WORD (INTELIGENTE: ACTUALIZA O INSERTA)
+// ---------------------------------------------
+
 async function escribirTablaEnWord() {
     mostrarMensaje("⏳ Sincronizando tabla...", "blue");
 
@@ -184,62 +188,62 @@ async function escribirTablaEnWord() {
             console.log("🔵 MODO AMSA: SINCRONIZACIÓN SECUENCIAL");
 
             // PASO A: IDENTIFICAR LOS BLOQUES DE DATOS (Slots)
-            // Un "slot" es el índice de la primera fila de un bloque de revisión (la que tiene el Nombre)
             let slotsIndices = [];
             
             for (let i = 0; i < filasWord.items.length; i++) {
+                // Validación básica de existencia
+                if (!filasWord.items[i].cells || !filasWord.items[i].cells.items[0]) continue;
+
                 let texto = filasWord.items[i].cells.items[0].value.trim().toUpperCase();
 
                 // Si es encabezado, saltamos
                 if (palabrasProtegidas.some(p => texto.includes(p))) continue;
 
-                // Verificamos si es un bloque de 3 filas válido
-                // (Miramos la columna de etiquetas en i, i+1, i+2)
+                // Verificamos si es un bloque de 3 filas válido (espacio físico)
                 if (i + 2 < filasWord.items.length) {
-                    // En AMSA, la columna 2 suele tener "NOMBRE", luego "FIRMA", luego "FECHA"
-                    // O al menos la estructura permite 3 filas.
-                    // Asumimos que todo lo que no es encabezado es un bloque de datos.
                     slotsIndices.push(i);
-                    i += 2; // Saltamos las filas internas del bloque (Firma y Fecha) para ir al siguiente
+                    i += 2; // Saltamos las filas internas del bloque
                 }
             }
 
-            console.log(`Detectados ${slotsIndices.length} slots disponibles en la tabla.`);
+            console.log(`Detectados ${slotsIndices.length} slots disponibles.`);
 
             // PASO B: SOBRESCRIBIR SLOTS EXISTENTES (A, B, P -> A, B, C)
-            // Iteramos sobre la lista de revisiones del usuario (revisions)
             let revisionIndex = 0;
 
-            // Mientras haya slots y revisiones para llenarlos
             while (revisionIndex < revisions.length && revisionIndex < slotsIndices.length) {
                 let rev = revisions[revisionIndex];
-                let idx = slotsIndices[revisionIndex]; // Índice de fila en Word
+                let idx = slotsIndices[revisionIndex]; 
                 
                 // Filas del bloque
                 let filaTop = filasWord.items[idx];     // Nombre
-                // let filaMid = filasWord.items[idx+1]; // Firma (No la tocamos para mantener firmas manuales si existen)
+                let filaMid = filasWord.items[idx+1];   // Firma
                 let filaBot = filasWord.items[idx+2];   // Fecha
 
                 // 1. Actualizar Letra y Descripción (Fila Top)
-                filaTop.cells.items[0].body.insertText(rev.letra, "Replace");
-                filaTop.cells.items[1].body.insertText(rev.desc, "Replace");
+                if (filaTop.cells.items.length > 0) filaTop.cells.items[0].body.insertText(rev.letra, "Replace");
+                if (filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText(rev.desc, "Replace");
                 
-                // 2. Asegurar etiquetas laterales (por si estaban borradas)
-                filaTop.cells.items[2].body.insertText("NOMBRE", "Replace");
-                filasWord.items[idx+1].cells.items[2].body.insertText("FIRMA", "Replace");
-                filaBot.cells.items[2].body.insertText("FECHA", "Replace");
+                // 2. Asegurar etiquetas laterales (con chequeo de seguridad)
+                if (filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace");
+                
+                // Verificamos si filaMid tiene celdas accesibles (a veces el merge oculta celdas 0 y 1)
+                // Usamos la columna 2 que suele ser segura para "FIRMA"
+                if (filaMid.cells.items.length > 2) {
+                     filaMid.cells.items[2].body.insertText("FIRMA", "Replace");
+                } else if (filaMid.cells.items.length > 0) {
+                     // Intento fallback si la estructura varía
+                     try { filaMid.cells.items[filaMid.cells.items.length-1].body.insertText("FIRMA", "Replace"); } catch(e){}
+                }
+
+                if (filaBot.cells.items.length > 2) filaBot.cells.items[2].body.insertText("FECHA", "Replace");
 
                 // 3. Actualizar FECHAS (Solo en la fila inferior = FilaBot)
                 // Empezamos desde columna 3 hacia la derecha
                 for(let c = 3; c < filaBot.cells.items.length; c++) {
-                    // Escribimos la fecha
                     filaBot.cells.items[c].body.insertText(rev.fecha, "Replace");
                 }
                 
-                // Limpiar firmas antiguas si la letra cambió? (Opcional, por seguridad no borramos firmas)
-                // Pero si antes era "P" y ahora es "C", quizás quieras limpiar la fila del medio.
-                // filaMid.cells.items[0].body.insertText(rev.letra, "Replace"); // Actualiza letra oculta mergeada
-
                 revisionIndex++;
             }
 
@@ -247,27 +251,19 @@ async function escribirTablaEnWord() {
             while (revisionIndex < slotsIndices.length) {
                 let idx = slotsIndices[revisionIndex];
                 let filaTop = filasWord.items[idx];
-                let filaMid = filasWord.items[idx+1];
                 let filaBot = filasWord.items[idx+2];
 
-                // Borramos textos visibles
-                filaTop.cells.items[0].body.insertText("", "Replace");
-                filaTop.cells.items[1].body.insertText("", "Replace");
+                if(filaTop.cells.items.length > 0) filaTop.cells.items[0].body.insertText("", "Replace");
+                if(filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText("", "Replace");
                 
-                // Borramos fechas abajo
                 for(let c = 3; c < filaBot.cells.items.length; c++) {
                     filaBot.cells.items[c].body.insertText("", "Replace");
-                }
-                // Borramos firmas en medio?
-                for(let c = 3; c < filaMid.cells.items.length; c++) {
-                    filaMid.cells.items[c].body.insertText("", "Replace");
                 }
                 
                 revisionIndex++;
             }
 
-            // PASO D: CREAR NUEVOS BLOQUES (Si tienes A,B,C,D y tabla solo tenía 3 slots)
-            // revisionIndex ahora apunta a la primera revisión que NO cupo en la tabla
+            // PASO D: CREAR NUEVOS BLOQUES (Si faltan)
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
@@ -293,9 +289,8 @@ async function escribirTablaEnWord() {
                     let f3 = new Array(anchoTabla).fill(""); 
                     f3[0]=rev.letra; f3[1]=rev.desc; if(f3.length>2) f3[2]="FECHA";
                     
-                    // CORRECCIÓN DE FECHAS: Escribir fecha SOLO en f3 (fila 3) y en columnas correctas
+                    // CORRECCIÓN DE FECHAS: Escribir fecha SOLO en f3
                     for(let k=3; k<anchoTabla; k++) { 
-                        // Solo ponemos fecha si hay un encabezado de nombre correspondiente en el molde
                         if(nombresMolde[k] !== "") f3[k] = rev.fecha; 
                     }
 
@@ -304,12 +299,14 @@ async function escribirTablaEnWord() {
                     rangoNuevo.load("rows/cells/body");
                     await context.sync();
 
-                    // MERGE
+                    // MERGE VERTICAL SEGURO
+                    // Col 0 (REV)
                     let tRev = rangoNuevo.rows.items[0].cells.items[0].body.getRange("Whole");
                     let bRev = rangoNuevo.rows.items[2].cells.items[0].body.getRange("Whole");
                     tRev.expandTo(bRev).merge();
                     rangoNuevo.rows.items[0].cells.items[0].verticalAlignment = "Center";
 
+                    // Col 1 (DESC)
                     let tDesc = rangoNuevo.rows.items[0].cells.items[1].body.getRange("Whole");
                     let bDesc = rangoNuevo.rows.items[2].cells.items[1].body.getRange("Whole");
                     tDesc.expandTo(bDesc).merge();
@@ -393,58 +390,6 @@ async function escribirTablaEnWord() {
         console.error("Error Word:", error);
         mostrarMensaje("❌ Error: " + error.message, "red");
     });
-}
-// ---------------------------------------------
-// 4. LÓGICA DE AZURE Y DATOS PROYECTO (ORIGINAL)
-// ---------------------------------------------
-
-async function cargarDocumentosDesdeAzure(idProyecto) {
-    const ddl = document.getElementById("ddlDocumentos");
-    if (!ddl) return;
-    ddl.innerHTML = "<option>Cargando códigos...</option>";
-
-    try {
-        const response = await fetch(URL_POWER_AUTOMATE, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ "codigoProyecto": idProyecto }) 
-        });
-
-        if (!response.ok) throw new Error("Error Power Automate");
-        const listaCruda = await response.json();
-
-        const documentosUnicos = [];
-        const codigosVistos = new Set();
-        listaCruda.forEach(doc => {
-            const idUnico = doc.codFDA || doc.Nombre; 
-            if (!codigosVistos.has(idUnico)) {
-                codigosVistos.add(idUnico);
-                documentosUnicos.push(doc);
-            }
-        });
-
-        ddl.innerHTML = "";
-        if (documentosUnicos.length === 0) {
-            ddl.innerHTML = "<option>No se encontraron documentos</option>";
-            return;
-        }
-        const optDef = document.createElement("option");
-        optDef.text = "-- Seleccione un Código FDA --";
-        optDef.value = "";
-        ddl.appendChild(optDef);
-
-        documentosUnicos.forEach(doc => {
-            const opt = document.createElement("option");
-            opt.text = doc.codFDA || doc.Nombre; 
-            opt.value = doc.codFDA || ""; 
-            opt.setAttribute("data-nombre", doc.Nombre || "");
-            opt.setAttribute("data-cliente", doc.codCliente || "");
-            ddl.appendChild(opt);
-        });
-    } catch (error) {
-        console.error(error);
-        ddl.innerHTML = "<option>Error al cargar lista</option>";
-    }
 }
 
 async function insertarDocumentoSeleccionado() {
