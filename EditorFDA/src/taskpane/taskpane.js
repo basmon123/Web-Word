@@ -163,6 +163,7 @@ async function escribirTablaEnWord() {
         }
 
         const tablaWord = contentControls.items[0].tables.items[0];
+        // Referencia base
         const filasWord = tablaWord.rows;
         filasWord.load("items/cells/items/value, items/cells/items/body");
         await context.sync();
@@ -182,7 +183,7 @@ async function escribirTablaEnWord() {
         if (esAMSA) {
             console.log("🔵 MODO AMSA: ACTIVADO");
 
-            // A. IDENTIFICAR SLOTS
+            // A. IDENTIFICAR SLOTS (Bloques de 3 filas)
             let slotsIndices = [];
             for (let i = 0; i < filasWord.items.length; i++) {
                 if (!filasWord.items[i].cells || filasWord.items[i].cells.items.length === 0) continue;
@@ -213,27 +214,31 @@ async function escribirTablaEnWord() {
                     if(filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace"); 
                 } catch(e){}
                 
-                // 2. Etiqueta FIRMA
+                // 2. Etiqueta FIRMA (CORREGIDO) 🛠️
+                // Si la fila tiene menos de 7 celdas, está fusionada -> Índice 0.
+                // Si la fila tiene 8 celdas, es normal -> Índice 2.
                 try { 
                     if(filaMid.cells.items.length > 0) {
-                        let colIndex = (filaMid.cells.items.length > 2) ? 2 : 0;
-                        if(filaMid.cells.items.length > colIndex) filaMid.cells.items[colIndex].body.insertText("FIRMA", "Replace"); 
+                        let idxFirma = (filaMid.cells.items.length < 7) ? 0 : 2;
+                        if(filaMid.cells.items.length > idxFirma) {
+                            filaMid.cells.items[idxFirma].body.insertText("FIRMA", "Replace"); 
+                        }
                     }
                 } catch(e){}
 
                 // 3. Etiqueta FECHA y Fechas Reales
                 try { 
+                    // Misma lógica dinámica para la etiqueta FECHA
                     if(filaBot.cells.items.length > 0) {
-                        // En fila fusionada, la etiqueta es la col 0. En nueva, es la col 2.
-                        let idxFechaLabel = (filaBot.cells.items.length < filaTop.cells.items.length) ? 0 : 2;
+                        let idxFechaLabel = (filaBot.cells.items.length < 7) ? 0 : 2;
                         if(filaBot.cells.items.length > idxFechaLabel) {
                             filaBot.cells.items[idxFechaLabel].body.insertText("FECHA", "Replace"); 
                         }
                     }
                     
                     // ESCRIBIR FECHAS
-                    // Si está fusionada, las fechas empiezan en 1. Si no, en 3.
-                    let startCol = (filaBot.cells.items.length < filaTop.cells.items.length) ? 1 : 3;
+                    // Si está fusionada (<7), las fechas empiezan en 1. Si no, en 3.
+                    let startCol = (filaBot.cells.items.length < 7) ? 1 : 3;
                     let totalCeldas = filaBot.cells.items.length;
                     
                     for(let c = startCol; c < totalCeldas; c++) {
@@ -250,17 +255,16 @@ async function escribirTablaEnWord() {
                 revisionIndex++;
             }
 
-            // C. LIMPIAR SOBRANTES (CORREGIDO PARA LIMPIAR TODO) 🧹
+            // C. LIMPIAR SOBRANTES
             while (revisionIndex < slotsIndices.length) {
                 let idx = slotsIndices[revisionIndex];
                 try { filasWord.items[idx].cells.items[0].body.insertText("", "Replace"); } catch(e){}
                 try { filasWord.items[idx].cells.items[1].body.insertText("", "Replace"); } catch(e){}
                 
-                // Limpiar fechas AGRESIVAMENTE
+                // Limpiar fechas
                 let fb = filasWord.items[idx+2];
-                // Empezamos desde el índice 1 para asegurar borrar cualquier residuo a la derecha de la etiqueta
-                // (La etiqueta suele estar en 0 en filas fusionadas)
-                for(let c = 1; c < fb.cells.items.length; c++) {
+                let startCol = (fb.cells.items.length < 7) ? 1 : 3;
+                for(let c = startCol; c < fb.cells.items.length; c++) {
                      try { fb.cells.items[c].body.insertText("", "Replace"); } catch(e){}
                 }
                 revisionIndex++;
@@ -270,28 +274,31 @@ async function escribirTablaEnWord() {
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
-                // CORRECCIÓN MOLDE: Sacamos nombres de la fila SUPERIOR del último bloque
-                // (No de la última fila absoluta, que es la de fechas)
+                // 1. OBTENER MOLDE (CORREGIDO CON RECARGA) 🔄
+                // Recargamos la tabla para asegurarnos de leer los valores actuales
+                // Esto es vital para que copie los nombres "N. Apellido" correctamente
+                const filasParaMolde = tablaWord.rows;
+                filasParaMolde.load("items/values"); // Solo necesitamos valores
+                await context.sync();
+
                 let nombresMolde = [];
                 let anchoTabla = 8;
                 
-                if (filasWord.items.length >= 3) {
-                    // Tomamos la antepenúltima fila (la de Nombres)
-                    let filaNombreAnterior = filasWord.items[filasWord.items.length - 3];
-                    filaNombreAnterior.load("values");
-                    await context.sync();
-                    
-                    // Clonamos los valores
+                if (filasParaMolde.items.length >= 3) {
+                    // Tomamos la antepenúltima fila (la de Nombres del último bloque)
+                    let filaNombreAnterior = filasParaMolde.items[filasParaMolde.items.length - 3];
                     nombresMolde = filaNombreAnterior.values[0];
                     anchoTabla = nombresMolde.length;
                 } else { 
                     nombresMolde = new Array(8).fill(""); 
                 }
 
+                // 2. ITERAR PENDIENTES
                 for (let rev of pendientes) {
-                    // 1. Preparar las 3 filas
-                    // f1 lleva los NOMBRES copiados del molde
+                    // Preparar las 3 filas
+                    // f1 se inicializa con el MOLDE (que trae los nombres)
                     let f1 = [...nombresMolde]; 
+                    // Sobrescribimos solo las 3 primeras columnas, dejamos los nombres (indices 3,4,5) intactos
                     f1[0]=rev.letra; f1[1]=rev.desc; if(f1.length>2) f1[2]="NOMBRE";
 
                     let f2 = new Array(anchoTabla).fill(""); 
@@ -300,7 +307,7 @@ async function escribirTablaEnWord() {
                     let f3 = new Array(anchoTabla).fill(""); 
                     if(f3.length>2) f3[2]="FECHA";
                     
-                    // Fechas en f3
+                    // Fechas
                     for(let k=3; k<anchoTabla; k++) { 
                         if (rev.letra === "A" && k >= 6) {
                             f3[k] = ""; 
@@ -309,14 +316,15 @@ async function escribirTablaEnWord() {
                         }
                     }
 
-                    // 2. Insertar
+                    // Insertar
                     tablaWord.addRows("End", 3, [f1, f2, f3]);
                     
-                    // 3. Recargar
+                    // Recargar Filas Reales (Necesario para el merge)
+                    // Usamos la referencia original filasWord y la recargamos
                     filasWord.load("items/cells/body"); 
                     await context.sync(); 
 
-                    // 4. Merge
+                    // Merge
                     let totalFilas = filasWord.items.length;
                     let rowTop = filasWord.items[totalFilas - 3]; 
                     let rowBot = filasWord.items[totalFilas - 1]; 
@@ -331,13 +339,13 @@ async function escribirTablaEnWord() {
                         let cellDescBot = rowBot.cells.items[1];
                         cellDescTop.merge(cellDescBot);
                         cellDescTop.verticalAlignment = "Center";
-                    } catch(e) { console.warn(e); }
+                    } catch(e) { console.warn("Merge visual:", e); }
                 }
             }
         } 
         
         // =========================================================
-        // 🏗️ MODO CODELCO (STACK UP)
+        // 🏗️ MODO CODELCO
         // =========================================================
         else {
             console.log("🟢 MODO ESTÁNDAR ACTIVADO");
