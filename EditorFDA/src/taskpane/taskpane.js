@@ -394,7 +394,6 @@ async function escribirTablaEnWord() {
         mostrarMensaje("❌ Error: " + error.message, "red");
     });
 }
-
 // ---------------------------------------------
 // 4. LÓGICA DE AZURE Y DATOS PROYECTO (ORIGINAL)
 // ---------------------------------------------
