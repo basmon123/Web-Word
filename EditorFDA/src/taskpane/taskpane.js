@@ -183,18 +183,16 @@ async function escribirTablaEnWord() {
         // 🏗️ MODO AMSA (STACK DOWN)
         // =========================================================
         if (esAMSA) {
-            console.log("🔵 MODO AMSA SIMPLIFICADO");
+            console.log("🔵 MODO AMSA: ACTIVADO");
 
             // A. IDENTIFICAR SLOTS (Bloques de 3 filas)
             let slotsIndices = [];
             for (let i = 0; i < filasWord.items.length; i++) {
-                // Chequeo básico
                 if (!filasWord.items[i].cells || filasWord.items[i].cells.items.length === 0) continue;
                 let texto = filasWord.items[i].cells.items[0].value.trim().toUpperCase();
-
+                
                 if (palabrasProtegidas.some(p => texto.includes(p))) continue;
 
-                // Si hay espacio para 3 filas, es un slot
                 if (i + 2 < filasWord.items.length) {
                     slotsIndices.push(i);
                     i += 2; 
@@ -210,21 +208,24 @@ async function escribirTablaEnWord() {
                 let filaTop = filasWord.items[idx];     
                 let filaBot = filasWord.items[idx+2];   
 
-                // Escribir datos básicos
-                // Usamos try-catch silenciosos para evitar crasheos si la celda está fusionada/oculta
+                // Escribir datos básicos (con try-catch por seguridad en celdas fusionadas)
                 try { if(filaTop.cells.items.length > 0) filaTop.cells.items[0].body.insertText(rev.letra, "Replace"); } catch(e){}
                 try { if(filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText(rev.desc, "Replace"); } catch(e){}
-                
-                // Asegurar etiquetas
                 try { if(filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace"); } catch(e){}
-                // Ojo: Fila medio suele tener celdas ocultas por merge. Intentamos escribir en la visible (indice 0 suele ser col 2 visual)
+                
+                // Intentar poner etiqueta FIRMA en fila del medio
                 try { 
-                    if(filasWord.items[idx+1].cells.items.length > 0) 
-                        filasWord.items[idx+1].cells.items[0].body.insertText("FIRMA", "Replace"); 
+                    let filaMid = filasWord.items[idx+1];
+                    // En filas fusionadas, la celda visual 2 a veces es la item 0 o item 2 dependiendo del merge.
+                    // Escribimos en la última celda disponible antes de las firmas o la primera.
+                    if(filaMid.cells.items.length > 0) {
+                         // Un truco: escribir en la primera celda disponible de la fila media suele ser la columna "POR"
+                         filaMid.cells.items[0].body.insertText("FIRMA", "Replace"); 
+                    }
                 } catch(e){}
-                try { if(filaBot.cells.items.length > 0) filaBot.cells.items[0].body.insertText("FECHA", "Replace"); } catch(e){} // A veces fecha cae en col 0 visual de esa fila
 
-                // Fechas
+                // Fechas y etiqueta
+                try { if(filaBot.cells.items.length > 0) filaBot.cells.items[0].body.insertText("FECHA", "Replace"); } catch(e){} 
                 for(let c = 3; c < filaBot.cells.items.length; c++) {
                     try { filaBot.cells.items[c].body.insertText(rev.fecha, "Replace"); } catch(e){}
                 }
@@ -234,11 +235,8 @@ async function escribirTablaEnWord() {
             // C. LIMPIAR SOBRANTES
             while (revisionIndex < slotsIndices.length) {
                 let idx = slotsIndices[revisionIndex];
-                // Borrar lo visible
                 try { filasWord.items[idx].cells.items[0].body.insertText("", "Replace"); } catch(e){}
                 try { filasWord.items[idx].cells.items[1].body.insertText("", "Replace"); } catch(e){}
-                
-                // Borrar fechas
                 let fb = filasWord.items[idx+2];
                 for(let c = 1; c < fb.cells.items.length; c++) {
                      try { fb.cells.items[c].body.insertText("", "Replace"); } catch(e){}
@@ -246,11 +244,11 @@ async function escribirTablaEnWord() {
                 revisionIndex++;
             }
 
-            // D. CREAR NUEVOS BLOQUES (LA PARTE QUE FALLABA)
+            // D. CREAR NUEVOS BLOQUES (AQUÍ ESTÁ LA CORRECCIÓN) 🛠️
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
-                // Obtener molde de nombres (seguridad)
+                // Obtener molde de nombres
                 let nombresMolde = [];
                 let anchoTabla = 8;
                 if (filasWord.items.length > 0) {
@@ -261,57 +259,57 @@ async function escribirTablaEnWord() {
                     anchoTabla = nombresMolde.length;
                 } else { nombresMolde = new Array(8).fill(""); }
 
-                // ITERAMOS UNO A UNO PARA MAYOR SEGURIDAD
                 for (let rev of pendientes) {
-                    
-                    // 1. DEFINIMOS LOS 3 ARRAYS SIMPLES
+                    // 1. Preparar las 3 filas
                     let f1 = [...nombresMolde]; 
                     f1[0]=rev.letra; f1[1]=rev.desc; if(f1.length>2) f1[2]="NOMBRE";
 
                     let f2 = new Array(anchoTabla).fill(""); 
-                    if(f2.length>2) f2[2]="FIRMA"; // Solo etiqueta
+                    if(f2.length>2) f2[2]="FIRMA";
 
                     let f3 = new Array(anchoTabla).fill(""); 
-                    if(f3.length>2) f3[2]="FECHA"; // Solo etiqueta
+                    if(f3.length>2) f3[2]="FECHA";
                     
-                    // Poner fechas en f3
                     for(let k=3; k<anchoTabla; k++) { 
                         if(nombresMolde[k] !== "") f3[k] = rev.fecha; 
                     }
 
-                    // 2. INSERTAMOS LAS 3 FILAS DE GOLPE
-                    // Esto devuelve un OBJETO RANGO que abarca las 3 filas nuevas
+                    // 2. Insertar las 3 filas
+                    // rangoNuevo contiene el bloque de las 3 filas recién creadas
                     let rangoNuevo = tablaWord.addRows("End", 3, [f1, f2, f3]);
                     
-                    // 3. SINCRONIZAMOS (CRUCIAL PARA QUE EXISTAN)
+                    // 3. SINCRONIZAR (Vital para que existan)
                     await context.sync(); 
 
-                    // 4. FUSIONAMOS USANDO COORDENADAS DEL RANGO (SIN LEER ITEMS)
-                    // getCell(row, col) obtiene la celda RELATIVA al rango nuevo.
-                    // 0,0 es la esquina superior izq del bloque nuevo.
+                    // 4. MERGE (CORREGIDO: Usamos getItemAt en lugar de getCell) ✅
+                    // Accedemos a la Fila 0 y Fila 2 dentro del NUEVO rango
+                    let rowTop = rangoNuevo.rows.getItemAt(0); // Primera fila del bloque nuevo
+                    let rowBot = rangoNuevo.rows.getItemAt(2); // Tercera fila del bloque nuevo
                     
-                    try {
-                        // Merge Columna 0 (REV) -> De (0,0) a (2,0)
-                        let cTop = rangoNuevo.getCell(0, 0); 
-                        let cBot = rangoNuevo.getCell(2, 0);
-                        cTop.expandTo(cBot).merge();
-                        cTop.verticalAlignment = "Center"; // Alinear
+                    // Accedemos a las celdas (Rev y Desc)
+                    let cellRevTop = rowTop.cells.getItemAt(0); // Columna REV arriba
+                    let cellRevBot = rowBot.cells.getItemAt(0); // Columna REV abajo
+                    
+                    let cellDescTop = rowTop.cells.getItemAt(1); // Columna DESC arriba
+                    let cellDescBot = rowBot.cells.getItemAt(1); // Columna DESC abajo
 
-                        // Merge Columna 1 (DESC) -> De (0,1) a (2,1)
-                        let cTop2 = rangoNuevo.getCell(0, 1);
-                        let cBot2 = rangoNuevo.getCell(2, 1);
-                        cTop2.expandTo(cBot2).merge();
-                        cTop2.verticalAlignment = "Center"; // Alinear
-                        
-                    } catch(e) {
-                        console.log("Error menor en merge visual:", e);
-                    }
+                    // 5. Expandimos y Fusionamos
+                    // Usamos body.getRange("Whole") para obtener el rango de texto y expandirlo
+                    // Esto crea un rango vertical que cubre las 3 celdas y las fusiona.
+                    
+                    let rngMergeRev = cellRevTop.body.getRange("Whole").expandTo(cellRevBot.body.getRange("Whole"));
+                    rngMergeRev.merge(); 
+                    rngMergeRev.verticalAlignment = "Center";
+
+                    let rngMergeDesc = cellDescTop.body.getRange("Whole").expandTo(cellDescBot.body.getRange("Whole"));
+                    rngMergeDesc.merge();
+                    rngMergeDesc.verticalAlignment = "Center";
                 }
             }
         } 
         
         // =========================================================
-        // 🏗️ MODO CODELCO (STACK UP) - ORIGINAL INTACTO
+        // 🏗️ MODO CODELCO (STACK UP) - ORIGINAL
         // =========================================================
         else {
             console.log("🟢 MODO ESTÁNDAR ACTIVADO");
