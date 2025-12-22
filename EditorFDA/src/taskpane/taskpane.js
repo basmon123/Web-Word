@@ -136,7 +136,7 @@ window.deleteRev = function(index) {
     renderTable();
 };
 
-// ---------------------------------------------
+/// ---------------------------------------------
 // 3. ESCRITURA EN WORD (INTELIGENTE: ACTUALIZA O INSERTA)
 // ---------------------------------------------
 
