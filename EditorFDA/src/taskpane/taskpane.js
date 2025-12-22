@@ -208,19 +208,18 @@ async function escribirTablaEnWord() {
                 let filaTop = filasWord.items[idx];     
                 let filaBot = filasWord.items[idx+2];   
 
-                // Escribir datos básicos (con try-catch por seguridad en celdas fusionadas)
+                // Escribir datos básicos
                 try { if(filaTop.cells.items.length > 0) filaTop.cells.items[0].body.insertText(rev.letra, "Replace"); } catch(e){}
                 try { if(filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText(rev.desc, "Replace"); } catch(e){}
                 try { if(filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace"); } catch(e){}
                 
-                // Intentar poner etiqueta FIRMA en fila del medio
+                // Intentar poner etiqueta FIRMA
                 try { 
                     let filaMid = filasWord.items[idx+1];
-                    // En filas fusionadas, la celda visual 2 a veces es la item 0 o item 2 dependiendo del merge.
-                    // Escribimos en la última celda disponible antes de las firmas o la primera.
                     if(filaMid.cells.items.length > 0) {
-                         // Un truco: escribir en la primera celda disponible de la fila media suele ser la columna "POR"
-                         filaMid.cells.items[0].body.insertText("FIRMA", "Replace"); 
+                         // Fallback para encontrar dónde escribir FIRMA
+                         let colIndex = (filaMid.cells.items.length > 2) ? 2 : 0;
+                         if(filaMid.cells.items.length > colIndex) filaMid.cells.items[colIndex].body.insertText("FIRMA", "Replace"); 
                     }
                 } catch(e){}
 
@@ -244,11 +243,10 @@ async function escribirTablaEnWord() {
                 revisionIndex++;
             }
 
-            // D. CREAR NUEVOS BLOQUES (AQUÍ ESTÁ LA CORRECCIÓN) 🛠️
+            // D. CREAR NUEVOS BLOQUES (CORREGIDO - SIN getItemAt) 🛠️
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
-                // Obtener molde de nombres
                 let nombresMolde = [];
                 let anchoTabla = 8;
                 if (filasWord.items.length > 0) {
@@ -275,41 +273,46 @@ async function escribirTablaEnWord() {
                     }
 
                     // 2. Insertar las 3 filas
-                    // rangoNuevo contiene el bloque de las 3 filas recién creadas
                     let rangoNuevo = tablaWord.addRows("End", 3, [f1, f2, f3]);
                     
-                    // 3. SINCRONIZAR (Vital para que existan)
+                    // 3. CARGAR ESTRUCTURA PARA FUSIONAR
+                    // ¡Importante! Cargamos rows y cells dentro del rango nuevo
+                    rangoNuevo.load("rows/cells/body");
                     await context.sync(); 
 
-                    // 4. MERGE (CORREGIDO: Usamos getItemAt en lugar de getCell) ✅
-                    // Accedemos a la Fila 0 y Fila 2 dentro del NUEVO rango
-                    let rowTop = rangoNuevo.rows.getItemAt(0); // Primera fila del bloque nuevo
-                    let rowBot = rangoNuevo.rows.getItemAt(2); // Tercera fila del bloque nuevo
-                    
-                    // Accedemos a las celdas (Rev y Desc)
-                    let cellRevTop = rowTop.cells.getItemAt(0); // Columna REV arriba
-                    let cellRevBot = rowBot.cells.getItemAt(0); // Columna REV abajo
-                    
-                    let cellDescTop = rowTop.cells.getItemAt(1); // Columna DESC arriba
-                    let cellDescBot = rowBot.cells.getItemAt(1); // Columna DESC abajo
+                    // 4. MERGE (USANDO ARRAYS ESTÁNDAR .items[]) ✅
+                    try {
+                        // Accedemos a la Fila 0 (Top) y Fila 2 (Bot) del bloque nuevo
+                        let rowTop = rangoNuevo.rows.items[0]; 
+                        let rowBot = rangoNuevo.rows.items[2];
+                        
+                        // FUSIONAR COLUMNA 0 (REV)
+                        // Usamos body.getRange("Whole") para asegurar que agarramos el contenido
+                        let rngRevTop = rowTop.cells.items[0].body.getRange("Whole");
+                        let rngRevBot = rowBot.cells.items[0].body.getRange("Whole");
+                        
+                        // Expandimos desde arriba hasta abajo y fusionamos
+                        let finalRev = rngRevTop.expandTo(rngRevBot);
+                        finalRev.merge();
+                        rowTop.cells.items[0].verticalAlignment = "Center";
 
-                    // 5. Expandimos y Fusionamos
-                    // Usamos body.getRange("Whole") para obtener el rango de texto y expandirlo
-                    // Esto crea un rango vertical que cubre las 3 celdas y las fusiona.
-                    
-                    let rngMergeRev = cellRevTop.body.getRange("Whole").expandTo(cellRevBot.body.getRange("Whole"));
-                    rngMergeRev.merge(); 
-                    rngMergeRev.verticalAlignment = "Center";
+                        // FUSIONAR COLUMNA 1 (DESC)
+                        let rngDescTop = rowTop.cells.items[1].body.getRange("Whole");
+                        let rngDescBot = rowBot.cells.items[1].body.getRange("Whole");
+                        
+                        let finalDesc = rngDescTop.expandTo(rngDescBot);
+                        finalDesc.merge();
+                        rowTop.cells.items[1].verticalAlignment = "Center";
 
-                    let rngMergeDesc = cellDescTop.body.getRange("Whole").expandTo(cellDescBot.body.getRange("Whole"));
-                    rngMergeDesc.merge();
-                    rngMergeDesc.verticalAlignment = "Center";
+                    } catch(e) {
+                        console.warn("No se pudo fusionar visualmente (pero los datos están):", e);
+                    }
                 }
             }
         } 
         
         // =========================================================
-        // 🏗️ MODO CODELCO (STACK UP) - ORIGINAL
+        // 🏗️ MODO CODELCO (STACK UP)
         // =========================================================
         else {
             console.log("🟢 MODO ESTÁNDAR ACTIVADO");
