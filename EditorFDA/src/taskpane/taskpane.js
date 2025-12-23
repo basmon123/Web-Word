@@ -169,28 +169,24 @@ async function escribirTablaEnWord() {
         filasWord.load("items/cells/items/value, items/cells/items/body, items/values");
         await context.sync();
 
+
         // =========================================================
-        // 🕵️‍♂️ DETECTOR AUTOMÁTICO DE FORMATO (EL CEREBRO)
+        // 🕵️‍♂️ CEREBRO DETECTOR (BIDIRECCIONAL) 🧠
         // =========================================================
         
-        // 1. Empezamos confiando en el Dropdown (por si la tabla está vacía)
+        // 1. Empezamos con lo que dijo el usuario
         let estandarSeleccionado = document.getElementById("ddlEstandar").value;
         let esAMSA = (estandarSeleccionado === "AMSA");
-        let detectorActivo = false; // Para saber si el sistema tomó el control
+        
+        let tieneEtiquetasInternas = false; // ¿Tiene "FIRMA", "FECHA" adentro?
+        let tieneDatos = false;             // ¿La tabla tiene alguna fila escrita?
 
-        // 2. Escaneamos la tabla buscando "ADN"
-        // (Saltamos la fila 0 porque es el encabezado real)
-        let indiceRevA = -1;
-        let tieneEtiquetasInternas = false;
-
+        // 2. Escaneamos buscando evidencia
         for (let i = 1; i < filasWord.items.length; i++) {
             let fila = filasWord.items[i];
-            
-            // Seguridad anti-crash
             if(!fila.cells || !fila.cells.items) continue;
-            
-            // A. BUSCAR "FIRMA" O "FECHA" (Huella digital del formato complejo de 3 filas)
-            // Revisamos las primeras 3 celdas buscando estas palabras clave
+
+            // A. BUSCAR "FIRMA" O "FECHA" (Huella digital de AMSA)
             for(let k=0; k < Math.min(3, fila.cells.items.length); k++) {
                 let val = fila.cells.items[k].value.trim().toUpperCase();
                 if (val === "FIRMA" || val === "FECHA" || val === "NOMBRE") {
@@ -198,46 +194,33 @@ async function escribirTablaEnWord() {
                 }
             }
 
-            // B. BUSCAR POSICIÓN DE LA "A"
+            // B. VERIFICAR SI HAY DATOS (Cualquier cosa en la primera columna)
             if (fila.cells.items.length > 0) {
-                let valRev = fila.cells.items[0].value.trim().toUpperCase();
-                if (valRev === "A" || valRev === "0") {
-                    indiceRevA = i;
-                }
+                let texto = fila.cells.items[0].value.trim();
+                if (texto.length > 0) tieneDatos = true;
             }
         }
 
-        // 3. TOMA DE DECISIONES
+        // 3. TOMA DE DECISIONES (EL JUEZ) ⚖️
+        
         if (tieneEtiquetasInternas) {
-            console.log("🤖 DETECTADO: Formato Complejo (AMSA/StackDown) por etiquetas internas.");
-            esAMSA = true; 
-            detectorActivo = true;
+            // CASO 1: Tiene etiquetas -> ES AMSA (Sin discusión)
+            if (!esAMSA) {
+                console.log("🤖 AUTO-CORRECCIÓN: Detectado AMSA por etiquetas internas. Cambiando modo.");
+                esAMSA = true;
+                // Opcional: Actualizar visualmente el dropdown
+                document.getElementById("ddlEstandar").value = "AMSA"; 
+            }
         } 
-        else if (indiceRevA !== -1) {
-            // Si encontramos una "A", vemos dónde está
-            let totalFilas = filasWord.items.length;
-            
-            // Si la "A" está en la segunda mitad de la tabla -> Es Stack UP (Codelco)
-            if (indiceRevA > (totalFilas / 2)) {
-                console.log("🤖 DETECTADO: Formato Stack Up (Codelco) por posición de 'A' al fondo.");
+        else if (tieneDatos && !tieneEtiquetasInternas) {
+            // CASO 2: Tiene datos (A, B...) PERO NO tiene etiquetas -> ES CODELCO/ESTÁNDAR
+            // (Si el usuario puso AMSA, se equivocó, porque AMSA *exige* etiquetas)
+            if (esAMSA) {
+                console.log("🤖 AUTO-CORRECCIÓN: Detectado CODELCO (Tabla simple sin etiquetas). Cambiando modo.");
                 esAMSA = false;
-                detectorActivo = true;
-            }
-            // Si la "A" está al principio (top 3 filas) -> Es Stack Down
-            else if (indiceRevA < 5) {
-                console.log("🤖 DETECTADO: Formato Stack Down (Posible AMSA simple) por posición de 'A' arriba.");
-                // Aquí podrías forzar AMSA o dejar el dropdown si hay duda.
-                // Normalmente Stack Down = AMSA en tu lógica actual.
-                esAMSA = true; 
-                detectorActivo = true;
+                document.getElementById("ddlEstandar").value = "CODELCO";
             }
         }
-
-        // (Opcional) Actualizar visualmente el dropdown para que el usuario sepa que cambió
-        if (detectorActivo) {
-            document.getElementById("ddlEstandar").value = esAMSA ? "AMSA" : "CODELCO";
-        }
-
         // =========================================================
         // FIN DEL DETECTOR 
         // =========================================================
