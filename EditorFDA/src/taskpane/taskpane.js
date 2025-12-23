@@ -239,14 +239,8 @@ async function escribirTablaEnWord() {
         }
 
         // =========================================================
-        // FIN DEL DETECTOR - AHORA SIGUE TU CÓDIGO NORMAL
+        // FIN DEL DETECTOR 
         // =========================================================
-
-        const palabrasProtegidas = [ ... ] // Tu lista sigue aquí...
-        
-        // if (esAMSA) { ... }  <-- Aquí ya usará la variable corregida por el detector
-
-
 
         const palabrasProtegidas = [
             "REVISIÓN", "REVISION", "REV", "REV.", 
