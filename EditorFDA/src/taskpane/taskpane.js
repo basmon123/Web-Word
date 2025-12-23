@@ -161,12 +161,92 @@ async function escribirTablaEnWord() {
             return;
         }
 
+// ... (Tu código anterior de carga de tabla)
         const tablaWord = contentControls.items[0].tables.items[0];
         const filasWord = tablaWord.rows;
         
         // Carga inicial completa
         filasWord.load("items/cells/items/value, items/cells/items/body, items/values");
         await context.sync();
+
+        // =========================================================
+        // 🕵️‍♂️ DETECTOR AUTOMÁTICO DE FORMATO (EL CEREBRO)
+        // =========================================================
+        
+        // 1. Empezamos confiando en el Dropdown (por si la tabla está vacía)
+        let estandarSeleccionado = document.getElementById("ddlEstandar").value;
+        let esAMSA = (estandarSeleccionado === "AMSA");
+        let detectorActivo = false; // Para saber si el sistema tomó el control
+
+        // 2. Escaneamos la tabla buscando "ADN"
+        // (Saltamos la fila 0 porque es el encabezado real)
+        let indiceRevA = -1;
+        let tieneEtiquetasInternas = false;
+
+        for (let i = 1; i < filasWord.items.length; i++) {
+            let fila = filasWord.items[i];
+            
+            // Seguridad anti-crash
+            if(!fila.cells || !fila.cells.items) continue;
+            
+            // A. BUSCAR "FIRMA" O "FECHA" (Huella digital del formato complejo de 3 filas)
+            // Revisamos las primeras 3 celdas buscando estas palabras clave
+            for(let k=0; k < Math.min(3, fila.cells.items.length); k++) {
+                let val = fila.cells.items[k].value.trim().toUpperCase();
+                if (val === "FIRMA" || val === "FECHA" || val === "NOMBRE") {
+                    tieneEtiquetasInternas = true;
+                }
+            }
+
+            // B. BUSCAR POSICIÓN DE LA "A"
+            if (fila.cells.items.length > 0) {
+                let valRev = fila.cells.items[0].value.trim().toUpperCase();
+                if (valRev === "A" || valRev === "0") {
+                    indiceRevA = i;
+                }
+            }
+        }
+
+        // 3. TOMA DE DECISIONES
+        if (tieneEtiquetasInternas) {
+            console.log("🤖 DETECTADO: Formato Complejo (AMSA/StackDown) por etiquetas internas.");
+            esAMSA = true; 
+            detectorActivo = true;
+        } 
+        else if (indiceRevA !== -1) {
+            // Si encontramos una "A", vemos dónde está
+            let totalFilas = filasWord.items.length;
+            
+            // Si la "A" está en la segunda mitad de la tabla -> Es Stack UP (Codelco)
+            if (indiceRevA > (totalFilas / 2)) {
+                console.log("🤖 DETECTADO: Formato Stack Up (Codelco) por posición de 'A' al fondo.");
+                esAMSA = false;
+                detectorActivo = true;
+            }
+            // Si la "A" está al principio (top 3 filas) -> Es Stack Down
+            else if (indiceRevA < 5) {
+                console.log("🤖 DETECTADO: Formato Stack Down (Posible AMSA simple) por posición de 'A' arriba.");
+                // Aquí podrías forzar AMSA o dejar el dropdown si hay duda.
+                // Normalmente Stack Down = AMSA en tu lógica actual.
+                esAMSA = true; 
+                detectorActivo = true;
+            }
+        }
+
+        // (Opcional) Actualizar visualmente el dropdown para que el usuario sepa que cambió
+        if (detectorActivo) {
+            document.getElementById("ddlEstandar").value = esAMSA ? "AMSA" : "CODELCO";
+        }
+
+        // =========================================================
+        // FIN DEL DETECTOR - AHORA SIGUE TU CÓDIGO NORMAL
+        // =========================================================
+
+        const palabrasProtegidas = [ ... ] // Tu lista sigue aquí...
+        
+        // if (esAMSA) { ... }  <-- Aquí ya usará la variable corregida por el detector
+
+
 
         const palabrasProtegidas = [
             "REVISIÓN", "REVISION", "REV", "REV.", 
