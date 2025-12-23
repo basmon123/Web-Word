@@ -147,9 +147,6 @@ async function escribirTablaEnWord() {
         return;
     }
 
-    const estandar = document.getElementById("ddlEstandar").value;
-    const esAMSA = (estandar === "AMSA"); 
-
     await Word.run(async (context) => {
         // 1. OBTENER TABLA
         const contentControls = context.document.contentControls.getByTag("ccTablaRevisiones");
@@ -161,14 +158,11 @@ async function escribirTablaEnWord() {
             return;
         }
 
-// ... (Tu código anterior de carga de tabla)
         const tablaWord = contentControls.items[0].tables.items[0];
-        const filasWord = tablaWord.rows;
-        
-        // Carga inicial completa
+        // Referencia inicial
+        let filasWord = tablaWord.rows;
         filasWord.load("items/cells/items/value, items/cells/items/body, items/values");
         await context.sync();
-
 
         // =========================================================
         // 🕵️‍♂️ CEREBRO DETECTOR (BIDIRECCIONAL) 🧠
@@ -221,9 +215,7 @@ async function escribirTablaEnWord() {
                 document.getElementById("ddlEstandar").value = "CODELCO";
             }
         }
-        // =========================================================
-        // FIN DEL DETECTOR 
-        // =========================================================
+        // CASO 3: Si la tabla está vacía (tieneDatos == false), confiamos en el usuario.
 
         const palabrasProtegidas = [
             "REVISIÓN", "REVISION", "REV", "REV.", 
@@ -252,9 +244,12 @@ async function escribirTablaEnWord() {
                     if(row.cells.items[3]) valorNombre = row.cells.items[3].value.trim();
                 } catch(e) { continue; }
 
-                if (etiquetaLateral.includes("NOMB") && valorNombre.length > 0 && 
-                    !valorNombre.includes("<") && !valorNombre.includes("/") &&
+                if (etiquetaLateral.includes("NOMB") && 
+                    valorNombre.length > 0 && 
+                    !valorNombre.includes("<") && 
+                    !valorNombre.includes("/") &&
                     !palabrasProtegidas.some(p => valorNombre.toUpperCase() === p)) {
+                    
                     moldeNombres = row.values[0];
                     console.log("Molde encontrado en fila " + i);
                     break; 
@@ -333,43 +328,23 @@ async function escribirTablaEnWord() {
                 revisionIndex++;
             }
 
-            // --- 4. LIMPIAR SOBRANTES (CORREGIDO AGRESIVAMENTE) 🧹 ---
+            // --- 4. LIMPIAR SOBRANTES ---
             while (revisionIndex < slotsIndices.length) {
                 let idx = slotsIndices[revisionIndex];
-                
-                // Obtenemos las 3 filas del bloque sobrante
                 let fTop = filasWord.items[idx];
                 let fMid = filasWord.items[idx+1];
                 let fBot = filasWord.items[idx+2];
 
-                // 1. Limpiar TODA la Fila Superior (Letra, Desc, Labels y NOMBRES)
-                // Esto borrará los "N. Apellido" que quedaban colgados
-                try {
-                    if (fTop.cells && fTop.cells.items) {
-                        for (let c = 0; c < fTop.cells.items.length; c++) {
-                            fTop.cells.items[c].body.insertText("", "Replace");
+                // Limpieza total de las 3 filas
+                [fTop, fMid, fBot].forEach(fila => {
+                    try {
+                        if (fila.cells && fila.cells.items) {
+                            for (let c = 0; c < fila.cells.items.length; c++) {
+                                fila.cells.items[c].body.insertText("", "Replace");
+                            }
                         }
-                    }
-                } catch(e) {}
-
-                // 2. Limpiar TODA la Fila Medio (Labels FIRMA)
-                try {
-                    if (fMid.cells && fMid.cells.items) {
-                        for (let c = 0; c < fMid.cells.items.length; c++) {
-                            fMid.cells.items[c].body.insertText("", "Replace");
-                        }
-                    }
-                } catch(e) {}
-
-                // 3. Limpiar TODA la Fila Inferior (Labels FECHA y Fechas)
-                try {
-                    if (fBot.cells && fBot.cells.items) {
-                        for (let c = 0; c < fBot.cells.items.length; c++) {
-                            fBot.cells.items[c].body.insertText("", "Replace");
-                        }
-                    }
-                } catch(e) {}
-
+                    } catch(e) {}
+                });
                 revisionIndex++;
             }
 
@@ -392,28 +367,21 @@ async function escribirTablaEnWord() {
                     for(let k=3; k<anchoTabla; k++) { 
                         let esCliente = (k >= 6);
                         if (rev.letra === "A" && esCliente) {
-                            f1[k] = ""; 
-                            f3[k] = ""; 
+                            f1[k] = ""; f3[k] = ""; 
                         } else {
                             f3[k] = rev.fecha; 
                         }
                     }
 
-                    // Insertamos
                     let newRows = tablaWord.addRows("End", 3, [f1, f2, f3]);
-                    
-                    // Sincronizamos (a ver si esto ayuda con el error anterior también)
                     await context.sync(); 
+                    // Nota: Si el merge sigue fallando, al menos los datos estarán ahí.
                 }
-                
-                // ⚠️ NOTA: He simplificado la parte de MERGE aquí para aislar el error que tenías antes.
-                // Si esto corre bien, significa que el problema del InvalidArgument era 100% el merge.
-                // Por ahora se crearán las filas sin fusionar (pero con datos correctos).
             }
         } 
         
         // =========================================================
-        // 🏗️ MODO CODELCO
+        // 🏗️ MODO CODELCO / ESTÁNDAR
         // =========================================================
         else {
             console.log("🟢 MODO ESTÁNDAR ACTIVADO");
@@ -435,6 +403,7 @@ async function escribirTablaEnWord() {
                     mapaDeseado.delete(texto); 
                 } 
                 else {
+                    // Limpieza estándar
                     fila.cells.items[0].body.insertText("", "Replace");
                     fila.cells.items[1].body.insertText("", "Replace");
                     fila.cells.items[2].body.insertText("", "Replace");
@@ -481,7 +450,7 @@ async function escribirTablaEnWord() {
         }
 
         await context.sync();
-        mostrarMensaje("✅ Tabla Sincronizada.", "green");
+        mostrarMensaje("✅ Tabla Sincronizada (" + (esAMSA ? "AMSA" : "Estándar") + ")", "green");
 
     }).catch(error => {
         console.error("Error Word:", error);
