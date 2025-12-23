@@ -159,84 +159,72 @@ async function escribirTablaEnWord() {
         }
 
         const tablaWord = contentControls.items[0].tables.items[0];
-        // Referencia inicial
+        
+        // Carga inicial
         let filasWord = tablaWord.rows;
         filasWord.load("items/cells/items/value, items/cells/items/body, items/values");
         await context.sync();
 
         // =========================================================
-        // 🕵️‍♂️ CEREBRO DETECTOR (BIDIRECCIONAL) 🧠
+        // 🕵️‍♂️ DETECTOR SOLO POR DIRECCIÓN (STACK UP vs DOWN)
         // =========================================================
         
-        // 1. Empezamos con lo que dijo el usuario
+        // Empezamos respetando lo que eligió el usuario
         let estandarSeleccionado = document.getElementById("ddlEstandar").value;
         let esAMSA = (estandarSeleccionado === "AMSA");
         
-        let tieneEtiquetasInternas = false; // ¿Tiene "FIRMA", "FECHA" adentro?
-        let tieneDatos = false;             // ¿La tabla tiene alguna fila escrita?
+        // Buscamos índices de A y B para saber la dirección
+        let indexA = -1;
+        let indexB = -1;
 
-        // 2. Escaneamos buscando evidencia
-        for (let i = 1; i < filasWord.items.length; i++) {
-            let fila = filasWord.items[i];
-            if(!fila.cells || !fila.cells.items) continue;
+        for (let i = 0; i < filasWord.items.length; i++) {
+            let row = filasWord.items[i];
+            if (!row.cells || !row.cells.items || row.cells.items.length === 0) continue;
+            
+            // Miramos la primera celda
+            let val = row.cells.items[0].value.trim().toUpperCase();
+            if (val === "A" || val === "0") indexA = i;
+            if (val === "B" || val === "1") indexB = i;
+        }
 
-            // A. BUSCAR "FIRMA" O "FECHA" (Huella digital de AMSA)
-            for(let k=0; k < Math.min(3, fila.cells.items.length); k++) {
-                let val = fila.cells.items[k].value.trim().toUpperCase();
-                if (val === "FIRMA" || val === "FECHA" || val === "NOMBRE") {
-                    tieneEtiquetasInternas = true;
+        // TOMA DE DECISIÓN (Solo si hay evidencia clara de dirección)
+        if (indexA !== -1 && indexB !== -1) {
+            if (indexA < indexB) {
+                // A está ARRIBA de B -> STACK DOWN (Crecen hacia abajo) -> MODO AMSA
+                if (!esAMSA) {
+                    console.log("🤖 AUTO: Detectado Stack Down (A sobre B). Cambiando a AMSA.");
+                    esAMSA = true;
+                    document.getElementById("ddlEstandar").value = "AMSA";
+                }
+            } else {
+                // A está ABAJO de B -> STACK UP (Crecen hacia arriba) -> MODO CODELCO
+                if (esAMSA) {
+                    console.log("🤖 AUTO: Detectado Stack Up (A bajo B). Cambiando a CODELCO.");
+                    esAMSA = false;
+                    document.getElementById("ddlEstandar").value = "CODELCO";
                 }
             }
-
-            // B. VERIFICAR SI HAY DATOS (Cualquier cosa en la primera columna)
-            if (fila.cells.items.length > 0) {
-                let texto = fila.cells.items[0].value.trim();
-                if (texto.length > 0) tieneDatos = true;
-            }
         }
-
-        // 3. TOMA DE DECISIONES (EL JUEZ) ⚖️
-        
-        if (tieneEtiquetasInternas) {
-            // CASO 1: Tiene etiquetas -> ES AMSA (Sin discusión)
-            if (!esAMSA) {
-                console.log("🤖 AUTO-CORRECCIÓN: Detectado AMSA por etiquetas internas. Cambiando modo.");
-                esAMSA = true;
-                // Opcional: Actualizar visualmente el dropdown
-                document.getElementById("ddlEstandar").value = "AMSA"; 
-            }
-        } 
-        else if (tieneDatos && !tieneEtiquetasInternas) {
-            // CASO 2: Tiene datos (A, B...) PERO NO tiene etiquetas -> ES CODELCO/ESTÁNDAR
-            // (Si el usuario puso AMSA, se equivocó, porque AMSA *exige* etiquetas)
-            if (esAMSA) {
-                console.log("🤖 AUTO-CORRECCIÓN: Detectado CODELCO (Tabla simple sin etiquetas). Cambiando modo.");
-                esAMSA = false;
-                document.getElementById("ddlEstandar").value = "CODELCO";
-            }
-        }
-        // CASO 3: Si la tabla está vacía (tieneDatos == false), confiamos en el usuario.
+        // SI NO HAY A y B JUNTAS: NO HACEMOS NADA. CONFIAMOS EN EL USUARIO.
 
         const palabrasProtegidas = [
-            "REVISIÓN", "REVISION", "REV", "REV.", 
-            "FECHA", "EMITIDO", "DESCRIPCIÓN", "DESCRIPCION", 
-            "PROYECTO", "TÍTULO", "TITULO", "FDA", "CENTINELA", 
-            "APROBÓ", "APROBO", "PREPARÓ", "PREPARO", "POR", 
-            "REVISÓ", "REVISO", "CLIENTE", 
-            "N°", "N.", "NO.", "INTERNO", "NOMBRE", "FIRMA"
+            "REVISIÓN", "REVISION", "REV", "REV.", "FECHA", "EMITIDO", "DESCRIPCIÓN", "DESCRIPCION", 
+            "PROYECTO", "TÍTULO", "TITULO", "FDA", "CENTINELA", "APROBÓ", "APROBO", "PREPARÓ", 
+            "PREPARO", "POR", "REVISÓ", "REVISO", "CLIENTE", "N°", "N.", "NO.", "INTERNO", "NOMBRE", "FIRMA"
         ];
 
         // =========================================================
-        // 🏗️ MODO AMSA (STACK DOWN)
+        // 🏗️ MODO AMSA (STACK DOWN - CRECE HACIA ABAJO)
         // =========================================================
         if (esAMSA) {
-            console.log("🔵 MODO AMSA: ACTIVADO");
+            console.log("🔵 MODO AMSA (Stack Down): ACTIVADO");
 
-            // --- 1. ENCONTRAR MOLDE DE NOMBRES ---
+            // 1. MOLDE DE NOMBRES
             let moldeNombres = new Array(8).fill(""); 
             for (let i = filasWord.items.length - 1; i >= 0; i--) {
                 let row = filasWord.items[i];
-                if (!row || !row.cells || !row.cells.items || row.cells.items.length < 4) continue;
+                if (!row || !row.cells || row.cells.items.length < 4) continue;
+                
                 let etiquetaLateral = "";
                 let valorNombre = "";
                 try {
@@ -244,144 +232,128 @@ async function escribirTablaEnWord() {
                     if(row.cells.items[3]) valorNombre = row.cells.items[3].value.trim();
                 } catch(e) { continue; }
 
-                if (etiquetaLateral.includes("NOMB") && 
-                    valorNombre.length > 0 && 
-                    !valorNombre.includes("<") && 
-                    !valorNombre.includes("/") &&
+                // Ancla "NOMBRE" estricta
+                if (etiquetaLateral.includes("NOMB") && valorNombre.length > 0 && 
+                    !valorNombre.includes("<") && !valorNombre.includes("/") &&
                     !palabrasProtegidas.some(p => valorNombre.toUpperCase() === p)) {
-                    
                     moldeNombres = row.values[0];
-                    console.log("Molde encontrado en fila " + i);
                     break; 
                 }
             }
 
-            // --- 2. IDENTIFICAR SLOTS ---
+            // 2. IDENTIFICAR SLOTS
             let slotsIndices = [];
             for (let i = 0; i < filasWord.items.length; i++) {
                 if (!filasWord.items[i].cells || filasWord.items[i].cells.items.length === 0) continue;
                 let texto = filasWord.items[i].cells.items[0].value.trim().toUpperCase();
                 if (palabrasProtegidas.some(p => texto.includes(p))) continue;
-                if (i + 2 < filasWord.items.length) {
-                    slotsIndices.push(i);
-                    i += 2; 
-                }
+                if (i + 2 < filasWord.items.length) { slotsIndices.push(i); i += 2; }
             }
 
-            // --- 3. RECICLAR SLOTS EXISTENTES ---
+            // 3. RECICLAR
             let revisionIndex = 0;
             while (revisionIndex < revisions.length && revisionIndex < slotsIndices.length) {
                 let rev = revisions[revisionIndex];
                 let idx = slotsIndices[revisionIndex]; 
-                
                 let filaTop = filasWord.items[idx];     
                 let filaMid = filasWord.items[idx+1];   
                 let filaBot = filasWord.items[idx+2];   
 
-                // A. Datos Superiores + Inyectar Nombres
+                // Llenar Datos
                 try { 
                     if(filaTop.cells.items.length > 0) filaTop.cells.items[0].body.insertText(rev.letra, "Replace"); 
                     if(filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText(rev.desc, "Replace"); 
                     if(filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace");
-                    
                     for(let c = 3; c < filaTop.cells.items.length; c++) {
                         let esColumnaCliente = (c >= filaTop.cells.items.length - 2);
-                        if (rev.letra === "A" && esColumnaCliente) {
-                            filaTop.cells.items[c].body.insertText("", "Replace");
-                        } else if (moldeNombres[c] && moldeNombres[c].trim() !== "") {
-                            filaTop.cells.items[c].body.insertText(moldeNombres[c], "Replace");
-                        }
+                        if (rev.letra === "A" && esColumnaCliente) filaTop.cells.items[c].body.insertText("", "Replace");
+                        else if (moldeNombres[c] && moldeNombres[c].trim() !== "") filaTop.cells.items[c].body.insertText(moldeNombres[c], "Replace");
                     }
                 } catch(e){}
                 
-                // B. Etiqueta FIRMA
-                try { 
-                    if(filaMid.cells.items.length > 0) {
-                        let idxFirma = (filaMid.cells.items.length < 7) ? 0 : 2;
-                        if(filaMid.cells.items.length > idxFirma) {
-                            filaMid.cells.items[idxFirma].body.insertText("FIRMA", "Replace"); 
-                        }
-                    }
-                } catch(e){}
+                // Etiquetas Firma/Fecha
+                try { if(filaMid.cells.items.length > 0) {
+                        let idx = (filaMid.cells.items.length < 7) ? 0 : 2;
+                        if(filaMid.cells.items.length > idx) filaMid.cells.items[idx].body.insertText("FIRMA", "Replace"); 
+                }} catch(e){}
+                try { if(filaBot.cells.items.length > 0) {
+                        let idx = (filaBot.cells.items.length < 7) ? 0 : 2;
+                        if(filaBot.cells.items.length > idx) filaBot.cells.items[idx].body.insertText("FECHA", "Replace"); 
+                }} catch(e){}
 
-                // C. Etiqueta FECHA y Datos
+                // Fechas
                 try { 
-                    if(filaBot.cells.items.length > 0) {
-                        let idxFechaLabel = (filaBot.cells.items.length < 7) ? 0 : 2;
-                        if(filaBot.cells.items.length > idxFechaLabel) {
-                            filaBot.cells.items[idxFechaLabel].body.insertText("FECHA", "Replace"); 
-                        }
-                    }
-                    
                     let startCol = (filaBot.cells.items.length < 7) ? 1 : 3;
-                    let totalCeldas = filaBot.cells.items.length;
-                    
-                    for(let c = startCol; c < totalCeldas; c++) {
-                        let esColumnaCliente = (c >= totalCeldas - 2); 
-                        if (rev.letra === "A" && esColumnaCliente) {
-                            filaBot.cells.items[c].body.insertText("", "Replace"); 
-                        } else {
-                            filaBot.cells.items[c].body.insertText(rev.fecha, "Replace"); 
-                        }
+                    for(let c = startCol; c < filaBot.cells.items.length; c++) {
+                        let esColumnaCliente = (c >= filaBot.cells.items.length - 2); 
+                        if (rev.letra === "A" && esColumnaCliente) filaBot.cells.items[c].body.insertText("", "Replace"); 
+                        else filaBot.cells.items[c].body.insertText(rev.fecha, "Replace"); 
                     }
                 } catch(e){}
                 revisionIndex++;
             }
 
-            // --- 4. LIMPIAR SOBRANTES ---
+            // 4. LIMPIAR
             while (revisionIndex < slotsIndices.length) {
                 let idx = slotsIndices[revisionIndex];
-                let fTop = filasWord.items[idx];
-                let fMid = filasWord.items[idx+1];
-                let fBot = filasWord.items[idx+2];
-
-                // Limpieza total de las 3 filas
-                [fTop, fMid, fBot].forEach(fila => {
-                    try {
-                        if (fila.cells && fila.cells.items) {
-                            for (let c = 0; c < fila.cells.items.length; c++) {
-                                fila.cells.items[c].body.insertText("", "Replace");
-                            }
-                        }
-                    } catch(e) {}
+                [filasWord.items[idx], filasWord.items[idx+1], filasWord.items[idx+2]].forEach(fila => {
+                    try { if(fila.cells) fila.cells.items.forEach(c => c.body.insertText("", "Replace")); } catch(e){}
                 });
                 revisionIndex++;
             }
 
-            // --- 5. CREAR NUEVOS BLOQUES ---
+            // 5. CREAR NUEVOS BLOQUES (SOLUCIÓN CRASH) 🛠️
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
                 let anchoTabla = moldeNombres.length > 0 ? moldeNombres.length : 8;
 
                 for (let rev of pendientes) {
+                    // A. PREPARAR DATOS
                     let f1 = [...moldeNombres]; 
                     f1[0]=rev.letra; f1[1]=rev.desc; if(f1.length>2) f1[2]="NOMBRE";
-
-                    let f2 = new Array(anchoTabla).fill(""); 
-                    if(f2.length>2) f2[2]="FIRMA";
-
-                    let f3 = new Array(anchoTabla).fill(""); 
-                    if(f3.length>2) f3[2]="FECHA";
+                    let f2 = new Array(anchoTabla).fill(""); if(f2.length>2) f2[2]="FIRMA";
+                    let f3 = new Array(anchoTabla).fill(""); if(f3.length>2) f3[2]="FECHA";
                     
                     for(let k=3; k<anchoTabla; k++) { 
                         let esCliente = (k >= 6);
-                        if (rev.letra === "A" && esCliente) {
-                            f1[k] = ""; f3[k] = ""; 
-                        } else {
-                            f3[k] = rev.fecha; 
-                        }
+                        if (rev.letra === "A" && esCliente) { f1[k] = ""; f3[k] = ""; } 
+                        else { f3[k] = rev.fecha; }
                     }
 
-                    let newRows = tablaWord.addRows("End", 3, [f1, f2, f3]);
+                    // B. AGREGAR FILAS (Sin capturar variable)
+                    tablaWord.addRows("End", 3, [f1, f2, f3]);
+                    
+                    // C. SINCRONIZAR 
                     await context.sync(); 
-                    // Nota: Si el merge sigue fallando, al menos los datos estarán ahí.
+
+                    // D. RECARGAR REFERENCIA DESDE LA TABLA PADRE (Esto evita el InvalidArgument)
+                    // Pedimos las filas de nuevo, ahora incluirán las recién creadas
+                    let filasRefrescadas = tablaWord.rows;
+                    filasRefrescadas.load("items/cells/body"); 
+                    await context.sync();
+
+                    // E. MERGE (Usando la referencia refrescada)
+                    let total = filasRefrescadas.items.length;
+                    if (total >= 3) {
+                        let rowTop = filasRefrescadas.items[total - 3];
+                        let rowBot = filasRefrescadas.items[total - 1];
+                        
+                        try {
+                            // Merge Rev
+                            rowTop.cells.items[0].merge(rowBot.cells.items[0]);
+                            rowTop.cells.items[0].verticalAlignment = "Center";
+                            // Merge Desc
+                            rowTop.cells.items[1].merge(rowBot.cells.items[1]);
+                            rowTop.cells.items[1].verticalAlignment = "Center";
+                        } catch(e) { console.warn("Merge falló:", e); }
+                    }
                 }
             }
         } 
         
         // =========================================================
-        // 🏗️ MODO CODELCO / ESTÁNDAR
+        // 🏗️ MODO CODELCO / ESTÁNDAR (STACK UP - CRECE HACIA ARRIBA)
         // =========================================================
         else {
             console.log("🟢 MODO ESTÁNDAR ACTIVADO");
@@ -389,6 +361,7 @@ async function escribirTablaEnWord() {
             let mapaDeseado = new Map();
             revisions.forEach(r => mapaDeseado.set(r.letra, r));
 
+            // Escanear filas simples
             for (let i = 0; i < filasWord.items.length; i++) {
                 let fila = filasWord.items[i];
                 if (fila.cells.items.length < 3) continue;
@@ -403,7 +376,7 @@ async function escribirTablaEnWord() {
                     mapaDeseado.delete(texto); 
                 } 
                 else {
-                    // Limpieza estándar
+                    // Limpieza simple
                     fila.cells.items[0].body.insertText("", "Replace");
                     fila.cells.items[1].body.insertText("", "Replace");
                     fila.cells.items[2].body.insertText("", "Replace");
@@ -426,11 +399,11 @@ async function escribirTablaEnWord() {
             }
 
             if (nuevasParaCrear.length > 0) {
+                // Molde simple (fila 0)
                 let molde = [];
                 if (filasWord.items.length > 0) {
-                    filasWord.items[0].load("values");
-                    await context.sync();
-                    molde = filasWord.items[0].values[0];
+                    // Aquí no hay "NOMBRE" ni nada complejo, solo copiamos la primera fila como estilo
+                    molde = filasWord.items[0].values[0]; 
                 } else { molde = new Array(7).fill(""); }
 
                 const datosInsertar = nuevasParaCrear.map(d => {
@@ -450,7 +423,7 @@ async function escribirTablaEnWord() {
         }
 
         await context.sync();
-        mostrarMensaje("✅ Tabla Sincronizada (" + (esAMSA ? "AMSA" : "Estándar") + ")", "green");
+        mostrarMensaje("✅ Tabla Sincronizada.", "green");
 
     }).catch(error => {
         console.error("Error Word:", error);
