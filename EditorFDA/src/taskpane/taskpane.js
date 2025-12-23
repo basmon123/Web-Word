@@ -164,7 +164,7 @@ async function escribirTablaEnWord() {
         const tablaWord = contentControls.items[0].tables.items[0];
         const filasWord = tablaWord.rows;
         
-        // Carga inicial completa
+        /// Carga inicial completa
         filasWord.load("items/cells/items/value, items/cells/items/body, items/values");
         await context.sync();
 
