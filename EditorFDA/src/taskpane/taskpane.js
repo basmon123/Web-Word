@@ -164,7 +164,7 @@ async function escribirTablaEnWord() {
         const tablaWord = contentControls.items[0].tables.items[0];
         const filasWord = tablaWord.rows;
         
-        // Carga completa
+        // Carga inicial completa
         filasWord.load("items/cells/items/value, items/cells/items/body, items/values");
         await context.sync();
 
@@ -186,24 +186,28 @@ async function escribirTablaEnWord() {
             // --- PASO PREVIO: ENCONTRAR MOLDE DE NOMBRES ---
             let moldeNombres = new Array(8).fill(""); 
             
+            // Buscamos de abajo hacia arriba la última fila con nombres
             for (let i = filasWord.items.length - 1; i >= 0; i--) {
                 let row = filasWord.items[i];
                 if (!row || !row.cells || !row.cells.items || row.cells.items.length < 4) continue;
 
                 let etiquetaLateral = "";
                 let valorNombre = "";
+                
                 try {
-                    etiquetaLateral = row.cells.items[2].value.trim().toUpperCase();
-                    valorNombre = row.cells.items[3].value.trim();
+                    // Usamos la columna 2 para etiqueta ("NOMBRE") y 3 para el valor ("N. Apellido")
+                    if (row.cells.items[2]) etiquetaLateral = row.cells.items[2].value.trim().toUpperCase();
+                    if (row.cells.items[3]) valorNombre = row.cells.items[3].value.trim();
                 } catch(e) { continue; }
 
+                // Verificamos que sea una fila de nombres válida
                 if (etiquetaLateral.includes("NOMB") && 
                     valorNombre.length > 0 && 
-                    !valorNombre.includes("<") && 
-                    !valorNombre.includes("/") &&
+                    !valorNombre.includes("<") &&  // Evita <CODIGO>
+                    !valorNombre.includes("/") &&  // Evita fechas
                     !palabrasProtegidas.some(p => valorNombre.toUpperCase() === p)) {
                     
-                    moldeNombres = row.values[0];
+                    moldeNombres = row.values[0]; // Capturamos la fila entera
                     console.log("Molde encontrado en fila " + i);
                     break; 
                 }
@@ -232,23 +236,18 @@ async function escribirTablaEnWord() {
                 let filaMid = filasWord.items[idx+1];   
                 let filaBot = filasWord.items[idx+2];   
 
-                // 1. Datos Superiores + NOMBRES
+                // 1. Datos Superiores + Inyectar Nombres
                 try { 
                     if(filaTop.cells.items.length > 0) filaTop.cells.items[0].body.insertText(rev.letra, "Replace"); 
                     if(filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText(rev.desc, "Replace"); 
                     if(filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace");
                     
-                    // INYECTAR NOMBRES (Con filtro para revisión A)
-                    let totalCeldas = filaTop.cells.items.length;
-                    for(let c = 3; c < totalCeldas; c++) {
-                        let esColumnaCliente = (c >= totalCeldas - 2); 
-                        
-                        // SI ES REVISIÓN A Y COLUMNA CLIENTE -> BORRAR NOMBRE
+                    // Inyectar Nombres (respetando regla de 'A')
+                    for(let c = 3; c < filaTop.cells.items.length; c++) {
+                        let esColumnaCliente = (c >= filaTop.cells.items.length - 2);
                         if (rev.letra === "A" && esColumnaCliente) {
                             filaTop.cells.items[c].body.insertText("", "Replace");
-                        } 
-                        // SINO, COPIAR DEL MOLDE
-                        else if (moldeNombres[c] && moldeNombres[c].trim() !== "") {
+                        } else if (moldeNombres[c] && moldeNombres[c].trim() !== "") {
                             filaTop.cells.items[c].body.insertText(moldeNombres[c], "Replace");
                         }
                     }
@@ -264,7 +263,7 @@ async function escribirTablaEnWord() {
                     }
                 } catch(e){}
 
-                // 3. Etiqueta FECHA y Fechas Reales
+                // 3. Etiqueta FECHA y Datos
                 try { 
                     if(filaBot.cells.items.length > 0) {
                         let idxFechaLabel = (filaBot.cells.items.length < 7) ? 0 : 2;
@@ -278,8 +277,6 @@ async function escribirTablaEnWord() {
                     
                     for(let c = startCol; c < totalCeldas; c++) {
                         let esColumnaCliente = (c >= totalCeldas - 2); 
-                        
-                        // SI ES REVISIÓN A Y COLUMNA CLIENTE -> BORRAR FECHA
                         if (rev.letra === "A" && esColumnaCliente) {
                             filaBot.cells.items[c].body.insertText("", "Replace"); 
                         } else {
@@ -305,15 +302,15 @@ async function escribirTablaEnWord() {
                 revisionIndex++;
             }
 
-            // D. CREAR NUEVOS BLOQUES
+            // D. CREAR NUEVOS BLOQUES (CORREGIDO PARA EVITAR INVALIDARGUMENT) 🚀
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
                 let anchoTabla = moldeNombres.length > 0 ? moldeNombres.length : 8;
 
                 for (let rev of pendientes) {
-                    // 1. Preparar filas
-                    let f1 = [...moldeNombres]; // Copia inicial del molde
+                    // Preparar datos
+                    let f1 = [...moldeNombres]; 
                     f1[0]=rev.letra; f1[1]=rev.desc; if(f1.length>2) f1[2]="NOMBRE";
 
                     let f2 = new Array(anchoTabla).fill(""); 
@@ -322,30 +319,31 @@ async function escribirTablaEnWord() {
                     let f3 = new Array(anchoTabla).fill(""); 
                     if(f3.length>2) f3[2]="FECHA";
                     
-                    // REGLA FINAL: Limpiar nombres y fechas si es Rev A y col Cliente
+                    // Lógica Nombres y Fechas (Regla A)
                     for(let k=3; k<anchoTabla; k++) { 
-                        let esCliente = (k >= 6); // Asumiendo columnas 6 y 7
-
+                        let esCliente = (k >= 6);
                         if (rev.letra === "A" && esCliente) {
                             f1[k] = ""; // Borrar Nombre
                             f3[k] = ""; // Borrar Fecha
                         } else {
-                            f3[k] = rev.fecha; // Poner Fecha (el nombre ya viene en f1)
+                            f3[k] = rev.fecha; 
                         }
                     }
 
-                    // 2. Insertar
-                    tablaWord.addRows("End", 3, [f1, f2, f3]);
+                    // --- AQUÍ ESTÁ EL CAMBIO CLAVE ---
+                    // 1. Insertamos y GUARDAMOS la referencia a las nuevas filas
+                    let newRows = tablaWord.addRows("End", 3, [f1, f2, f3]);
                     
-                    // 3. Recargar y Merge
-                    filasWord.load("items/cells/body"); 
+                    // 2. Cargamos SOLO las celdas de estas nuevas filas
+                    newRows.load("items/cells/body");
                     await context.sync(); 
 
-                    let totalFilas = filasWord.items.length;
-                    let rowTop = filasWord.items[totalFilas - 3]; 
-                    let rowBot = filasWord.items[totalFilas - 1]; 
-                    
+                    // 3. Fusionamos usando las filas recién creadas (indices 0 y 2 del paquete nuevo)
+                    // Esto evita calcular índices globales y previene el InvalidArgument
                     try {
+                        let rowTop = newRows.items[0]; // La fila 1 del nuevo bloque
+                        let rowBot = newRows.items[2]; // La fila 3 del nuevo bloque
+
                         let cellRevTop = rowTop.cells.items[0];
                         let cellRevBot = rowBot.cells.items[0];
                         cellRevTop.merge(cellRevBot);
@@ -436,7 +434,6 @@ async function escribirTablaEnWord() {
         mostrarMensaje("❌ Error: " + error.message, "red");
     });
 }
-
 
 // ---------------------------------------------
 // 4. LÓGICA DE AZURE Y DATOS PROYECTO (ORIGINAL)
