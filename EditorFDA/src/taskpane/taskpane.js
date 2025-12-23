@@ -100,7 +100,7 @@ function addRevisionRow() {
     revisions.push({ letra, fecha, desc });
     
     // --- CORRECCIÓN DE ORDENAMIENTO ---
-    // Usamos localeCompare para un orden alfabético garantizado (A, B, C... P)
+    // Esto asegura que A, B, P + C se convierta en A, B, C, P automáticamente
     revisions.sort((a, b) => {
         return a.letra.localeCompare(b.letra, 'en', { sensitivity: 'base' });
     });
