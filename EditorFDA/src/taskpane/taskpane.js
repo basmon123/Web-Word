@@ -162,9 +162,8 @@ async function escribirTablaEnWord() {
         }
 
         const tablaWord = contentControls.items[0].tables.items[0];
-        const filasWord = tablaWord.rows;
-        
-        // Carga inicial completa
+        // Referencia inicial para escanear y reciclar
+        let filasWord = tablaWord.rows;
         filasWord.load("items/cells/items/value, items/cells/items/body, items/values");
         await context.sync();
 
@@ -193,7 +192,6 @@ async function escribirTablaEnWord() {
                 let etiquetaLateral = "";
                 let valorNombre = "";
                 try {
-                    // Validamos que existan las celdas antes de leer
                     if(row.cells.items[2]) etiquetaLateral = row.cells.items[2].value.trim().toUpperCase();
                     if(row.cells.items[3]) valorNombre = row.cells.items[3].value.trim();
                 } catch(e) { continue; }
@@ -210,7 +208,7 @@ async function escribirTablaEnWord() {
                 }
             }
 
-            // --- 2. IDENTIFICAR SLOTS DISPONIBLES ---
+            // --- 2. IDENTIFICAR SLOTS ---
             let slotsIndices = [];
             for (let i = 0; i < filasWord.items.length; i++) {
                 if (!filasWord.items[i].cells || filasWord.items[i].cells.items.length === 0) continue;
@@ -298,7 +296,7 @@ async function escribirTablaEnWord() {
                 revisionIndex++;
             }
 
-            // --- 5. CREAR NUEVOS BLOQUES (CORREGIDO "RELOAD") ---
+            // --- 5. CREAR NUEVOS BLOQUES (SOLUCIÓN FRESH REFERENCE) ---
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
@@ -318,40 +316,42 @@ async function escribirTablaEnWord() {
                     for(let k=3; k<anchoTabla; k++) { 
                         let esCliente = (k >= 6);
                         if (rev.letra === "A" && esCliente) {
-                            f1[k] = ""; 
-                            f3[k] = ""; 
+                            f1[k] = ""; // Borrar Nombre para A
+                            f3[k] = ""; // Borrar Fecha para A
                         } else {
                             f3[k] = rev.fecha; 
                         }
                     }
 
-                    // B. INSERTAR Y SINCRONIZAR (SIN CAPTURAR VARIABLE)
-                    // Simplemente agregamos al final.
+                    // B. INSERTAR
                     tablaWord.addRows("End", 3, [f1, f2, f3]);
                     
-                    // C. RECARGAR LA TABLA PRINCIPAL
-                    // Esto actualiza 'filasWord' con las nuevas filas que acabamos de meter.
-                    // Es vital para evitar el error InvalidArgument.
-                    filasWord.load("items/cells/body");
+                    // C. SINCRONIZAR PARA QUE EXISTAN FÍSICAMENTE
                     await context.sync(); 
 
-                    // D. SELECCIONAR LAS ÚLTIMAS 3 FILAS DE LA TABLA
-                    let totalFilas = filasWord.items.length;
-                    if (totalFilas >= 3) {
-                        let rowTop = filasWord.items[totalFilas - 3]; // La fila 1 del nuevo bloque
-                        let rowBot = filasWord.items[totalFilas - 1]; // La fila 3 del nuevo bloque
+                    // D. OBTENER REFERENCIA FRESCA (AQUÍ ESTÁ LA MAGIA) 🪄
+                    // Solicitamos las filas de nuevo desde la tabla padre.
+                    // Esto evita el InvalidArgument al usar referencias viejas.
+                    let filasFrescas = tablaWord.rows;
+                    filasFrescas.load("items/cells/body");
+                    await context.sync(); 
 
-                        // E. FUSIONAR (Merge Cell-to-Cell)
+                    // E. SELECCIONAR Y FUSIONAR
+                    let total = filasFrescas.items.length;
+                    if (total >= 3) {
+                        let rowTop = filasFrescas.items[total - 3];
+                        let rowBot = filasFrescas.items[total - 1];
+
                         try {
-                            let cellRevTop = rowTop.cells.items[0];
-                            let cellRevBot = rowBot.cells.items[0];
-                            cellRevTop.merge(cellRevBot);
-                            cellRevTop.verticalAlignment = "Center";
+                            let cTop = rowTop.cells.items[0];
+                            let cBot = rowBot.cells.items[0];
+                            cTop.merge(cBot);
+                            cTop.verticalAlignment = "Center";
 
-                            let cellDescTop = rowTop.cells.items[1];
-                            let cellDescBot = rowBot.cells.items[1];
-                            cellDescTop.merge(cellDescBot);
-                            cellDescTop.verticalAlignment = "Center";
+                            let cTop2 = rowTop.cells.items[1];
+                            let cBot2 = rowBot.cells.items[1];
+                            cTop2.merge(cBot2);
+                            cTop2.verticalAlignment = "Center";
                         } catch(e) { console.warn("Merge visual:", e); }
                     }
                 }
