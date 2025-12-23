@@ -164,7 +164,7 @@ async function escribirTablaEnWord() {
         const tablaWord = contentControls.items[0].tables.items[0];
         const filasWord = tablaWord.rows;
         
-        // CARGAMOS TODO (Values para molde, Body para escribir)
+        // CARGAMOS TODO
         filasWord.load("items/cells/items/value, items/cells/items/body, items/values");
         await context.sync();
 
@@ -183,39 +183,46 @@ async function escribirTablaEnWord() {
         if (esAMSA) {
             console.log("🔵 MODO AMSA: ACTIVADO");
 
-            // --- PASO PREVIO: ENCONTRAR MOLDE DE NOMBRES (CORREGIDO & BLINDADO) ---
+            // --- PASO PREVIO: ENCONTRAR MOLDE DE NOMBRES (ULTRA-ESTRICTO) ---
             let moldeNombres = new Array(8).fill(""); 
             
+            // Buscamos de abajo hacia arriba
             for (let i = filasWord.items.length - 1; i >= 0; i--) {
                 let row = filasWord.items[i];
 
-                // 1. Chequeo de existencia básica
-                if (!row || !row.cells || !row.cells.items) continue;
+                // 1. Validar estructura mínima
+                if (!row || !row.cells || !row.cells.items || row.cells.items.length < 4) continue;
 
-                // 2. CORRECCIÓN DEL ERROR: Verificar si existe la celda [3] explícitamente
-                // Muchas filas de encabezado fusionadas solo tienen celda [0]
-                if (row.cells.items.length <= 3 || typeof row.cells.items[3] === "undefined") {
-                    continue; // Si no tiene columna 3, saltamos esta fila
-                }
+                // 2. LEER ETIQUETA (Col 2) y VALOR (Col 3)
+                // Usamos try-catch por si la celda no tiene la propiedad value cargada (aunque debería)
+                let etiquetaLateral = "";
+                let valorNombre = "";
                 
-                // 3. Leer valor con seguridad
-                let valorPor = row.cells.items[3].value;
-                if (!valorPor) continue; // Si es null/undefined, saltar
-                valorPor = valorPor.trim();
+                try {
+                    etiquetaLateral = row.cells.items[2].value.trim().toUpperCase();
+                    valorNombre = row.cells.items[3].value.trim();
+                } catch(e) { continue; }
 
-                // 4. Validar que sea un nombre y no fecha/encabezado
-                if (valorPor.length > 0 && 
-                    !valorPor.includes("/") && 
-                    !palabrasProtegidas.some(p => valorPor.toUpperCase().includes(p))) {
+                // 3. LA CONDICIÓN DE ORO 🥇
+                // - La etiqueta lateral DEBE contener "NOMB" (cubre "NOMBRE" o "NOMB\nRE")
+                // - El nombre NO debe tener "<" (para evitar <CODIGO...>)
+                // - El nombre NO debe tener "/" (para evitar fechas)
+                // - El nombre no debe estar vacío
+                
+                if (etiquetaLateral.includes("NOMB") && 
+                    valorNombre.length > 0 && 
+                    !valorNombre.includes("<") && 
+                    !valorNombre.includes("/") &&
+                    !palabrasProtegidas.some(p => valorNombre.toUpperCase() === p)) {
                     
-                    // ¡Encontramos el molde!
+                    // ¡Encontramos la fila de nombres real!
                     moldeNombres = row.values[0];
-                    console.log("Molde encontrado en fila " + i);
+                    console.log("Molde de nombres encontrado en fila index: " + i);
                     break; 
                 }
             }
 
-            // A. IDENTIFICAR SLOTS (Bloques de 3 filas)
+            // A. IDENTIFICAR SLOTS
             let slotsIndices = [];
             for (let i = 0; i < filasWord.items.length; i++) {
                 if (!filasWord.items[i].cells || filasWord.items[i].cells.items.length === 0) continue;
@@ -245,6 +252,7 @@ async function escribirTablaEnWord() {
                     if(filaTop.cells.items.length > 1) filaTop.cells.items[1].body.insertText(rev.desc, "Replace"); 
                     if(filaTop.cells.items.length > 2) filaTop.cells.items[2].body.insertText("NOMBRE", "Replace");
                     
+                    // INYECTAR NOMBRES
                     for(let c = 3; c < filaTop.cells.items.length; c++) {
                         if (moldeNombres[c] && moldeNombres[c].trim() !== "") {
                             filaTop.cells.items[c].body.insertText(moldeNombres[c], "Replace");
@@ -305,10 +313,14 @@ async function escribirTablaEnWord() {
             let pendientes = revisions.slice(revisionIndex); 
 
             if (pendientes.length > 0) {
+                // Usamos el 'moldeNombres' inteligente
                 let anchoTabla = moldeNombres.length > 0 ? moldeNombres.length : 8;
 
                 for (let rev of pendientes) {
+                    // f1 se inicia con el molde (NOMBRES)
                     let f1 = [...moldeNombres]; 
+                    
+                    // Sobrescribimos datos de revisión
                     f1[0]=rev.letra; f1[1]=rev.desc; if(f1.length>2) f1[2]="NOMBRE";
 
                     let f2 = new Array(anchoTabla).fill(""); 
@@ -317,6 +329,7 @@ async function escribirTablaEnWord() {
                     let f3 = new Array(anchoTabla).fill(""); 
                     if(f3.length>2) f3[2]="FECHA";
                     
+                    // Fechas en f3
                     for(let k=3; k<anchoTabla; k++) { 
                         if (rev.letra === "A" && k >= 6) {
                             f3[k] = ""; 
@@ -325,8 +338,10 @@ async function escribirTablaEnWord() {
                         }
                     }
 
+                    // Insertar
                     tablaWord.addRows("End", 3, [f1, f2, f3]);
                     
+                    // Recargar y Merge
                     filasWord.load("items/cells/body"); 
                     await context.sync(); 
 
