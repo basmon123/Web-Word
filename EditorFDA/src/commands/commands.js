@@ -168,11 +168,9 @@ async function crearDocumentoNuevo(urlDirecta, datosProyecto) {
       const base64 = await getBase64FromBlob(blob);
       
       await Word.run(async (context) => {
-     //   const newDoc = context.application.createDocument(base64);
 
-         const newDoc = context.document.body;
-         newDoc.insertFileFromBase64(base64, "Replace");
-         await context.sync();
+       const newDoc = context.application.createDocument(base64);
+
 
         // Mapeo de Control de Contenido
         const mapaDatos = [
